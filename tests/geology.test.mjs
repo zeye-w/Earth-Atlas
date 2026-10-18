@@ -34,6 +34,17 @@ test("representative interval takes precedence and age spans are shown in Ma", (
   assert.equal(u.mapId, 2092425);
 });
 
+test("real Macrostrat v2 success.data envelope is correctly unwrapped", () => {
+  const envelope = { success: { v: 2, license: "CC-BY 4.0", data: [hellCreek], refs: {} } };
+  assert.equal(parseGeologicalUnits(envelope).length, 1);
+  assert.equal(parseGeologicalUnit(envelope)?.name, "Hell Creek Formation");
+  assert.deepEqual(parseGeologicalUnits({ success: { v: 2, license: "CC-BY 4.0", data: [] } }), []);
+  const asGeoJSON = { success: { v: 2, data: { type: "FeatureCollection", features: [
+    { type: "Feature", geometry: null, properties: hellCreek },
+  ] } } };
+  assert.equal(parseGeologicalUnits(asGeoJSON)[0]?.mapId, 2092425);
+});
+
 test("multiple overlapping map units are returned in source order, never arbitrarily collapsed", () => {
   const u = parseGeologicalUnits({ data: [hellCreek, { ...hellCreek, map_id: 2092426, lith: "limestone" }] });
   assert.equal(u.length, 2);
@@ -119,7 +130,7 @@ test("HTTP JSON response is parsed through queryGeology", async () => {
   globalThis.fetch = async (url, init) => {
     assert.match(url, /format=json/);
     assert.equal(init.headers.Accept, "application/json");
-    return new Response(JSON.stringify({ data: [hellCreek] }), {
+    return new Response(JSON.stringify({ success: { v: 2, data: [hellCreek] } }), {
       status: 200, headers: { "content-type": "application/json; charset=utf-8" },
     });
   };
