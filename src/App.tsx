@@ -50,7 +50,9 @@ function App() {
   const [geologyVisible, setGeologyVisible] = useState(true);
   const [opacity, setOpacity] = useState(90);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
-  const [geologicalUnit, setGeologicalUnit] = useState<GeologicalUnit | null>(null);
+  const [geologicalUnits, setGeologicalUnits] = useState<GeologicalUnit[]>([]);
+  const [selectedUnitIndex, setSelectedUnitIndex] = useState(0);
+  const geologicalUnit = geologicalUnits[selectedUnitIndex] ?? null;
   const [status, setStatus] = useState<QueryStatus>("idle");
   const [globeError, setGlobeError] = useState<string | null>(null);
 
@@ -162,16 +164,17 @@ function App() {
         const latitude = CesiumMath.toDegrees(cartographic.latitude);
         const longitude = CesiumMath.toDegrees(cartographic.longitude);
         setCoordinates({ latitude, longitude });
-        setGeologicalUnit(null);
+        setGeologicalUnits([]);
+        setSelectedUnitIndex(0);
         setStatus("loading");
         controllerRef.current?.abort();
         const controller = new AbortController();
         controllerRef.current = controller;
         void queryGeology(latitude, longitude, controller.signal)
-          .then((unit) => {
+          .then((units) => {
             if (controller.signal.aborted) return;
-            setGeologicalUnit(unit);
-            setStatus(unit ? "success" : "empty");
+            setGeologicalUnits(units);
+            setStatus(units.length ? "success" : "empty");
           })
           .catch(() => {
             if (!controller.signal.aborted) setStatus("error");
@@ -314,19 +317,30 @@ function App() {
               {status === "empty" && <div className="message-card"><strong>当前位置暂无地质单元数据</strong><p>这可能是海域、未编绘区域或数据源暂时没有匹配记录。请尝试其他陆地区域。</p></div>}
               {status === "success" && geologicalUnit && (
                 <>
+                  {geologicalUnits.length > 1 && (
+                    <div className="info-field">
+                      <label className="metric-label" htmlFor="geologic-candidate">MATCHING MAP UNITS · 候选地质单元 ({geologicalUnits.length})</label>
+                      <select id="geologic-candidate" className="geology-select" value={selectedUnitIndex} onChange={(event) => setSelectedUnitIndex(Number(event.target.value))}>
+                        {geologicalUnits.map((unit, index) => (
+                          <option key={`${unit.sourceId ?? "s"}-${unit.mapId ?? "m"}-${index}`} value={index}>{index + 1}. {unit.name}{unit.mapId !== null ? ` · #${unit.mapId}` : ""}</option>
+                        ))}
+                      </select>
+                      <p>同一坐标可能有来自不同地质图或不同比例尺的记录，请核对地图来源。</p>
+                    </div>
+                  )}
                   <div className="unit-heading"><div className="metric-label">MAP UNIT / 地质单元</div><h2>{geologicalUnit.name}</h2></div>
                   <div className="info-field"><span className="metric-label">GEOLOGICAL AGE · 地质年代</span><strong>{geologicalUnit.age ?? "未提供"}</strong></div>
                   <div className="info-field"><span className="metric-label">LITHOLOGY · 岩性</span><strong>{geologicalUnit.lithology ?? "未提供"}</strong></div>
-                  <div className="info-field"><span className="metric-label">NUMERICAL AGE · 数值年龄</span><strong>{geologicalUnit.ageRangeMa ?? "未提供"}</strong></div>
+                  <div className="info-field"><span className="metric-label">ESTIMATED AGE · 推算数值年龄</span><strong>{geologicalUnit.ageRangeMa ?? "未提供完整年龄范围"}</strong><p>{geologicalUnit.ageNote}</p></div>
                   {geologicalUnit.description && <div className="info-field"><span className="metric-label">DESCRIPTION · 原图描述</span><p>{geologicalUnit.description}</p></div>}
-                  <div className="source-card"><div className="metric-label">SOURCE / 数据来源</div><strong>{geologicalUnit.sourceName ?? "Macrostrat integrated geologic map"}</strong>{geologicalUnit.sourceId !== null && <span>Source ID: {geologicalUnit.sourceId}</span>}<a href={geologicalUnit.sourceId !== null ? "https://macrostrat.org/api/v2/defs/sources?source_id=" + geologicalUnit.sourceId : "https://macrostrat.org/map/"} target="_blank" rel="noreferrer">核对原始地图来源 ↗</a></div>
+                  <div className="source-card"><div className="metric-label">SOURCE / 数据来源</div><strong>{geologicalUnit.sourceName ?? "Macrostrat integrated geologic map"}</strong>{geologicalUnit.sourceId !== null && <span>Source ID: {geologicalUnit.sourceId}</span>}{geologicalUnit.mapId !== null && <span>Map polygon ID: {geologicalUnit.mapId}</span>}<a href={geologicalUnit.sourceId !== null ? "https://macrostrat.org/api/v2/defs/sources?source_id=" + geologicalUnit.sourceId : "https://macrostrat.org/map/"} target="_blank" rel="noreferrer">核对原始地图来源 ↗</a><p>全球地质瓦片为多尺度拼接图；候选查询与可见图斑未必严格一一对应。</p></div>
                 </>
               )}
             </div>
           )}
           <div className="details-footer">
             <span className="details-footer-dot" />
-            <span>科学数据来自 Macrostrat。不同区域的比例尺、精度和数据完整性可能不同。</span>
+            <span>科学数据来自 Macrostrat。岩性与地质年代取自地表地质图，并非直接地下测量；不同地区的比例尺和数据完整性不同。</span>
           </div>
         </aside>
       </main>

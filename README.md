@@ -6,8 +6,8 @@ Interactive 3D geological globe for exploring **mapped surface rock units**, geo
 
 - Drag the 3D globe to rotate; use wheel or touch to zoom.
 - Toggle the Macrostrat global geologic raster map and change its opacity.
-- Click the globe to query the surface geological unit at that latitude and longitude.
-- Display reported geological age, lithology, unit name, numerical age range when available, and map source identifiers.
+- Click the globe to retrieve **all reported surface map-unit candidates** at that coordinate; select among overlapping map results.
+- Display best representative chronostratigraphic interval, original lithology, approximate numerical age (only when both boundaries are present), polygon/source identifiers, and explicit uncertainty notes.
 - Fly to example regions. Chinese-first UI with scientific English preserved.
 - Explicit loading, no-data, network-error, and attribution states.
 
@@ -18,7 +18,7 @@ Requires Node.js 22+ and npm.
 1. Run: npm install
 2. Run: npm run dev
 3. Open the local URL printed by Vite.
-4. For production: npm run typecheck && npm run build
+4. Run validation: npm test && npm run typecheck && npm run build
 
 There is no Cesium ion token or proprietary basemap in this MVP. The globe uses the Natural Earth II texture bundled with Cesium (works offline) under NASA Blue Marble shaded relief and bathymetry tiles from NASA GIBS (public domain), set against Cesium's star-field sky box and atmosphere. A network connection is required for Blue Marble and Macrostrat tiles and point queries.
 
@@ -49,9 +49,11 @@ CI runs TypeScript, Vite production build, and verifies the existence of Cesium 
 
 ## Scientific scope and limitations
 
-Geological units represent mapped **surface bedrock or superficial units**, not subsurface geology at arbitrary depth. At varying map scales, unit precedence and local data completeness may change. Each map unit may include multiple lithologies; do not infer a precise rock type where the data are missing.
+Geological units represent mapped **surface bedrock or superficial units**, not subsurface geology at arbitrary depth. The blended Macrostrat `/carto` raster does not correspond to one fixed `tiny/small/medium/large` source bucket; therefore the point API is intentionally queried without a forced scale. Overlapping results are shown as **candidates**, not asserted to be a pixel-perfect match to the visualized map. At varying map scales, unit precedence and local data completeness may change. Each map unit may include multiple lithologies; do not infer a precise rock type where the data are missing.
 
 Displayed geologic colors are supplied by Macrostrat map compilations and are not a guarantee of a uniform global ICS age palette.
+
+The geology parser is exercised by offline unit/contract tests using the [documented rmacrostrat Hell Creek example](https://rmacrostrat.palaeoverse.org/articles/geologic-map.html) and constructed edge-case fixtures. **These are not live API or production-browser smoke tests.**
 
 ## Open data attribution
 
