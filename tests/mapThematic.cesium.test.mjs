@@ -5,6 +5,7 @@ import { makeThematicStyle } from "../src/mapThematic.ts";
 
 const feature = (properties) => ({
   getProperty: (name) => properties[name],
+  getPropertyInherited: (name) => properties[name],
   hasProperty: (name) => Object.hasOwn(properties, name),
 });
 
