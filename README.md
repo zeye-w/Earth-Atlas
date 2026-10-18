@@ -20,7 +20,7 @@ Requires Node.js 22+ and npm.
 3. Open the local URL printed by Vite.
 4. For production: npm run typecheck && npm run build
 
-There is no Cesium ion token or proprietary basemap in this MVP. A network connection is required for Macrostrat tiles and point queries.
+There is no Cesium ion token or proprietary basemap in this MVP. The globe uses the Natural Earth II texture bundled with Cesium (works offline) under NASA Blue Marble shaded relief and bathymetry tiles from NASA GIBS (public domain), set against Cesium's star-field sky box and atmosphere. A network connection is required for Blue Marble and Macrostrat tiles and point queries.
 
 ## Cloudflare Workers static-assets deployment (current production target)
 

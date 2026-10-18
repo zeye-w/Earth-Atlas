@@ -58,22 +58,27 @@ h1 em { color:#5f8d82; font-style:normal; }
 .sidebar-note p { font-size:10px; line-height:1.8; margin:0; color:#81918a; }
 .sidebar-bottom { border-top:1px solid #e9eeeb; padding:13px 27px; font-size:10px; color:#9ca9a3; letter-spacing:.15em; display:flex; gap:8px; }
 .sidebar-bottom span { color:#aebcb5; }
-.globe-panel { position:relative; background:radial-gradient(ellipse at 52% 45%,#1b3647,#0b1725 70%); min-width:0; overflow:hidden; }
-.globe-mount { width:100%; height:100%; position:absolute; inset:0; }
+.globe-panel { position:relative; isolation:isolate; background:radial-gradient(ellipse at 50% 45%,#0b1830 0%,#050a16 55%,#02040a 100%); min-width:0; overflow:hidden; }
+.globe-mount { width:100%; height:100%; position:absolute; inset:0; z-index:0; }
+/* Cinematic vignette over the star field; leaves the globe centre untouched. */
+.globe-panel:after { content:""; position:absolute; inset:0; z-index:1; pointer-events:none; background:radial-gradient(ellipse 75% 70% at 50% 48%,transparent 55%,#02040acc 100%); }
+.globe-panel > :not(.globe-mount) { z-index:2; }
 .cesium-viewer,.cesium-widget,.cesium-widget canvas { width:100%; height:100%; }
 .cesium-viewer-toolbar,.cesium-viewer-animationContainer,.cesium-viewer-timelineContainer { display:none!important; }
-.cesium-viewer-bottom { bottom:27px!important; right:14px!important; }
+.cesium-viewer-bottom { left:auto!important; bottom:10px!important; right:14px!important; }
 .cesium-credit-textContainer { font-size:9px!important; }
 .globe-top-left { position:absolute; left:27px; top:25px; pointer-events:none; display:flex; flex-direction:column; gap:7px; }
-.map-tag { font-size:10px; font-weight:700; color:#dbece8; letter-spacing:.16em; }
-.tag-dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#8ad3b4; margin-right:8px; }
-.map-subtitle { font-size:10px; color:#8fa8ae; letter-spacing:.13em; }
-.reset-button { border:1px solid #456170; background:#203948ad; color:#cfe0e4; border-radius:7px; padding:8px 12px; position:absolute; top:20px; right:19px; font-size:11px; transition:background .2s; }
-.reset-button:hover { background:#335263; }
-.globe-guide { position:absolute; left:24px; bottom:47px; color:#c9d7de; font-size:11px; display:flex; align-items:center; gap:10px; pointer-events:none; }
-.guide-orbit { border:1px solid #768b94; width:27px; height:27px; display:grid; place-items:center; border-radius:50%; font-size:17px; }
-.globe-attribution { position:absolute; bottom:13px; left:24px; color:#8197a1; font-size:9px; letter-spacing:.03em; }
-.globe-attribution a { color:#becfd2; text-decoration:underline; }
+.map-tag { font-size:10px; font-weight:700; color:#e6f1ff; letter-spacing:.22em; text-shadow:0 0 12px #6fb7ff66; }
+.tag-dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:#7fd8ff; margin-right:8px; box-shadow:0 0 8px #7fd8ff; animation:pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity:.35; } }
+.map-subtitle { font-size:10px; color:#7f93b0; letter-spacing:.2em; }
+.reset-button { border:1px solid #ffffff1f; background:#0a1426a6; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:#d6e4f5; border-radius:999px; padding:8px 15px; position:absolute; top:20px; right:19px; font-size:11px; letter-spacing:.04em; transition:background .2s,border-color .2s; }
+.reset-button:hover { background:#14284aa6; border-color:#7fb8ff59; }
+.globe-guide { position:absolute; left:24px; bottom:47px; color:#b9c8dc; font-size:11px; display:flex; align-items:center; gap:10px; pointer-events:none; letter-spacing:.03em; }
+.guide-orbit { border:1px solid #ffffff2e; background:#0a142680; width:27px; height:27px; display:grid; place-items:center; border-radius:50%; font-size:17px; }
+.globe-attribution { position:absolute; bottom:13px; left:24px; color:#5f7190; font-size:9px; letter-spacing:.03em; }
+.globe-attribution a { color:#9fb2cc; text-decoration:underline; }
+.cesium-widget-credits { opacity:.6; }
 .globe-error { position:absolute; top:40%; left:10%; width:80%; background:#fff9f8; color:#8c4e47; border-radius:12px; padding:20px; font-size:12px; }
 .globe-error p { margin-bottom:0; }
 .details-panel { border-left:1px solid #e3e9e7; }
