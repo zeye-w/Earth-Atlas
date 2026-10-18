@@ -225,7 +225,7 @@ function App() {
       const active = geologyVisible && mapMode !== "raster" && vectorState === "ready";
       vectorLayerRef.current.show = active;
       if (active && vectorLayerRef.current.tileset) {
-        vectorLayerRef.current.tileset.style = new Cesium3DTileStyle(makeThematicStyle(mapMode, ageFilter, rockFilter));
+        vectorLayerRef.current.tileset.style = new Cesium3DTileStyle(makeThematicStyle(mapMode, ageFilter, rockFilter, opacity / 100));
       }
     }
     viewer.scene.requestRender();
@@ -237,7 +237,6 @@ function App() {
     const viewer = viewerRef.current;
     if (!geologyVisible || mapMode === "raster" || !viewer || viewer.isDestroyed()) return;
     if (vectorLayerRef.current) return;
-    let alive = true;
     setVectorState("loading");
     const promise = vectorLoadingRef.current ?? MVTDataProvider.fromUrl(
       "https://tiles.macrostrat.org/carto/{z}/{x}/{y}", {
@@ -253,14 +252,12 @@ function App() {
         viewer.scene.primitives.add(provider);
         vectorLayerRef.current = provider;
       }
-      if (alive) setVectorState("ready");
-      else setVectorState("ready"); // synchronize if mode changed during asynchronous load
+      setVectorState("ready"); // also synchronize if mode changed during async initialization
     }).catch((error: unknown) => {
       vectorLoadingRef.current = null;
       console.warn("Vector thematic map unavailable; keeping raster fallback.", error);
       if (viewerRef.current === viewer && !viewer.isDestroyed()) setVectorState("error");
     });
-    return () => { alive = false; };
   }, [mapMode, geologyVisible]);
 
   // An unavailable lexicon must never hide valid map-unit data.
