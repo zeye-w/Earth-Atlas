@@ -13,6 +13,10 @@ export interface GeologicalUnit {
   lithology: string | null;
   ageRangeMa: string | null;
   ageNote: string;
+  youngAgeMa: number | null;
+  oldAgeMa: number | null;
+  /** Macrostrat's canonical lithology IDs; original text remains separate. */
+  lithIds: number[];
   description: string | null;
   sourceId: number | null;
   sourceName: string | null;
@@ -85,6 +89,8 @@ function parseRecord(raw: RecordValue): GeologicalUnit | null {
   const top = boundary(unit.t_age, unit.best_t_age, unit.t_int_age);
   const bottom = boundary(unit.b_age, unit.best_b_age, unit.b_int_age);
   let ageRangeMa: string | null = null;
+  let youngAgeMa: number | null = null;
+  let oldAgeMa: number | null = null;
   let ageNote = "Macrostrat 的推算年龄；不是该地点岩石的直接测年结果。";
 
   if (top && bottom) {
@@ -92,6 +98,8 @@ function parseRecord(raw: RecordValue): GeologicalUnit | null {
       ageNote = "原始年龄边界不一致（顶部年龄大于底部年龄），未展示数值范围。";
     } else {
       ageRangeMa = ma(top.value) + "–" + ma(bottom.value) + " Ma";
+      youngAgeMa = top.value;
+      oldAgeMa = bottom.value;
       if (top.fallbackInterval || bottom.fallbackInterval) {
         ageNote = "包含年代地层单元边界推算值，不能视为精确岩石测年。";
       }
@@ -109,6 +117,9 @@ function parseRecord(raw: RecordValue): GeologicalUnit | null {
     lithology,
     ageRangeMa,
     ageNote,
+    youngAgeMa,
+    oldAgeMa,
+    lithIds: [...new Set((Array.isArray(unit.liths) ? unit.liths : []).map(idValue).filter((x): x is number => x !== null))],
     description,
     mapId,
     sourceId: sourceId ?? idValue(source?.source_id),
