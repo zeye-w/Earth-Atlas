@@ -16,6 +16,7 @@ const hellCreek = {
   name: "Hell Creek Formation",
   strat_name: "Hell Creek Formation",
   lith: "Major:: {sandstone, mudstone}",
+  liths: [7, 10],
   t_int_name: "Late Cretaceous",
   b_int_name: "Late Cretaceous",
   best_int_name: "Maastrichtian",
@@ -30,6 +31,9 @@ test("representative interval takes precedence and age spans are shown in Ma", (
   assert.equal(u.age, "Maastrichtian");
   assert.equal(u.lithology, "Major:: {sandstone, mudstone}");
   assert.equal(u.ageRangeMa, "66–72.1 Ma");
+  assert.deepEqual(u.lithIds, [7, 10]);
+  assert.equal(u.youngAgeMa, 66);
+  assert.equal(u.oldAgeMa, 72.1);
   assert.equal(u.sourceId, 25);
   assert.equal(u.mapId, 2092425);
 });
