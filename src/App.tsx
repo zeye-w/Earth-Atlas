@@ -5,14 +5,18 @@ import {
   Cartographic,
   Color,
   Credit,
+  DirectionalLight,
   Ellipsoid,
   EllipsoidTerrainProvider,
-  OpenStreetMapImageryProvider,
+  ImageryLayer,
   Math as CesiumMath,
   ScreenSpaceEventType,
+  SkyAtmosphere,
+  SkyBox,
+  TileMapServiceImageryProvider,
   UrlTemplateImageryProvider,
   Viewer,
-  type ImageryLayer,
+  buildModuleUrl,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { queryGeology, type GeologicalUnit } from "./geology";
@@ -21,6 +25,10 @@ import "./styles.css";
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
 type Coordinates = { latitude: number; longitude: number };
 type Region = { label: string; subtitle: string; lat: number; lon: number };
+
+const HOME_VIEW = Cartesian3.fromDegrees(58, 19, 17000000);
+// Idle spin in radians per second; stops at the first user interaction.
+const AUTO_ROTATE_SPEED = 0.035;
 
 const REGIONS: Region[] = [
   { label: "日本列岛", subtitle: "Japan", lat: 36.2, lon: 138.3 },
@@ -38,6 +46,7 @@ function App() {
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
+  const autoRotateRef = useRef(true);
   const [geologyVisible, setGeologyVisible] = useState(true);
   const [opacity, setOpacity] = useState(90);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
@@ -63,33 +72,76 @@ function App() {
         selectionIndicator: false,
         sceneModePicker: false,
         navigationHelpButton: false,
-        skyBox: false,
-        skyAtmosphere: false,
+        skyBox: SkyBox.createEarthSkyBox(),
+        skyAtmosphere: new SkyAtmosphere(),
         shouldAnimate: false,
       });
 
       viewerRef.current = viewer;
-      viewer.scene.backgroundColor = Color.fromCssColorString("#0b1725");
-      viewer.scene.globe.baseColor = Color.fromCssColorString("#477b98");
-      viewer.scene.globe.show = true;
-      viewer.scene.globe.translucency.enabled = false;
-      viewer.scene.globe.depthTestAgainstTerrain = false;
-      viewer.scene.globe.enableLighting = false;
-      viewer.scene.fog.enabled = false;
-      if (viewer.scene.sun) viewer.scene.sun.show = false;
-      if (viewer.scene.moon) viewer.scene.moon.show = false;
-      viewer.scene.screenSpaceCameraController.minimumZoomDistance = 15000;
-      viewer.scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
-      viewer.camera.setView({ destination: Cartesian3.fromDegrees(58, 19, 21500000) });
+      const { scene } = viewer;
+      scene.backgroundColor = Color.fromCssColorString("#02040a");
+      scene.globe.baseColor = Color.fromCssColorString("#0d2a44");
+      scene.globe.show = true;
+      scene.globe.translucency.enabled = false;
+      scene.globe.depthTestAgainstTerrain = false;
+      scene.fog.enabled = false;
+      if (scene.sun) scene.sun.show = false;
+      if (scene.moon) scene.moon.show = false;
+      scene.screenSpaceCameraController.minimumZoomDistance = 15000;
+      scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
+      viewer.resolutionScale = Math.min(window.devicePixelRatio || 1, 2);
+      scene.postProcessStages.fxaa.enabled = true;
 
-      // A recognizable Earth surface remains visible if Macrostrat tiles fail.
-      // OpenStreetMap is a temporary MVP fallback; preserve required attribution.
-      const baseProvider = new OpenStreetMapImageryProvider({
-        url: "https://tile.openstreetmap.org/",
-        maximumLevel: 12,
-        credit: new Credit('<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>'),
+      // Deep-space look: star field, limb glow, and soft terminator shading.
+      // The light follows the camera from the upper left so the visible face
+      // stays readable while the lower-right limb falls into shadow. Lighting
+      // fades out when zoomed in, keeping regional geology evenly lit.
+      scene.globe.enableLighting = true;
+      scene.globe.showGroundAtmosphere = true;
+      scene.globe.dynamicAtmosphereLighting = true;
+      scene.globe.dynamicAtmosphereLightingFromSun = false;
+      scene.globe.lightingFadeOutDistance = 6500000;
+      scene.globe.lightingFadeInDistance = 14000000;
+      scene.globe.atmosphereLightIntensity = 14;
+      if (scene.skyAtmosphere) {
+        scene.skyAtmosphere.hueShift = -0.02;
+        scene.skyAtmosphere.saturationShift = 0.1;
+        scene.skyAtmosphere.brightnessShift = 0.15;
+        scene.skyAtmosphere.atmosphereLightIntensity = 30;
+      }
+      const light = new DirectionalLight({ direction: new Cartesian3(0, 0, -1), intensity: 2.6 });
+      scene.light = light;
+      const lightDirection = new Cartesian3();
+      const scratch = new Cartesian3();
+      let lastFrame = performance.now();
+      scene.preRender.addEventListener(() => {
+        const camera = scene.camera;
+        Cartesian3.clone(camera.directionWC, lightDirection);
+        Cartesian3.add(lightDirection, Cartesian3.multiplyByScalar(camera.rightWC, 0.95, scratch), lightDirection);
+        Cartesian3.add(lightDirection, Cartesian3.multiplyByScalar(camera.upWC, -0.6, scratch), lightDirection);
+        Cartesian3.normalize(lightDirection, light.direction);
+
+        const now = performance.now();
+        const elapsed = Math.min((now - lastFrame) / 1000, 0.1);
+        lastFrame = now;
+        if (autoRotateRef.current) camera.rotate(Cartesian3.UNIT_Z, -AUTO_ROTATE_SPEED * elapsed);
       });
-      viewer.imageryLayers.addImageryProvider(baseProvider);
+      const stopAutoRotate = () => { autoRotateRef.current = false; };
+      for (const type of ["pointerdown", "wheel", "touchstart"]) {
+        viewer.canvas.addEventListener(type, stopAutoRotate, { passive: true });
+      }
+      viewer.camera.setView({ destination: HOME_VIEW });
+
+      // Bundled Natural Earth II keeps a recognizable globe even offline; NASA
+      // Blue Marble (public domain) adds shaded relief and ocean bathymetry.
+      viewer.imageryLayers.add(
+        ImageryLayer.fromProviderAsync(TileMapServiceImageryProvider.fromUrl(buildModuleUrl("Assets/Textures/NaturalEarthII"))),
+      );
+      viewer.imageryLayers.addImageryProvider(new UrlTemplateImageryProvider({
+        url: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+        maximumLevel: 8,
+        credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
+      }));
 
       const provider = new UrlTemplateImageryProvider({
         url: "https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png",
@@ -151,6 +203,7 @@ function App() {
   const flyTo = (region: Region) => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
+    autoRotateRef.current = false;
     viewer.camera.flyTo({
       destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000),
       duration: 1.8,
@@ -160,8 +213,9 @@ function App() {
   const resetCamera = () => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
+    autoRotateRef.current = false;
     viewer.camera.flyTo({
-      destination: Cartesian3.fromDegrees(58, 19, 21500000),
+      destination: HOME_VIEW,
       duration: 1.6,
     });
   };
@@ -229,7 +283,7 @@ function App() {
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角">◎ <span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit">↔</span><span>拖动旋转 · 滚轮缩放 · 点击查询</span></div>
-          <div className="globe-attribution">Basemap: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a> · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
