@@ -54,6 +54,11 @@ function App() {
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const autoRotateRef = useRef(true);
+  const hasInteractedRef = useRef(false);
+  const [controlsOpen, setControlsOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 760);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [motionEnabled, setMotionEnabled] = useState(() => typeof window === "undefined" || !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [fullscreenActive, setFullscreenActive] = useState(false);
   const [geologyVisible, setGeologyVisible] = useState(true);
   const [opacity, setOpacity] = useState(90);
   const [mapMode, setMapMode] = useState<ThematicMode>("raster");
@@ -70,6 +75,33 @@ function App() {
   const [lexiconStatus, setLexiconStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const rockInfo = classifyLithologies(geologicalUnit?.lithIds ?? [], lithologyDictionary);
   const eraInfo = classifyGeologicEra(geologicalUnit?.youngAgeMa ?? null, geologicalUnit?.oldAgeMa ?? null);
+
+  // Respect system accessibility settings; never force an animation for users
+  // who have asked for reduced motion. The header also offers a manual pause.
+  useEffect(() => {
+    autoRotateRef.current = motionEnabled && !hasInteractedRef.current;
+  }, [motionEnabled]);
+
+  useEffect(() => {
+    const update = () => setFullscreenActive(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void document.documentElement.requestFullscreen?.().catch(() => {});
+  };
+
+  const toggleControls = () => {
+    setControlsOpen((open) => !open);
+    if (window.innerWidth < 760) setDetailsOpen(false);
+  };
+
+  const toggleDetails = () => {
+    setDetailsOpen((open) => !open);
+    if (window.innerWidth < 760) setControlsOpen(false);
+  };
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -143,7 +175,10 @@ function App() {
         lastFrame = now;
         if (autoRotateRef.current) camera.rotate(Cartesian3.UNIT_Z, -AUTO_ROTATE_SPEED * elapsed);
       });
-      const stopAutoRotate = () => { autoRotateRef.current = false; };
+      const stopAutoRotate = () => {
+        hasInteractedRef.current = true;
+        autoRotateRef.current = false;
+      };
       for (const type of ["pointerdown", "wheel", "touchstart"]) {
         viewer.canvas.addEventListener(type, stopAutoRotate, { passive: true });
       }
@@ -179,6 +214,8 @@ function App() {
         const latitude = CesiumMath.toDegrees(cartographic.latitude);
         const longitude = CesiumMath.toDegrees(cartographic.longitude);
         setCoordinates({ latitude, longitude });
+        setDetailsOpen(true);
+        if (window.innerWidth < 760) setControlsOpen(false);
         setGeologicalUnits([]);
         setSelectedUnitIndex(0);
         setStatus("loading");
@@ -282,6 +319,7 @@ function App() {
   const flyTo = (region: Region) => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
+    hasInteractedRef.current = true;
     autoRotateRef.current = false;
     viewer.camera.flyTo({
       destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000),
@@ -300,7 +338,7 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={"app-shell" + (motionEnabled ? " motion-on" : " motion-off")}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="Earth Atlas home">
           <span className="brand-symbol" aria-hidden="true">◎</span>
@@ -309,13 +347,28 @@ function App() {
           <span className="brand-caption">地球科学图集</span>
         </a>
         <div className="header-right">
-          <span className="online-indicator"><span /> LIVE GEOLOGICAL DATA</span>
+          <span className="online-indicator"><span /> GLOBAL GEOLOGY EXPLORER</span>
+          <div className="header-actions" role="group" aria-label="页面视图控制">
+            <button type="button" className={"header-action" + (controlsOpen ? " active" : "")} onClick={toggleControls} aria-expanded={controlsOpen} aria-controls="earth-layer-panel">
+              <span aria-hidden="true">▤</span><span className="action-caption">图层</span>
+            </button>
+            <button type="button" className={"header-action" + (detailsOpen ? " active" : "")} onClick={toggleDetails} aria-expanded={detailsOpen} aria-controls="earth-inspector-panel">
+              <span aria-hidden="true">⌖</span><span className="action-caption">信息</span>
+            </button>
+            <button type="button" className={"header-action" + (motionEnabled ? " active" : "")} onClick={() => setMotionEnabled((enabled) => !enabled)} aria-pressed={motionEnabled} title="开启或暂停背景星光及地球待机动画">
+              <span aria-hidden="true">✦</span><span className="action-caption">{motionEnabled ? "动效开" : "动效关"}</span>
+            </button>
+            <button type="button" className="header-action" onClick={toggleFullscreen} aria-label={fullscreenActive ? "退出浏览器全屏" : "进入浏览器全屏"} title={fullscreenActive ? "退出全屏" : "浏览器全屏"}>
+              <span aria-hidden="true">{fullscreenActive ? "⊟" : "⛶"}</span><span className="action-caption">{fullscreenActive ? "退出全屏" : "全屏"}</span>
+            </button>
+          </div>
           <a href="https://github.com/zeye-w/Earth-Atlas" target="_blank" rel="noreferrer" className="source-link">GitHub ↗</a>
         </div>
       </header>
 
       <main className="workspace">
-        <aside className="sidebar">
+        <aside id="earth-layer-panel" aria-label="地质图层控制" aria-hidden={!controlsOpen} inert={!controlsOpen} className={"sidebar glass-panel" + (!controlsOpen ? " is-collapsed" : "")}>
+          <button type="button" className="panel-dismiss" onClick={() => setControlsOpen(false)} aria-label="收起地质图层面板">×</button>
           <div className="side-content">
             <div className="eyebrow"><span className="serial">01</span> GLOBAL GEOLOGICAL EXPLORER</div>
             <h1>阅读地球的<br /><em>岩石记忆。</em></h1>
@@ -378,6 +431,12 @@ function App() {
 
         <section className="globe-panel" aria-label="可交互三维地质地球">
           <div className="globe-mount" ref={mountRef} />
+          <div className="space-effects" aria-hidden="true">
+            <div className="nebula-field" />
+            <div className="stars-far" />
+            <div className="stars-near" />
+            <div className="orbital-glow" />
+          </div>
           <div className="globe-top-left">
             <span className="map-tag"><span className="tag-dot" /> 3D GLOBAL VIEW</span>
             <span className="map-subtitle">GEOLOGICAL SURFACE MAP</span>
@@ -388,7 +447,8 @@ function App() {
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
-        <aside className="details-panel" aria-live="polite">
+        <aside id="earth-inspector-panel" aria-label="地质查询信息" aria-hidden={!detailsOpen} inert={!detailsOpen} className={"details-panel glass-panel" + (!detailsOpen ? " is-collapsed" : "")} aria-live="polite">
+          <button type="button" className="panel-dismiss" onClick={() => setDetailsOpen(false)} aria-label="收起地质信息面板">×</button>
           <div className="details-head">
             <div className="section-caption">GEOLOGICAL INSPECTOR <span>地质信息</span></div>
             <span className="inspect-status">{status === "loading" ? "QUERYING" : status === "success" ? "RECORD FOUND" : "AWAITING POINT"}</span>
