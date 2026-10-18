@@ -7,7 +7,7 @@ Interactive 3D geological globe for exploring **mapped surface rock units**, geo
 - Drag the 3D globe to rotate; use wheel or touch to zoom.
 - Toggle the Macrostrat global geologic raster map and change its opacity.
 - Click the globe to retrieve **all reported surface map-unit candidates** at that coordinate; select among overlapping map results.
-- Display best representative chronostratigraphic interval, original lithology, approximate numerical age (only when both boundaries are present), polygon/source identifiers, and explicit uncertainty notes.
+- Display best representative chronostratigraphic interval, original lithology, approximate numerical age and uncertainty notes, polygon/source identifiers; additionally resolve source lithology IDs through the official Macrostrat `/defs/lithologies` dictionary.
 - Fly to example regions. Chinese-first UI with scientific English preserved.
 - Explicit loading, no-data, network-error, and attribution states.
 
@@ -62,6 +62,12 @@ The geologic map and unit queries are provided by [Macrostrat](https://macrostra
 - Documentation: https://macrostrat.org/docs/data-services
 - Raster tiles: https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png
 - Point query: https://macrostrat.org/api/v2/geologic_units/map?lat=43&lng=-89.3
+
+## Lithology classification and era guide
+
+The inspector distinguishes the map-author's raw `lith` field from Macrostrat-normalized `liths` IDs. Rock type classes (sedimentary, igneous and metamorphic) are shown **only** if all recognized IDs have an unambiguous class according to the official public dictionary. Missing IDs, mixed classes, and unavailable dictionary requests are labeled rather than guessed.
+
+The geological-era summary uses approximate ICS major boundaries (66, 251.902, 538.8 Ma) and only assigns an era if the complete numerical map-unit range is inside it. Colors are an **illustrative information-panel legend**, not the map's global geologic-age palette. A recolorable global map will require processing Macrostrat vector tiles rather than recoloring the existing raster PNG.
 
 ## Roadmap
 
