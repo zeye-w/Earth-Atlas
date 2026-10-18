@@ -1,0 +1,22 @@
+name: Live Geology Smoke
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/smoke-live.mjs"
+      - "src/geology.ts"
+      - ".github/workflows/live-smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check external Macrostrat API and production assets
+        run: node --experimental-strip-types scripts/smoke-live.mjs
