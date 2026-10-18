@@ -20,5 +20,7 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+      - name: Diagnostic - locate actual Cesium runtime files
+        run: find dist -type f | grep -E 'transferTypedArrayTest|approximateTerrainHeights|createVerticesFromHeightmap|createTaskProcessorWorker' || true
       - name: Verify Cesium static asset paths
         run: npm run verify:assets
