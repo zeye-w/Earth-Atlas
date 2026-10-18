@@ -7,6 +7,7 @@ import {
   Credit,
   Ellipsoid,
   EllipsoidTerrainProvider,
+  OpenStreetMapImageryProvider,
   Math as CesiumMath,
   ScreenSpaceEventType,
   UrlTemplateImageryProvider,
@@ -69,7 +70,10 @@ function App() {
 
       viewerRef.current = viewer;
       viewer.scene.backgroundColor = Color.fromCssColorString("#0b1725");
-      viewer.scene.globe.baseColor = Color.fromCssColorString("#164258");
+      viewer.scene.globe.baseColor = Color.fromCssColorString("#477b98");
+      viewer.scene.globe.show = true;
+      viewer.scene.globe.translucency.enabled = false;
+      viewer.scene.globe.depthTestAgainstTerrain = false;
       viewer.scene.globe.enableLighting = false;
       viewer.scene.fog.enabled = false;
       if (viewer.scene.sun) viewer.scene.sun.show = false;
@@ -77,6 +81,15 @@ function App() {
       viewer.scene.screenSpaceCameraController.minimumZoomDistance = 15000;
       viewer.scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
       viewer.camera.setView({ destination: Cartesian3.fromDegrees(58, 19, 21500000) });
+
+      // A recognizable Earth surface remains visible if Macrostrat tiles fail.
+      // OpenStreetMap is a temporary MVP fallback; preserve required attribution.
+      const baseProvider = new OpenStreetMapImageryProvider({
+        url: "https://tile.openstreetmap.org/",
+        maximumLevel: 12,
+        credit: new Credit('<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>'),
+      });
+      viewer.imageryLayers.addImageryProvider(baseProvider);
 
       const provider = new UrlTemplateImageryProvider({
         url: "https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png",
@@ -86,6 +99,8 @@ function App() {
       });
       const layer = viewer.imageryLayers.addImageryProvider(provider);
       geologicalLayerRef.current = layer;
+      layer.alpha = 0.9;
+      viewer.scene.requestRender();
 
       viewer.screenSpaceEventHandler.setInputAction((event: { position: Cartesian2 }) => {
         if (!viewer || viewer.isDestroyed()) return;
@@ -214,7 +229,7 @@ function App() {
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角">◎ <span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit">↔</span><span>拖动旋转 · 滚轮缩放 · 点击查询</span></div>
-          <div className="globe-attribution">Map data: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0 · Source surveys</div>
+          <div className="globe-attribution">Basemap: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a> · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
