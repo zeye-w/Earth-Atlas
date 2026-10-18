@@ -45,7 +45,9 @@ export function parseGeologicalUnit(payload: unknown): GeologicalUnit | null {
   const data = root && "data" in root ? root.data : payload;
   const firstRecord = Array.isArray(data) ? data.find((value) => object(value)) : data;
   const unit = object(firstRecord);
-  if (!unit) return null;
+  if (!unit || Object.keys(unit).length === 0) return null;
+  // Do not treat empty metadata or API status wrappers as geological units.
+  if (!["map_id", "source_id", "unit_id", "name", "strat_name", "unit_name", "lith", "lithology", "age", "t_age", "b_age", "best_t_age", "best_b_age"].some((field) => unit[field] !== undefined && unit[field] !== null)) return null;
 
   // Macrostrat gives young/top and old/bottom ages in Ma. Missing
   // numerical ages remain unknown rather than being invented.
