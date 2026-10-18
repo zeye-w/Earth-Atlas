@@ -5,7 +5,7 @@ Interactive 3D geological globe for exploring **mapped surface rock units**, geo
 ## Features
 
 - Drag the 3D globe to rotate; use wheel or touch to zoom.
-- Toggle the Macrostrat global geologic raster map and change its opacity.
+- Toggle the Macrostrat raster or experimental global geological-age and lithology vector overview maps; switch scientific filters and adjust opacity.
 - Click the globe to retrieve **all reported surface map-unit candidates** at that coordinate; select among overlapping map results.
 - Display best representative chronostratigraphic interval, original lithology, approximate numerical age and uncertainty notes, polygon/source identifiers; additionally resolve source lithology IDs through the official Macrostrat `/defs/lithologies` dictionary.
 - Fly to example regions. Chinese-first UI with scientific English preserved.
@@ -21,6 +21,20 @@ Requires Node.js 22+ and npm.
 4. Run validation: npm test && npm run typecheck && npm run build
 
 There is no Cesium ion token or proprietary basemap in this MVP. The globe uses the Natural Earth II texture bundled with Cesium (works offline) under NASA Blue Marble shaded relief and bathymetry tiles from NASA GIBS (public domain), set against Cesium's star-field sky box and atmosphere. A network connection is required for Blue Marble and Macrostrat tiles and point queries.
+
+## Thematic maps: vector overview (experimental)
+
+The **Map Style** control offers three modes:
+
+- **Original raster** (default and fallback): Macrostrat pre-rendered `/carto/{z}/{x}/{y}.png` map.
+- **Geological age**: stream Macrostrat `/carto/{z}/{x}/{y}` Mapbox vector tiles directly into Cesium via `MVTDataProvider`. The `units` polygon properties `best_age_top` and `best_age_bottom` provide full-range classification into broad geological eras (Cenozoic, Mesozoic, Paleozoic and Precambrian). Records with missing, conflicting or cross-era ages remain gray. The legend is an *overview*, not an official ICS map color standard.
+- **Lithology (indicative only)**: render polygon colors and optional category filters using *explicit English keywords in the map author's free-text `lith` field*. The vector tiles **do not contain normalized `liths` IDs**, unlike the point-query API. Consequently this mode is **not** a scientifically validated global lithology classification. Ambiguous or missing descriptions remain gray, and selecting a category excludes ambiguous matches.
+
+Cesium currently eagerly creates the MVT tile hierarchy. For global safety, this implementation caps its vector source to **zoom levels 0 through 6** (5,461 quadtree nodes); zooming into local areas does not increase vector detail beyond this. Default raster detail remains available when switching back. Vector mode is lazily initialized, remains optional, and falls back to the raster if the provider fails to initialize. A real-browser WebGL visual check is still required after each deployment.
+
+MVT source schema and CORS were verified via `scripts/inspect-vector-tiles.mjs` on GitHub Actions: the `units` layer contains `map_id`, `best_age_top`, `best_age_bottom`, and `lith` and responds with `Access-Control-Allow-Origin: *`. The same tiles include a `lines` layer without polygon/age attributes; styles guard missing fields to avoid renderer exceptions.
+
+Details: [Cesium MVT tutorial](https://cesium.com/learn/cesiumjs-learn/load-mapbox-vector-tiles-in-cesiumjs/) and [Macrostrat vector tile documentation](https://macrostrat.org/docs/data-services/use-in-qgis).
 
 ## Cloudflare Workers static-assets deployment (current production target)
 
