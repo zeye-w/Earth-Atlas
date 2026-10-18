@@ -5,6 +5,8 @@ import {
   Cartographic,
   Color,
   Credit,
+  Cesium3DTileStyle,
+  MVTDataProvider,
   DirectionalLight,
   Ellipsoid,
   EllipsoidTerrainProvider,
@@ -22,6 +24,7 @@ import "cesium/Build/Cesium/Widgets/widgets.css";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
 import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
+import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -47,10 +50,16 @@ function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
+  const vectorLayerRef = useRef<MVTDataProvider | null>(null);
+  const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const autoRotateRef = useRef(true);
   const [geologyVisible, setGeologyVisible] = useState(true);
   const [opacity, setOpacity] = useState(90);
+  const [mapMode, setMapMode] = useState<ThematicMode>("raster");
+  const [ageFilter, setAgeFilter] = useState<AgeFilter>("all");
+  const [rockFilter, setRockFilter] = useState<RockFilter>("all");
+  const [vectorState, setVectorState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [geologicalUnits, setGeologicalUnits] = useState<GeologicalUnit[]>([]);
   const [selectedUnitIndex, setSelectedUnitIndex] = useState(0);
@@ -196,18 +205,60 @@ function App() {
       controllerRef.current?.abort();
       controllerRef.current = null;
       geologicalLayerRef.current = null;
+      vectorLayerRef.current = null;
+      vectorLoadingRef.current = null;
       viewerRef.current = null;
       if (viewer && !viewer.isDestroyed()) viewer.destroy();
     };
   }, []);
 
+  // The carto raster remains visible during vector initialization and is
+  // retained as a safe fallback if experimental MVT rendering fails.
   useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
     if (geologicalLayerRef.current) {
-      geologicalLayerRef.current.show = geologyVisible;
+      geologicalLayerRef.current.show = geologyVisible && (mapMode === "raster" || vectorState !== "ready");
       geologicalLayerRef.current.alpha = opacity / 100;
-      viewerRef.current?.scene.requestRender();
     }
-  }, [geologyVisible, opacity]);
+    if (vectorLayerRef.current) {
+      const active = geologyVisible && mapMode !== "raster" && vectorState === "ready";
+      vectorLayerRef.current.show = active;
+      if (active && vectorLayerRef.current.tileset) {
+        vectorLayerRef.current.tileset.style = new Cesium3DTileStyle(makeThematicStyle(mapMode, ageFilter, rockFilter, opacity / 100));
+      }
+    }
+    viewer.scene.requestRender();
+  }, [geologyVisible, opacity, mapMode, ageFilter, rockFilter, vectorState]);
+
+  // Cesium's current MVTDataProvider creates its whole tile hierarchy eagerly:
+  // do NOT use maxZoom 14 globally. z0..z6 = 5,461 nodes (~global overview).
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!geologyVisible || mapMode === "raster" || !viewer || viewer.isDestroyed()) return;
+    if (vectorLayerRef.current) return;
+    setVectorState("loading");
+    const promise = vectorLoadingRef.current ?? MVTDataProvider.fromUrl(
+      "https://tiles.macrostrat.org/carto/{z}/{x}/{y}", {
+        minZoom: 0,
+        maxZoom: THEMATIC_MAX_ZOOM,
+        featureIdProperty: "map_id",
+      },
+    );
+    vectorLoadingRef.current = promise;
+    void promise.then((provider) => {
+      if (viewerRef.current !== viewer || viewer.isDestroyed()) return;
+      if (!vectorLayerRef.current) {
+        viewer.scene.primitives.add(provider);
+        vectorLayerRef.current = provider;
+      }
+      setVectorState("ready"); // also synchronize if mode changed during async initialization
+    }).catch((error: unknown) => {
+      vectorLoadingRef.current = null;
+      console.warn("Vector thematic map unavailable; keeping raster fallback.", error);
+      if (viewerRef.current === viewer && !viewer.isDestroyed()) setVectorState("error");
+    });
+  }, [mapMode, geologyVisible]);
 
   // An unavailable lexicon must never hide valid map-unit data.
   // Fetch once and cache; no automatic classification from free-text guesses.
@@ -278,6 +329,28 @@ function App() {
               <input type="checkbox" checked={geologyVisible} onChange={(event) => setGeologyVisible(event.target.checked)} aria-label="显示全球地质图" />
               <span className="switch" aria-hidden="true" />
             </label>
+            <div className="thematic-controls">
+              <label htmlFor="geology-style" className="metric-label">MAP STYLE · 地质图显示方式</label>
+              <select id="geology-style" disabled={!geologyVisible} value={mapMode} onChange={(event) => setMapMode(event.target.value as ThematicMode)}>
+                <option value="raster">原始地质图 · Raster</option>
+                <option value="age">地质年代专题图 · Age</option>
+                <option value="lithology">岩性专题图 · Lithology</option>
+              </select>
+              {mapMode === "age" && <label className="thematic-filter"><span>年代筛选</span><select value={ageFilter} disabled={!geologyVisible} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
+                {AGE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+              </select></label>}
+              {mapMode === "lithology" && <label className="thematic-filter"><span>岩性筛选</span><select value={rockFilter} disabled={!geologyVisible} onChange={(event) => setRockFilter(event.target.value as RockFilter)}>
+                {ROCK_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+              </select></label>}
+              {mapMode !== "raster" && <p className="thematic-note" role="status">
+                {vectorState === "loading" ? "正在初始化全球矢量专题图，暂时保留原始地图…" :
+                 vectorState === "error" ? "矢量图层加载失败，已回退到原始地质图。" :
+                 mapMode === "age" ? "依据地质图编绘的数值年龄着色；跨代或未知年代显示灰色。全球专题图使用低至中分辨率瓦片。" :
+                 "试验性岩性专题图：仅根据原始英文岩性描述中的明确术语匹配，不等同于官方标准岩性分类。"}
+              </p>}
+              {mapMode === "age" && <div className="thematic-legend">{ERA_GUIDE.map((era) => <span key={era.key}><i style={{backgroundColor:era.color}} />{era.label.split(" / ")[0]}</span>)}<span><i style={{backgroundColor:"#ADB9B2"}} />不确定</span></div>}
+              {mapMode === "lithology" && <div className="thematic-legend"><span><i style={{backgroundColor:"#C6A460"}} />沉积岩</span><span><i style={{backgroundColor:"#CF8F81"}} />火成岩</span><span><i style={{backgroundColor:"#9B8CB7"}} />变质岩</span><span><i style={{backgroundColor:"#A6B2AE"}} />未分类</span></div>}
+            </div>
             <div className={"opacity-control" + (!geologyVisible ? " muted" : "")}>
               <div className="opacity-head"><span>图层不透明度</span><span>{opacity}%</span></div>
               <input type="range" min="15" max="100" step="5" value={opacity} disabled={!geologyVisible} onChange={(event) => setOpacity(Number(event.target.value))} aria-label="地质图不透明度" />
