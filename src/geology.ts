@@ -82,5 +82,9 @@ export async function queryGeology(latitude: number, longitude: number, signal?:
   url.searchParams.set("lng", longitude.toFixed(6));
   const response = await fetch(url, { signal, headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error("Macrostrat HTTP " + response.status);
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("json")) {
+    throw new Error("Macrostrat returned " + (contentType || "unknown content-type") + " instead of JSON");
+  }
   return parseGeologicalUnit(await response.json());
 }
