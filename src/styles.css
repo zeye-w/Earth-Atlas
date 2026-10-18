@@ -146,3 +146,8 @@ h1 em { color:#5f8d82; font-style:normal; }
   .inspector-body { padding:18px; }
 }
 @media(prefers-reduced-motion:reduce){ *,*:before,*:after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+
+/* Geological candidate choice and scientific provenance (MVP) */
+.geology-select { width:100%; background:#fff; border:1px solid #d7e4de; border-radius:7px; padding:8px 10px; color:#324c45; font-size:11px; }
+.geology-select:focus-visible { outline:2px solid #719f8d; outline-offset:2px; }
+.source-card p { color:#82948b; font-size:10px; line-height:1.7; margin:5px 0 0; }
