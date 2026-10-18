@@ -14,6 +14,10 @@ export default defineConfig({
       targets: ["Workers", "Assets", "ThirdParty", "Widgets"].map((dir) => ({
         src: cesiumSource + "/" + dir,
         dest: cesiumBaseUrl,
+        // vite-plugin-static-copy v4 preserves the full source path by default.
+        // Strip node_modules/cesium/Build/Cesium (4 segments) while retaining
+        // Workers/, Assets/, ThirdParty/, and Widgets/ below /cesium/.
+        rename: { stripBase: 4 },
       })),
     }),
   ],
