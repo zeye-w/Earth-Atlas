@@ -48,8 +48,8 @@ function only(kind: Exclude<RockFilter, "all">): string {
     ? "(" + matches(kind) + ")"
     : "!(" + matches(key as Exclude<RockFilter, "all">) + ")").join(" && ");
 }
-function color(value: string, alpha = 0.85): string {
-  return 'color("' + value + '", ' + alpha + ')';
+function color(value: string, alpha: number): string {
+  return 'color("' + value + '", ' + Math.max(0, Math.min(1, alpha)).toFixed(2) + ')';
 }
 
 export interface ThematicStyleDefinition {
@@ -57,19 +57,20 @@ export interface ThematicStyleDefinition {
   color: { conditions: [string, string][] };
   lineWidth?: number;
 }
-export function makeThematicStyle(mode: Exclude<ThematicMode, "raster">, ageFilter: AgeFilter, rockFilter: RockFilter): ThematicStyleDefinition {
+export function makeThematicStyle(mode: Exclude<ThematicMode, "raster">, ageFilter: AgeFilter, rockFilter: RockFilter, opacity = 0.9): ThematicStyleDefinition {
   const conditions: [string, string][] = [];
+  const alpha = Math.max(0.15, Math.min(1, opacity));
   let show = polygon;
   if (mode === "age") {
     const entries = Object.entries(eras) as [Exclude<AgeFilter, "all">, typeof eras.cenozoic][];
-    for (const [, data] of entries) conditions.push([data.condition, color(data.color)]);
-    conditions.push(["true", color("#ADB9B2", 0.42)]);
+    for (const [, data] of entries) conditions.push([data.condition, color(data.color, alpha)]);
+    conditions.push(["true", color("#ADB9B2", alpha * 0.48)]);
     if (ageFilter !== "all") show += " && (" + eras[ageFilter].condition + ")";
   } else {
-    conditions.push(["(" + matches("sedimentary") + ") && !(" + matches("igneous") + ") && !(" + matches("metamorphic") + ")", color("#C6A460")]);
-    conditions.push(["(" + matches("igneous") + ") && !(" + matches("sedimentary") + ") && !(" + matches("metamorphic") + ")", color("#CF8F81")]);
-    conditions.push(["(" + matches("metamorphic") + ") && !(" + matches("sedimentary") + ") && !(" + matches("igneous") + ")", color("#9B8CB7")]);
-    conditions.push(["true", color("#A6B2AE", 0.35)]);
+    conditions.push(["(" + matches("sedimentary") + ") && !(" + matches("igneous") + ") && !(" + matches("metamorphic") + ")", color("#C6A460", alpha)]);
+    conditions.push(["(" + matches("igneous") + ") && !(" + matches("sedimentary") + ") && !(" + matches("metamorphic") + ")", color("#CF8F81", alpha)]);
+    conditions.push(["(" + matches("metamorphic") + ") && !(" + matches("sedimentary") + ") && !(" + matches("igneous") + ")", color("#9B8CB7", alpha)]);
+    conditions.push(["true", color("#A6B2AE", alpha * 0.4)]);
     if (rockFilter !== "all") show += " && (" + only(rockFilter) + ")";
   }
   // Replacement is intentional: avoid interpolation by the build-time generator.
