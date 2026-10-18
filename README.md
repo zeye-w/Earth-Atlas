@@ -11,6 +11,14 @@ Interactive 3D geological globe for exploring **mapped surface rock units**, geo
 - Fly to example regions. Chinese-first UI with scientific English preserved.
 - Explicit loading, no-data, network-error, and attribution states.
 
+## Fullscreen immersive interface
+
+The Cesium globe fills the browser viewport (100dvh). The layer manager and point inspector float as frosted, translucent cards instead of taking fixed columns. The inspector opens when a globe location is selected, and either card can be collapsed from the header. On narrow/mobile viewports, the controls become mutually exclusive bottom sheets so the globe remains the primary surface.
+
+The animated space overlay is **pure CSS** (drifting stars and low-intensity nebula glow), with no additional image downloads or JavaScript particle loops. Users can pause it with the **动效开 / 动效关** header control, and `prefers-reduced-motion: reduce` disables the motion by default. A separate **全屏** control requests browser fullscreen where supported; fullscreen viewport layout works without it.
+
+Cesium's native map attribution and data citations remain visible. CSS visual effects are pointer-transparent and do not intercept globe rotation, zoom or click queries.
+
 ## Getting started
 
 Requires Node.js 22+ and npm.
