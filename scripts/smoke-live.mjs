@@ -5,17 +5,24 @@
  */
 import assert from "node:assert/strict";
 import { parseGeologicalUnits } from "../src/geology.ts";
+import { parseLithologyDictionary } from "../src/lithology.ts";
 
 async function get(label, url, timeout = 20000) {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(timeout),
     headers: {
-      Accept: label === "Macrostrat" ? "application/json" : "*/*",
+      Accept: label.startsWith("Macrostrat") ? "application/json" : "*/*",
+      ...(label.startsWith("Macrostrat") ? { Origin: "https://earth-atlas.edwardlab.workers.dev" } : {}),
       "User-Agent": "Earth-Atlas-GitHub-Actions-Smoke-Test/0.1",
     },
   });
   const contentType = res.headers.get("content-type") || "(missing)";
   console.log(label, "HTTP", res.status, "content-type", contentType);
+  if (label.startsWith("Macrostrat")) {
+    const cors = res.headers.get("access-control-allow-origin") ?? "(missing)";
+    console.log(label, "Access-Control-Allow-Origin", cors);
+    assert.ok(cors === "*" || cors === "https://earth-atlas.edwardlab.workers.dev", label + " CORS disallows deployed origin");
+  }
   assert.ok(res.ok, label + " HTTP " + res.status);
   return res;
 }
@@ -68,6 +75,16 @@ try {
       console.error("  probe:", name, String(diagnosticError));
     }
   }
+}
+
+try {
+  const response = await get("Macrostrat lithology dictionary", "https://macrostrat.org/api/v2/defs/lithologies?format=json");
+  const dict = parseLithologyDictionary(await response.json());
+  console.log("Real Macrostrat lithologies:", dict.size);
+  assert.ok(dict.size > 20, "Expected a nontrivial official lexicon");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_LITHOLOGY_FAILURE:", error);
 }
 
 const site = "https://earth-atlas.edwardlab.workers.dev";

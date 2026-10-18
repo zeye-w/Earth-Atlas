@@ -20,6 +20,8 @@ import {
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { queryGeology, type GeologicalUnit } from "./geology";
+import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
+import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -55,6 +57,10 @@ function App() {
   const geologicalUnit = geologicalUnits[selectedUnitIndex] ?? null;
   const [status, setStatus] = useState<QueryStatus>("idle");
   const [globeError, setGlobeError] = useState<string | null>(null);
+  const [lithologyDictionary, setLithologyDictionary] = useState<LithologyDictionary | null>(null);
+  const [lexiconStatus, setLexiconStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const rockInfo = classifyLithologies(geologicalUnit?.lithIds ?? [], lithologyDictionary);
+  const eraInfo = classifyGeologicEra(geologicalUnit?.youngAgeMa ?? null, geologicalUnit?.oldAgeMa ?? null);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -203,6 +209,25 @@ function App() {
     }
   }, [geologyVisible, opacity]);
 
+  // An unavailable lexicon must never hide valid map-unit data.
+  // Fetch once and cache; no automatic classification from free-text guesses.
+  useEffect(() => {
+    if (status !== "success" || lithologyDictionary ||
+        !geologicalUnits.some((unit) => unit.lithIds.length > 0)) return;
+    let active = true;
+    setLexiconStatus("loading");
+    void fetchLithologyDictionary()
+      .then((dict) => {
+        if (!active) return;
+        setLithologyDictionary(dict);
+        setLexiconStatus("ready");
+      })
+      .catch(() => {
+        if (active) setLexiconStatus("error");
+      });
+    return () => { active = false; };
+  }, [status, geologicalUnits, lithologyDictionary]);
+
   const flyTo = (region: Region) => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
@@ -330,8 +355,30 @@ function App() {
                   )}
                   <div className="unit-heading"><div className="metric-label">MAP UNIT / 地质单元</div><h2>{geologicalUnit.name}</h2></div>
                   <div className="info-field"><span className="metric-label">GEOLOGICAL AGE · 地质年代</span><strong>{geologicalUnit.age ?? "未提供"}</strong></div>
-                  <div className="info-field"><span className="metric-label">LITHOLOGY · 岩性</span><strong>{geologicalUnit.lithology ?? "未提供"}</strong></div>
+                  <div className="info-field"><span className="metric-label">LITHOLOGY · 原始岩性描述</span><strong>{geologicalUnit.lithology ?? "未提供原图岩性文本"}</strong></div>
+                  <div className="info-field">
+                    <span className="metric-label">ROCK CLASS · 岩石大类</span>
+                    <div className="scientific-tag">
+                      <span className={"rock-swatch rock-" + rockInfo.rockClass} />
+                      <strong>{rockInfo.classLabel}</strong>
+                    </div>
+                    {rockInfo.names.length > 0 && <p>Macrostrat 标准岩性：{rockInfo.names.join("、")}</p>}
+                    {lexiconStatus === "loading" && geologicalUnit.lithIds.length > 0 && <p>正在匹配官方岩性词典…</p>}
+                    {lexiconStatus === "error" && geologicalUnit.lithIds.length > 0 && <p>词典暂不可用，已保留原始岩性；不进行推测分类。</p>}
+                    {rockInfo.rockClass === "unclassified" && lexiconStatus !== "loading" && lexiconStatus !== "error" && <p>缺少完整的标准分类依据，不从地层名称或自由文本推断。</p>}
+                  </div>
                   <div className="info-field"><span className="metric-label">ESTIMATED AGE · 推算数值年龄</span><strong>{geologicalUnit.ageRangeMa ?? "未提供完整年龄范围"}</strong><p>{geologicalUnit.ageNote}</p></div>
+                  <div className="info-field">
+                    <span className="metric-label">ERA GUIDE · 地质年代概览</span>
+                    <div className="scientific-tag">
+                      <span className="era-swatch" style={{ backgroundColor: eraInfo.color }} />
+                      <strong>{eraInfo.label}</strong>
+                    </div>
+                    <p>仅当完整年龄范围属于同一地质代时标注；概览颜色不是当前地质图的图斑颜色。</p>
+                    <div className="era-legend">
+                      {ERA_GUIDE.map((era) => <span key={era.key} title={era.label}><i style={{ backgroundColor: era.color }} />{era.label.split(" / ")[0]}</span>)}
+                    </div>
+                  </div>
                   {geologicalUnit.description && <div className="info-field"><span className="metric-label">DESCRIPTION · 原图描述</span><p>{geologicalUnit.description}</p></div>}
                   <div className="source-card"><div className="metric-label">SOURCE / 数据来源</div><strong>{geologicalUnit.sourceName ?? "Macrostrat integrated geologic map"}</strong>{geologicalUnit.sourceId !== null && <span>Source ID: {geologicalUnit.sourceId}</span>}{geologicalUnit.mapId !== null && <span>Map polygon ID: {geologicalUnit.mapId}</span>}<a href={geologicalUnit.sourceId !== null ? "https://macrostrat.org/api/v2/defs/sources?source_id=" + geologicalUnit.sourceId : "https://macrostrat.org/map/"} target="_blank" rel="noreferrer">核对原始地图来源 ↗</a><p>全球地质瓦片为多尺度拼接图；候选查询与可见图斑未必严格一一对应。</p></div>
                 </>
