@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:assets": "node scripts/verify-static-assets.mjs"
   },
   "dependencies": {
     "cesium": "^1.146.0",
