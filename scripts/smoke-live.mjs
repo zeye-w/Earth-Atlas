@@ -42,6 +42,32 @@ try {
 } catch (error) {
   failed = true;
   console.error("LIVE_MACROSTRAT_FAILURE:", error);
+  // Diagnose whether the endpoint ignores filter parameters or only a
+  // particular response format is affected. Record metadata only.
+  const probes = [
+    ["no-format", "https://macrostrat.org/api/v2/geologic_units/map?lat=43&lng=-89.3"],
+    ["float-coordinates", "https://macrostrat.org/api/v2/geologic_units/map?lat=43.000000&lng=-89.300000&format=json"],
+    ["alternate-coordinate", "https://macrostrat.org/api/v2/geologic_units/map?lat=40.0&lng=-105.0&format=json"],
+    ["by-map-id", "https://macrostrat.org/api/v2/geologic_units/map?map_id=2092425&format=json"],
+    ["geojson", "https://macrostrat.org/api/v2/geologic_units/map?lat=43&lng=-89.3&format=geojson"],
+    ["other-api", "https://macrostrat.org/api/v2/defs/lithologies?format=json"],
+  ];
+  for (const [name, url] of probes) {
+    try {
+      const res = await get("Macrostrat probe " + name, url, 10000);
+      const body = await res.text();
+      let parsed;
+      try { parsed = JSON.parse(body); } catch { parsed = null; }
+      const rootKeys = parsed && typeof parsed === "object" ? Object.keys(parsed) : [];
+      const data = parsed?.data;
+      console.log("  probe:", name, "rootKeys:", rootKeys.join(","),
+        "dataType:", Array.isArray(data) ? "array(" + data.length + ")" : typeof data,
+        "successKeys:", parsed?.success && typeof parsed.success === "object" ? Object.keys(parsed.success).join(",") : "(none)",
+        "preview:", JSON.stringify(parsed).slice(0, 320));
+    } catch (diagnosticError) {
+      console.error("  probe:", name, String(diagnosticError));
+    }
+  }
 }
 
 const site = "https://earth-atlas.edwardlab.workers.dev";
