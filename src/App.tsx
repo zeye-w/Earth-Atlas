@@ -72,8 +72,8 @@ function App() {
       viewer.scene.globe.baseColor = Color.fromCssColorString("#164258");
       viewer.scene.globe.enableLighting = false;
       viewer.scene.fog.enabled = false;
-      viewer.scene.sun.show = false;
-      viewer.scene.moon.show = false;
+      if (viewer.scene.sun) viewer.scene.sun.show = false;
+      if (viewer.scene.moon) viewer.scene.moon.show = false;
       viewer.scene.screenSpaceCameraController.minimumZoomDistance = 15000;
       viewer.scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
       viewer.camera.setView({ destination: Cartesian3.fromDegrees(58, 19, 21500000) });
