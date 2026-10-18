@@ -125,7 +125,14 @@ export function parseGeologicalUnits(payload: unknown): GeologicalUnit[] {
     throw new Error("Macrostrat returned an API error");
   }
 
-  const data = root && "data" in root ? root.data : payload;
+  // Macrostrat API v2 commonly wraps responses in success.data, not root.data.
+  // Support both variants and retain explicit error handling for malformed JSON.
+  const success = root ? object(root.success) : null;
+  const data = root && "data" in root
+    ? root.data
+    : success && "data" in success
+      ? success.data
+      : payload;
   const collection = object(data);
   const rows: unknown[] = Array.isArray(data)
     ? data
@@ -135,7 +142,7 @@ export function parseGeologicalUnits(payload: unknown): GeologicalUnit[] {
         ? [data]
         : [];
   if (rows.length === 0) {
-    if (Array.isArray(data) || collection?.type === "FeatureCollection" || root && "data" in root && Array.isArray(root.data)) return [];
+    if (Array.isArray(data) || collection?.type === "FeatureCollection") return [];
     throw new Error("Unexpected Macrostrat response structure");
   }
 
