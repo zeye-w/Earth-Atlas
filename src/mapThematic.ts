@@ -19,8 +19,8 @@ export const THEMATIC_MAX_ZOOM = 6; // 5,461 total global quadtree nodes, not 35
 const top = "@@{best_age_top}";
 const bottom = "@@{best_age_bottom}";
 const lith = "@@{lith}";
-const polygon = "@@{map_id} >= 0";
-const numeric = top + " >= 0 && " + bottom + " >= " + top + " && " + bottom + " <= 4600";
+const polygon = "@@{map_id} !== undefined && @@{map_id} >= 0";
+const numeric = top + " !== undefined && " + bottom + " !== undefined && " + top + " >= 0 && " + bottom + " >= " + top + " && " + bottom + " <= 4600";
 
 const eras: Record<Exclude<AgeFilter, "all">, { condition: string; color: string }> = {
   cenozoic: { condition: numeric + " && " + bottom + " <= 66", color: "#D1B36D" },
@@ -41,7 +41,7 @@ const rockTokens: Record<Exclude<RockFilter, "all">, string> = {
 };
 
 function matches(kind: Exclude<RockFilter, "all">): string {
-  return 'regExp("(' + rockTokens[kind] + ')", "i").test(' + lith + ')';
+  return '(' + lith + ' !== undefined && regExp("(' + rockTokens[kind] + ')", "i").test(' + lith + '))';
 }
 function only(kind: Exclude<RockFilter, "all">): string {
   return Object.keys(rockTokens).map((key) => key === kind
