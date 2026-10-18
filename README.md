@@ -22,21 +22,30 @@ Requires Node.js 22+ and npm.
 
 There is no Cesium ion token or proprietary basemap in this MVP. A network connection is required for Macrostrat tiles and point queries.
 
-## Cloudflare Pages deployment
+## Cloudflare Workers static-assets deployment (current production target)
 
-**The project is not deployed until Git integration is connected in a Cloudflare account.**
+Actual service: https://earth-atlas.edwardlab.workers.dev/ (Cloudflare Workers, not Pages). GitHub builds alone do not prove the deployed Worker serves its static assets.
 
-- Repository: zeye-w/Earth-Atlas
-- Framework preset: React (Vite)
-- Root directory: /
-- Production branch: main
-- Build command: npm run build
-- Build output directory: dist
-- Environment variables: none
+Cloudflare Workers must upload the **whole** Vite output including `dist/cesium/Workers`, `dist/cesium/Assets`, `dist/cesium/Widgets`, and `dist/cesium/ThirdParty`. The repository now contains `wrangler.jsonc` with `assets.directory: ./dist` and `not_found_handling: 404-page` so absent JavaScript does not silently return `index.html`.
 
-Visit Cloudflare dashboard > Workers & Pages > Create > Pages > Connect to Git. Connect the repository, then use the settings above. Cloudflare assigns the actual pages.dev hostname after creation. Both Preview and Production deploys become available after integration.
+Recommended Git-connected Worker build/deploy configuration (verify against your Cloudflare setup):
 
-CI runs on main and pull requests. GitHub Actions uses npm install and checks TypeScript plus Vite production build. Add and commit a lockfile with npm install once package dependencies can be resolved from npm for fully reproducible installs; do not claim dependencies were installed or the build validated until CI passes.
+- Repository: `zeye-w/Earth-Atlas`
+- Build command: `npm install && npm run build && npm run verify:assets`
+- Deploy command: `npx wrangler deploy` (requires Wrangler/cloud deployment authorization)
+- Deploy assets: `./dist` as specified in `wrangler.jsonc`
+- Production branch: `main`
+
+If you use the Cloudflare console's default Git integration build flow, ensure its deploy command actually reads the repository's Wrangler configuration and uploads the entire `dist` tree. Avoid upload methods that only publish `index.html` or `dist/assets`.
+
+Browser smoke test after deployment:
+
+1. Open `https://earth-atlas.edwardlab.workers.dev/cesium/Workers/transferTypedArrayTest.js`
+2. The response must be **200 JavaScript**, not the Earth Atlas HTML page.
+3. Open `https://earth-atlas.edwardlab.workers.dev/cesium/Workers/createVerticesFromHeightmap.js` and confirm the same.
+4. Open DevTools > Network, reload the page, and verify Worker files are status 200 and type `javascript`.
+
+CI runs TypeScript, Vite production build, and verifies the existence of Cesium worker files in `dist` (it does not prove Cloudflare has uploaded them). For reproducibility, commit the npm lockfile generated from a clean npm install.
 
 ## Scientific scope and limitations
 
