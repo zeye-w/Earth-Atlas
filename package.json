@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "verify:assets": "node scripts/verify-static-assets.mjs",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "cesium": "^1.146.0",
@@ -19,6 +20,7 @@
     "satellite.js": "6.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.1.2",
