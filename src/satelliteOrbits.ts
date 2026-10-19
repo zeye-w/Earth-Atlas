@@ -45,11 +45,17 @@ export interface OrbitalCatalog {
   receivedAt: Date;
 }
 
+export function parseGPEpoch(value: string): Date {
+  // CCSDS OMM EPOCH is UTC. JS treats offset-free ISO strings as LOCAL time,
+  // so force the UTC timezone for CelesTrak's usual no-offset format.
+  const utc = /(?:Z|[+-]\d\d:\d\d)$/i.test(value) ? value : value + "Z";
+  return new Date(utc);
+}
 function validGPRecord(value: unknown): value is GPRecord {
   if (!value || Array.isArray(value) || typeof value !== "object") return false;
   const record = value as GPRecord;
   return Number.isSafeInteger(Number(record.NORAD_CAT_ID)) &&
-    typeof record.EPOCH === "string" && Number.isFinite(Date.parse(record.EPOCH));
+    typeof record.EPOCH === "string" && Number.isFinite(parseGPEpoch(record.EPOCH).getTime());
 }
 export function parseGPRecords(value: unknown): GPRecord[] {
   if (!Array.isArray(value)) throw new Error("CelesTrak GP response is not an array");
@@ -64,7 +70,7 @@ export function convertGPRecords(records: readonly GPRecord[], now = new Date())
     if (!validGPRecord(record)) continue;
     const id = Number(record.NORAD_CAT_ID);
     const previous = byCatalog.get(id);
-    if (!previous || Date.parse(String(record.EPOCH)) > Date.parse(String(previous.EPOCH))) {
+    if (!previous || parseGPEpoch(String(record.EPOCH)).getTime() > parseGPEpoch(String(previous.EPOCH)).getTime()) {
       byCatalog.set(id, record);
     }
   }
@@ -72,7 +78,7 @@ export function convertGPRecords(records: readonly GPRecord[], now = new Date())
   for (const choice of SATELLITE_CHOICES) {
     const gp = byCatalog.get(choice.noradId);
     if (!gp) continue;
-    const epoch = new Date(String(gp.EPOCH));
+    const epoch = parseGPEpoch(String(gp.EPOCH));
     // Stale or future-dated data is not a defensible "current orbit" estimate.
     if (recordAgeDays(epoch, now) > MAX_ELEMENT_AGE_DAYS) continue;
     try {
