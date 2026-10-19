@@ -184,26 +184,15 @@ function App() {
       scene.light = light;
       const lightDirection = new Cartesian3();
       const scratch = new Cartesian3();
-      let lastFrame = performance.now();
       scene.preRender.addEventListener(() => {
+        // Follow the camera only when Cesium has work to render.
+        // Never rotate the globe during idle frames.
         const camera = scene.camera;
         Cartesian3.clone(camera.directionWC, lightDirection);
         Cartesian3.add(lightDirection, Cartesian3.multiplyByScalar(camera.rightWC, 0.95, scratch), lightDirection);
         Cartesian3.add(lightDirection, Cartesian3.multiplyByScalar(camera.upWC, -0.6, scratch), lightDirection);
         Cartesian3.normalize(lightDirection, light.direction);
-
-        const now = performance.now();
-        const elapsed = Math.min((now - lastFrame) / 1000, 0.1);
-        lastFrame = now;
-        if (autoRotateRef.current) camera.rotate(Cartesian3.UNIT_Z, -AUTO_ROTATE_SPEED * elapsed);
       });
-      const stopAutoRotate = () => {
-        hasInteractedRef.current = true;
-        autoRotateRef.current = false;
-      };
-      for (const type of ["pointerdown", "wheel", "touchstart"]) {
-        viewer.canvas.addEventListener(type, stopAutoRotate, { passive: true });
-      }
       viewer.camera.setView({ destination: HOME_VIEW });
 
       // Bundled Natural Earth II keeps a recognizable globe even offline; NASA
@@ -213,7 +202,7 @@ function App() {
       );
       viewer.imageryLayers.addImageryProvider(new UrlTemplateImageryProvider({
         url: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
-        maximumLevel: 8,
+        maximumLevel: 6,
         credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
       }));
 
@@ -291,7 +280,7 @@ function App() {
   }, [geologyVisible, opacity, mapMode, ageFilter, rockFilter, vectorState]);
 
   // Cesium's current MVTDataProvider creates its whole tile hierarchy eagerly:
-  // do NOT use maxZoom 14 globally. z0..z6 = 5,461 nodes (~global overview).
+  // Keep the global tree at z0..z5 (1,365 nodes). Higher regional detail stays in raster imagery.
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!geologyVisible || mapMode === "raster" || !viewer || viewer.isDestroyed()) return;
@@ -341,8 +330,6 @@ function App() {
   const flyTo = (region: Region) => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
-    hasInteractedRef.current = true;
-    autoRotateRef.current = false;
     viewer.camera.flyTo({
       destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000),
       duration: 1.8,
@@ -352,7 +339,6 @@ function App() {
   const resetCamera = () => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
-    autoRotateRef.current = false;
     viewer.camera.flyTo({
       destination: HOME_VIEW,
       duration: 1.6,
@@ -360,7 +346,7 @@ function App() {
   };
 
   return (
-    <div className={"app-shell" + (motionEnabled ? " motion-on" : " motion-off")}>
+    <div className={"app-shell" + (motionEnabled && pageVisible ? " motion-on" : " motion-off")}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="Earth Atlas home">
           <span className="brand-symbol" aria-hidden="true">◎</span>
@@ -377,8 +363,11 @@ function App() {
             <button type="button" className={"header-action" + (detailsOpen ? " active" : "")} onClick={toggleDetails} aria-expanded={detailsOpen} aria-controls="earth-inspector-panel">
               <span aria-hidden="true">⌖</span><span className="action-caption">信息</span>
             </button>
-            <button type="button" className={"header-action" + (motionEnabled ? " active" : "")} onClick={() => setMotionEnabled((enabled) => !enabled)} aria-pressed={motionEnabled} title="开启或暂停背景星光及地球待机动画">
+            <button type="button" className={"header-action" + (motionEnabled ? " active" : "")} onClick={() => setMotionEnabled((enabled) => !enabled)} aria-pressed={motionEnabled} title="开启或暂停宇宙背景星光动效（地球不会自动旋转）">
               <span aria-hidden="true">✦</span><span className="action-caption">{motionEnabled ? "动效开" : "动效关"}</span>
+            </button>
+            <button type="button" className="header-action" onClick={() => setRenderQuality(nextRenderQuality)} aria-label={"切换画质，当前：" + RENDER_QUALITY_LABELS[renderQuality]} title={"渲染画质：" + RENDER_QUALITY_LABELS[renderQuality] + "，点击切换"}>
+              <span aria-hidden="true">◇</span><span className="action-caption">{RENDER_QUALITY_LABELS[renderQuality]}</span>
             </button>
             <button type="button" className="header-action" onClick={toggleFullscreen} aria-label={fullscreenActive ? "退出浏览器全屏" : "进入浏览器全屏"} title={fullscreenActive ? "退出全屏" : "浏览器全屏"}>
               <span aria-hidden="true">{fullscreenActive ? "⊟" : "⛶"}</span><span className="action-caption">{fullscreenActive ? "退出全屏" : "全屏"}</span>
