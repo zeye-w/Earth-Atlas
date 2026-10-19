@@ -192,7 +192,8 @@ h1 em { font-style:normal; color:var(--text-2); }
 .satellite-entry > span:last-child { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .satellite-entry strong { font-size:10px; font-weight:600; }
 .satellite-entry small { font-size:9px; color:var(--text-3); }
-.satellite-color { display:block; flex:0 0 7px; width:7px; height:7px; margin-top:5px; border-radius:50%; }
+.satellite-glyph { flex:0 0 13px; margin-top:2px; color:var(--text-2); }
+.satellite-entry.selected .satellite-glyph { color:var(--text); }
 .satellite-disclaimer { margin:9px 0 0; font-size:9px; line-height:1.6; color:var(--text-3); }
 
 .regions { display:flex; flex-direction:column; gap:7px; margin-top:14px; }

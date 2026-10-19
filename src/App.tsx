@@ -109,6 +109,7 @@ function App() {
   const [satelliteStatus, setSatelliteStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [satelliteCatalog, setSatelliteCatalog] = useState<Array<{ choice: SatelliteChoice; epochLabel: string }>>([]);
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
+  const selectedSatelliteIdRef = useRef<string | null>(null);
   const [utcTime, setUtcTime] = useState(() => new Date().toISOString().slice(11, 16));
   const [opacity, setOpacity] = useState(90);
   const [mapMode, setMapMode] = useState<ThematicMode>("raster");
@@ -428,6 +429,7 @@ function App() {
       satelliteOverlayRef.current?.dispose();
       const overlay = new overlayModule.SatelliteOverlay(viewer, satellites, satellitePathsVisible);
       satelliteOverlayRef.current = overlay;
+      overlay.setSelected(selectedSatelliteIdRef.current);
       setSatelliteCatalog(satellites.map(({ choice, epoch }) => ({ choice, epochLabel: orbits.formatEpoch(epoch) })));
       setSatelliteStatus(overlay.count > 0 ? "ready" : "error");
       interval = window.setInterval(() => {
@@ -446,6 +448,11 @@ function App() {
       satelliteOverlayRef.current = null;
     };
   }, [satellitesVisible]);
+
+  useEffect(() => {
+    selectedSatelliteIdRef.current = selectedSatelliteId;
+    satelliteOverlayRef.current?.setSelected(selectedSatelliteId);
+  }, [selectedSatelliteId]);
 
   useEffect(() => {
     satelliteOverlayRef.current?.togglePaths(satellitePathsVisible);
@@ -598,7 +605,7 @@ function App() {
                     <div className="satellite-catalog">
                       {satelliteCatalog.map(({ choice, epochLabel }) => (
                         <div className={"satellite-entry" + (selectedSatelliteId === choice.id ? " selected" : "")} key={choice.id}>
-                          <span className="satellite-color" style={{backgroundColor:choice.color}} />
+                          <Satellite size={13} strokeWidth={1.7} className="satellite-glyph" aria-hidden="true" />
                           <span><strong>{choice.title}</strong><small>轨道历元：{epochLabel}</small></span>
                         </div>
                       ))}

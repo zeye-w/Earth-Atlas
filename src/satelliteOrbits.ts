@@ -12,15 +12,14 @@ export interface SatelliteChoice {
   noradId: number;
   title: string;
   category: "station" | "science" | "earth";
-  color: string;
 }
 export const SATELLITE_CHOICES: readonly SatelliteChoice[] = [
-  { id: "iss", noradId: 25544, title: "ISS · 国际空间站", category: "station", color: "#e2f4ff" },
-  { id: "tiangong", noradId: 48274, title: "天宫空间站（天和核心舱）", category: "station", color: "#d4b7fc" },
-  { id: "hubble", noradId: 20580, title: "Hubble · 哈勃望远镜", category: "science", color: "#ffc9a2" },
-  { id: "terra", noradId: 25994, title: "Terra · 对地观测", category: "earth", color: "#b5eac2" },
-  { id: "noaa20", noradId: 43013, title: "NOAA-20 · 气象卫星", category: "earth", color: "#a9d9ff" },
-  { id: "landsat9", noradId: 49260, title: "Landsat 9 · 陆地观测", category: "earth", color: "#f4d5a0" },
+  { id: "iss", noradId: 25544, title: "ISS · 国际空间站", category: "station" },
+  { id: "tiangong", noradId: 48274, title: "天宫空间站（天和核心舱）", category: "station" },
+  { id: "hubble", noradId: 20580, title: "Hubble · 哈勃望远镜", category: "science" },
+  { id: "terra", noradId: 25994, title: "Terra · 对地观测", category: "earth" },
+  { id: "noaa20", noradId: 43013, title: "NOAA-20 · 气象卫星", category: "earth" },
+  { id: "landsat9", noradId: 49260, title: "Landsat 9 · 陆地观测", category: "earth" },
 ];
 export const GP_CACHE_MS = 2 * 60 * 60 * 1000;
 export const MAX_ELEMENT_AGE_DAYS = 10;
