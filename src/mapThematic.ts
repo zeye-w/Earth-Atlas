@@ -14,7 +14,8 @@ export type ThematicMode = "raster" | "age" | "lithology";
 export type AgeFilter = "all" | "cenozoic" | "mesozoic" | "paleozoic" | "precambrian";
 export type RockFilter = "all" | "sedimentary" | "igneous" | "metamorphic";
 
-export const THEMATIC_MAX_ZOOM = 6; // 5,461 total global quadtree nodes, not 358 million (z14)
+import { GLOBAL_VECTOR_MAX_ZOOM } from "./performance.ts";
+export const THEMATIC_MAX_ZOOM = GLOBAL_VECTOR_MAX_ZOOM; // z0..z5: 1,365 nodes instead of 5,461 at z6
 
 const top = "@@{best_age_top}";
 const bottom = "@@{best_age_bottom}";

@@ -19,6 +19,24 @@ The animated space overlay is **pure CSS** (drifting stars and low-intensity neb
 
 Cesium's native map attribution and data citations remain visible. CSS visual effects are pointer-transparent and do not intercept globe rotation, zoom or click queries.
 
+## Performance defaults and quality control
+
+The full-screen globe now uses Cesium **request-only rendering** (`requestRenderMode`) with no idle camera auto-rotation. The CSS starfield can still drift, but does not force repeated WebGL draws. The star effects automatically pause when the page is hidden.
+
+The top-bar diamond **◇** switches render-quality presets:
+
+| Mode | Resolution scale | Frame cap | Screen-space error | Effects |
+| --- | ---: | ---: | ---: | --- |
+| 省电 · Eco | 0.75 | 30 fps | 4 | No FXAA, minimal blur and star layers |
+| 均衡 · Balanced | 1.0 | 45 fps | 2.5 | Restrained glass and stars |
+| 高清 · High | 1.25 | 60 fps | 1.6 | Higher pixel density and terrain fidelity |
+
+Phones, users requesting reduced motion, and devices reporting four or fewer CPU cores start in Eco mode. Large-screen devices start in Balanced; no mode increases the image to 2× just because the display is high DPI. The ✦ button pauses decorative CSS star motion, independently of quality.
+
+The experimental global MVT overlay is built on demand only when the age or lithology thematic map is selected. Its global tree is capped at zoom 5 (1,365 hierarchy nodes, versus 5,461 at zoom 6), while the raster map remains available for closer visual geology. Macrostrat data validation and source attribution are unchanged.
+
+To evaluate actual improvement, open DevTools → Performance / Performance monitor and compare CPU utilization, GPU activity, dropped frames and memory on the same computer at the same map coordinates. GitHub CI validates code and build, **not real-device frame rates**.
+
 ## Getting started
 
 Requires Node.js 22+ and npm.
