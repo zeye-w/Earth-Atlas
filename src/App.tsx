@@ -514,6 +514,43 @@ function App() {
               <input type="checkbox" checked={cityLabelsVisible} onChange={(event) => setCityLabelsVisible(event.target.checked)} aria-label="显示全球主要城市" />
               <span className="switch" aria-hidden="true" />
             </label>
+            <label className="toggle-row">
+              <span className="layer-icon" aria-hidden="true">◌</span>
+              <span className="toggle-copy"><strong>大气散射</strong><small>蓝色边缘辉光 · 原生 Cesium</small></span>
+              <input type="checkbox" checked={atmosphereVisible} onChange={(event) => setAtmosphereVisible(event.target.checked)} aria-label="显示地球大气层" />
+              <span className="switch" aria-hidden="true" />
+            </label>
+            <label className="toggle-row">
+              <span className="layer-icon" aria-hidden="true">✧</span>
+              <span className="toggle-copy"><strong>真实卫星轨道</strong><small>公开 GP 根数 · SGP4 轨道预测</small></span>
+              <input type="checkbox" checked={satellitesVisible} onChange={(event) => setSatellitesVisible(event.target.checked)} aria-label="显示真实卫星及轨道" />
+              <span className="switch" aria-hidden="true" />
+            </label>
+            {satellitesVisible && (
+              <div className="satellite-controls">
+                <label className="satellite-path-toggle">
+                  <input type="checkbox" checked={satellitePathsVisible} onChange={(event) => setSatellitePathsVisible(event.target.checked)} />
+                  <span>显示前后约 45 分钟预测轨迹</span>
+                </label>
+                <p className="satellite-status" role="status">
+                  {satelliteStatus === "loading" ? "正在读取 CelesTrak 最新公开轨道根数…" :
+                   satelliteStatus === "error" ? "轨道数据暂不可用，已隐藏卫星；不会绘制虚构轨道。" :
+                   satelliteStatus === "ready" ? "已加载 " + satelliteCatalog.length + " 颗卫星 · 每 5 秒更新预测位置" :
+                   "打开图层后读取轨道根数"}
+                </p>
+                {satelliteCatalog.length > 0 && satelliteStatus === "ready" && (
+                  <div className="satellite-catalog">
+                    {satelliteCatalog.map(({ choice, epoch }) => (
+                      <div className={"satellite-entry" + (selectedSatelliteId === choice.id ? " selected" : "")} key={choice.id}>
+                        <span className="satellite-color" style={{backgroundColor:choice.color}} />
+                        <span><strong>{choice.title}</strong><small>轨道历元：{formatEpoch(epoch)}</small></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="satellite-disclaimer">数据：CelesTrak GP / SGP4。位置为轨道推算，并非实时遥测；轨迹表示地固坐标系下的预测路径。</p>
+              </div>
+            )}
             <div className="thematic-controls">
               <label htmlFor="geology-style" className="metric-label">MAP STYLE · 地质图显示方式</label>
               <select id="geology-style" disabled={!geologyVisible} value={mapMode} onChange={(event) => setMapMode(event.target.value as ThematicMode)}>
@@ -575,7 +612,7 @@ function App() {
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角">◎ <span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit">↔</span><span>拖动旋转 · 滚轮缩放 · 点击查询</span></div>
-          <div className="globe-attribution">Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
