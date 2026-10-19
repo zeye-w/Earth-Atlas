@@ -2,31 +2,39 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   RENDER_PROFILES, RENDER_QUALITY_ORDER, GLOBAL_VECTOR_MAX_ZOOM,
-  GLOBAL_VECTOR_TILE_NODES, initialRenderQuality,
+  GLOBAL_VECTOR_TILE_NODES, initialRenderQuality, renderSettings,
   nextRenderQuality,
 } from "../src/performance.ts";
 import { THEMATIC_MAX_ZOOM } from "../src/mapThematic.ts";
 
-test("default desktop quality is balanced rather than upscaling by devicePixelRatio", () => {
+test("default desktop quality is balanced and uses part of a high-DPI screen", () => {
   assert.equal(initialRenderQuality(1920, false, 8), "balanced");
-  assert.equal(RENDER_PROFILES.balanced.resolutionScale, 1);
-  assert.equal(RENDER_PROFILES.high.resolutionScale, 1.25);
-  assert.ok(RENDER_PROFILES.high.resolutionScale < 2);
+  assert.equal(initialRenderQuality(1920, false, 4), "balanced");
+  assert.equal(renderSettings("balanced", 2).resolutionScale, 1.5);
+  assert.equal(renderSettings("high", 2).resolutionScale, 2);
+  assert.equal(renderSettings("high", 3).resolutionScale, 2);
+  assert.equal(renderSettings("eco", 2).resolutionScale, 1);
+});
+
+test("render scale never exceeds the screen and FXAA only runs at low pixel ratios", () => {
+  assert.equal(renderSettings("high", 1).resolutionScale, 1);
+  assert.equal(renderSettings("balanced", 1).fxaa, true);
+  assert.equal(renderSettings("balanced", 2).fxaa, false);
+  assert.equal(renderSettings("balanced", Number.NaN).resolutionScale, 1);
 });
 
 test("mobile/reduced motion/low-core devices start in eco mode", () => {
   assert.equal(initialRenderQuality(390, false, 8), "eco");
   assert.equal(initialRenderQuality(1920, true, 8), "eco");
-  assert.equal(initialRenderQuality(1920, false, 4), "eco");
+  assert.equal(initialRenderQuality(1920, false, 2), "eco");
 });
 
 test("render settings explicitly trade frame budget, resolution and terrain detail", () => {
-  assert.ok(RENDER_PROFILES.eco.resolutionScale < RENDER_PROFILES.balanced.resolutionScale);
-  assert.ok(RENDER_PROFILES.balanced.resolutionScale < RENDER_PROFILES.high.resolutionScale);
+  assert.ok(RENDER_PROFILES.eco.maxPixelRatio < RENDER_PROFILES.balanced.maxPixelRatio);
+  assert.ok(RENDER_PROFILES.balanced.maxPixelRatio < RENDER_PROFILES.high.maxPixelRatio);
   assert.ok(RENDER_PROFILES.eco.targetFrameRate <= RENDER_PROFILES.balanced.targetFrameRate);
   assert.ok(RENDER_PROFILES.balanced.targetFrameRate <= RENDER_PROFILES.high.targetFrameRate);
   assert.ok(RENDER_PROFILES.eco.maximumScreenSpaceError > RENDER_PROFILES.high.maximumScreenSpaceError);
-  assert.equal(RENDER_PROFILES.eco.fxaa, false);
 });
 
 test("render quality control cycles through three meaningful modes", () => {

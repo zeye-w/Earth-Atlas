@@ -31,7 +31,7 @@ import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
 import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
-import { RENDER_PROFILES, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, type RenderQuality } from "./performance";
+import { RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, renderSettings, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";
@@ -57,6 +57,15 @@ function dismissSplash() {
   if (!splash || splash.classList.contains("done")) return;
   splash.classList.add("done");
   window.setTimeout(() => splash.remove(), 700);
+}
+
+function applyRenderQuality(viewer: Viewer, quality: RenderQuality) {
+  const settings = renderSettings(quality, window.devicePixelRatio);
+  viewer.resolutionScale = settings.resolutionScale;
+  viewer.targetFrameRate = settings.targetFrameRate;
+  viewer.scene.globe.maximumScreenSpaceError = settings.maximumScreenSpaceError;
+  viewer.scene.postProcessStages.fxaa.enabled = settings.fxaa;
+  viewer.scene.requestRender();
 }
 
 function coordinateLabel(value: number, positive: string, negative: string): string {
@@ -141,16 +150,16 @@ function App() {
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, []);
 
-  // Change render budget without recreating the WebGL context.
+  // Change render budget without recreating the WebGL context; re-apply on
+  // resize, which also fires when the window moves to a screen with a
+  // different pixel ratio or the page is zoomed.
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
-    const profile = RENDER_PROFILES[renderQuality];
-    viewer.resolutionScale = profile.resolutionScale;
-    viewer.targetFrameRate = profile.targetFrameRate;
-    viewer.scene.globe.maximumScreenSpaceError = profile.maximumScreenSpaceError;
-    viewer.scene.postProcessStages.fxaa.enabled = profile.fxaa;
-    viewer.scene.requestRender();
+    applyRenderQuality(viewer, renderQuality);
+    const onResize = () => { if (!viewer.isDestroyed()) applyRenderQuality(viewer, renderQuality); };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [renderQuality]);
 
   useEffect(() => {
@@ -231,11 +240,7 @@ function App() {
       if (scene.moon) scene.moon.show = false;
       scene.screenSpaceCameraController.minimumZoomDistance = 15000;
       scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
-      const profile = RENDER_PROFILES[renderQuality];
-      viewer.resolutionScale = profile.resolutionScale;
-      viewer.targetFrameRate = profile.targetFrameRate;
-      scene.globe.maximumScreenSpaceError = profile.maximumScreenSpaceError;
-      scene.postProcessStages.fxaa.enabled = profile.fxaa;
+      applyRenderQuality(viewer, renderQuality);
 
       // Physically positioned SunLight replaces the camera-following studio
       // light. A fixed viewer clock is refreshed from UTC every minute, keeping
@@ -288,7 +293,8 @@ function App() {
       );
       viewer.imageryLayers.addImageryProvider(new UrlTemplateImageryProvider({
         url: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
-        maximumLevel: 6,
+        // GoogleMapsCompatible_Level8 is published down to level 8 (~500 m).
+        maximumLevel: 8,
         credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
       }));
 
