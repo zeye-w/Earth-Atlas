@@ -29,6 +29,8 @@ import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
 import { RENDER_PROFILES, RENDER_QUALITY_LABELS, initialRenderQuality, initialSpaceMotion, nextRenderQuality, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
+import { SATELLITE_CHOICES, fetchSatelliteCatalog, formatEpoch, type SatelliteChoice } from "./satelliteOrbits";
+import { SatelliteOverlay, SATELLITE_UPDATE_MS } from "./satelliteOverlay";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -53,6 +55,7 @@ function App() {
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
   const cityMarkersRef = useRef<Entity[]>([]);
+  const satelliteOverlayRef = useRef<SatelliteOverlay | null>(null);
   const vectorLayerRef = useRef<MVTDataProvider | null>(null);
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
@@ -65,6 +68,12 @@ function App() {
   const [geologyVisible, setGeologyVisible] = useState(false);
   const [dayNightEnabled, setDayNightEnabled] = useState(true);
   const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
+  const [atmosphereVisible, setAtmosphereVisible] = useState(true);
+  const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
+  const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
+  const [satelliteStatus, setSatelliteStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [satelliteCatalog, setSatelliteCatalog] = useState<Array<{ choice: SatelliteChoice; epoch: Date }>>([]);
+  const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
   const [utcTime, setUtcTime] = useState(() => new Date().toISOString().slice(11, 16));
   const [opacity, setOpacity] = useState(90);
   const [mapMode, setMapMode] = useState<ThematicMode>("raster");
@@ -90,6 +99,7 @@ function App() {
       if (visible && viewerRef.current && !viewerRef.current.isDestroyed()) {
         viewerRef.current.clock.currentTime = JulianDate.fromDate(new Date());
         setUtcTime(new Date().toISOString().slice(11, 16));
+        satelliteOverlayRef.current?.update(new Date());
         viewerRef.current.scene.requestRender();
       }
     };
@@ -189,12 +199,15 @@ function App() {
       // when zooming into a region. Keep solar lighting at all zoom levels.
       scene.globe.lightingFadeOutDistance = 0;
       scene.globe.lightingFadeInDistance = 0;
-      scene.globe.atmosphereLightIntensity = 12;
+      scene.globe.atmosphereLightIntensity = 14;
+      scene.globe.atmosphereMieAnisotropy = 0.88;
+      scene.globe.atmosphereRayleighScaleHeight = 10_000;
+      scene.globe.atmosphereMieScaleHeight = 3_200;
       if (scene.skyAtmosphere) {
         scene.skyAtmosphere.hueShift = -0.02;
         scene.skyAtmosphere.saturationShift = 0.1;
         scene.skyAtmosphere.brightnessShift = 0;
-        scene.skyAtmosphere.atmosphereLightIntensity = 12;
+        scene.skyAtmosphere.atmosphereLightIntensity = 14;
       }
       solarClockTimer = window.setInterval(() => {
         if (!viewer || viewer.isDestroyed() || document.visibilityState !== "visible") return;
@@ -223,6 +236,16 @@ function App() {
 
       viewer.screenSpaceEventHandler.setInputAction((event: { position: Cartesian2 }) => {
         if (!viewer || viewer.isDestroyed()) return;
+        const picked = viewer.scene.pick(event.position);
+        const maybeEntity = picked && typeof picked === "object" && "id" in picked
+          ? (picked as { id?: Entity }).id
+          : undefined;
+        if (typeof maybeEntity?.id === "string" && maybeEntity.id.startsWith("satellite:")) {
+          setSelectedSatelliteId(maybeEntity.id.slice("satellite:".length));
+          setControlsOpen(true);
+          if (window.innerWidth < 760) setDetailsOpen(false);
+          return;
+        }
         const position = viewer.camera.pickEllipsoid(event.position, Ellipsoid.WGS84);
         if (!position) return;
         const cartographic = Cartographic.fromCartesian(position);
@@ -259,6 +282,8 @@ function App() {
       controllerRef.current = null;
       geologicalLayerRef.current = null;
       cityMarkersRef.current = [];
+      satelliteOverlayRef.current?.dispose();
+      satelliteOverlayRef.current = null;
       vectorLayerRef.current = null;
       vectorLoadingRef.current = null;
       viewerRef.current = null;
@@ -309,6 +334,57 @@ function App() {
     viewer.scene.globe.dynamicAtmosphereLighting = dayNightEnabled;
     viewer.scene.requestRender();
   }, [dayNightEnabled]);
+
+  // Native sky and ground scattering without a decorative mesh.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = atmosphereVisible;
+    viewer.scene.globe.showGroundAtmosphere = atmosphereVisible;
+    viewer.scene.requestRender();
+  }, [atmosphereVisible]);
+
+  // Lazy loading and two-hour orbital-data cache; no network when disabled.
+  // Six satellites, updates every five seconds, not every WebGL frame.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    if (!satellitesVisible) {
+      satelliteOverlayRef.current?.dispose();
+      satelliteOverlayRef.current = null;
+      setSatelliteStatus("idle");
+      return;
+    }
+    let active = true;
+    let interval: number | null = null;
+    setSatelliteStatus("loading");
+    void fetchSatelliteCatalog().then(({ satellites }) => {
+      if (!active || viewer.isDestroyed()) return;
+      satelliteOverlayRef.current?.dispose();
+      const overlay = new SatelliteOverlay(viewer, satellites, satellitePathsVisible);
+      satelliteOverlayRef.current = overlay;
+      setSatelliteCatalog(satellites.map(({ choice, epoch }) => ({ choice, epoch })));
+      setSatelliteStatus(overlay.count > 0 ? "ready" : "error");
+      interval = window.setInterval(() => {
+        if (document.visibilityState === "visible") overlay.update(new Date());
+      }, SATELLITE_UPDATE_MS);
+    }).catch((error: unknown) => {
+      if (!active) return;
+      console.warn("Satellite elements unavailable; no fabricated orbit rendered.", error);
+      setSatelliteStatus("error");
+      setSatelliteCatalog([]);
+    });
+    return () => {
+      active = false;
+      if (interval !== null) window.clearInterval(interval);
+      satelliteOverlayRef.current?.dispose();
+      satelliteOverlayRef.current = null;
+    };
+  }, [satellitesVisible]);
+
+  useEffect(() => {
+    satelliteOverlayRef.current?.togglePaths(satellitePathsVisible);
+  }, [satellitePathsVisible]);
 
   // Cesium's current MVTDataProvider creates its whole tile hierarchy eagerly:
   // Keep the global tree at z0..z5 (1,365 nodes). Higher regional detail stays in raster imagery.
@@ -436,6 +512,43 @@ function App() {
               <input type="checkbox" checked={cityLabelsVisible} onChange={(event) => setCityLabelsVisible(event.target.checked)} aria-label="显示全球主要城市" />
               <span className="switch" aria-hidden="true" />
             </label>
+            <label className="toggle-row">
+              <span className="layer-icon" aria-hidden="true">◌</span>
+              <span className="toggle-copy"><strong>大气散射</strong><small>蓝色边缘辉光 · 原生 Cesium</small></span>
+              <input type="checkbox" checked={atmosphereVisible} onChange={(event) => setAtmosphereVisible(event.target.checked)} aria-label="显示地球大气层" />
+              <span className="switch" aria-hidden="true" />
+            </label>
+            <label className="toggle-row">
+              <span className="layer-icon" aria-hidden="true">✧</span>
+              <span className="toggle-copy"><strong>真实卫星轨道</strong><small>公开 GP 根数 · SGP4 轨道预测</small></span>
+              <input type="checkbox" checked={satellitesVisible} onChange={(event) => setSatellitesVisible(event.target.checked)} aria-label="显示真实卫星及轨道" />
+              <span className="switch" aria-hidden="true" />
+            </label>
+            {satellitesVisible && (
+              <div className="satellite-controls">
+                <label className="satellite-path-toggle">
+                  <input type="checkbox" checked={satellitePathsVisible} onChange={(event) => setSatellitePathsVisible(event.target.checked)} />
+                  <span>显示前后约 45 分钟预测轨迹</span>
+                </label>
+                <p className="satellite-status" role="status">
+                  {satelliteStatus === "loading" ? "正在读取 CelesTrak 最新公开轨道根数…" :
+                   satelliteStatus === "error" ? "轨道数据暂不可用，已隐藏卫星；不会绘制虚构轨道。" :
+                   satelliteStatus === "ready" ? "已加载 " + satelliteCatalog.length + " 颗卫星 · 每 5 秒更新预测位置" :
+                   "打开图层后读取轨道根数"}
+                </p>
+                {satelliteCatalog.length > 0 && satelliteStatus === "ready" && (
+                  <div className="satellite-catalog">
+                    {satelliteCatalog.map(({ choice, epoch }) => (
+                      <div className={"satellite-entry" + (selectedSatelliteId === choice.id ? " selected" : "")} key={choice.id}>
+                        <span className="satellite-color" style={{backgroundColor:choice.color}} />
+                        <span><strong>{choice.title}</strong><small>轨道历元：{formatEpoch(epoch)}</small></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="satellite-disclaimer">数据：CelesTrak GP / SGP4。位置为轨道推算，并非实时遥测；轨迹表示地固坐标系下的预测路径。</p>
+              </div>
+            )}
             <div className="thematic-controls">
               <label htmlFor="geology-style" className="metric-label">MAP STYLE · 地质图显示方式</label>
               <select id="geology-style" disabled={!geologyVisible} value={mapMode} onChange={(event) => setMapMode(event.target.value as ThematicMode)}>
@@ -497,7 +610,7 @@ function App() {
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角">◎ <span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit">↔</span><span>拖动旋转 · 滚轮缩放 · 点击查询</span></div>
-          <div className="globe-attribution">Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
