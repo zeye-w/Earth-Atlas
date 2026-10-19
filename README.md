@@ -12,6 +12,8 @@ The first-load Earth experience prioritizes NASA Blue Marble / Natural Earth ima
 
 **Important cities:** A bounded hand-curated WGS84 marker set of approximately 50 prominent world cities displays approximate city-centre positions. Primary labels are visible in global views, and secondary labels appear only at regional zoom to reduce clutter. The list is an illustrative selection, **not** a definitive population ranking or authoritative municipal-boundary centroid dataset. Labels are depth-tested against the globe and can be turned off independently. No paid city map service or tracking API is used.
 
+**Geographic labels:** about 130 names of oceans, seas, straits and major mountain ranges (on by default; toggle "地理标注"). Label positions come from Natural Earth 1:10m geography polygons (public domain): each sits at the polygon's pole of inaccessibility, with a few long features and features Natural Earth lacks (e.g. the Strait of Hormuz, Bering Strait) placed by hand. Names are curated simplified Chinese, because Natural Earth's own Chinese names mix simplified and traditional forms. Smaller features appear as you zoom in, and labels beyond the horizon are hidden. Regenerate with `node scripts/build-geo-labels.mjs` (writes `src/data/geoLabels.json`).
+
 **Northern aurora (NOAA OVATION):** the aurora layer reads NOAA SWPC's OVATION nowcast (`services.swpc.noaa.gov/json/ovation_aurora_latest.json`, a 1° grid of visible-aurora probability, refreshed here every 10 minutes). For each longitude the curtain is drawn at the probability-weighted latitude of the northern oval (95–330 km altitude), with brightness from the peak probability there; the ripple animation and colours are stylistic. Curtains fade on the sunlit side. If the feed is unavailable nothing is drawn, and the panel says so.
 
 **Earthquakes and plate boundaries:** real-time earthquakes come from the USGS GeoJSON summary feeds (M2.5+ for the past day or week, M4.5+ for the past month), refreshed every 5 minutes while the layer is on. Marker size grows with magnitude, colour shows depth class (shallow <70 km, intermediate 70–300 km, deep >300 km), and events from the last 24 hours have a white outline; click one for time, magnitude, depth and a link to the USGS event page. If the feed fails nothing is drawn. Plate boundaries are Bird (2003) PB2002 (*An updated digital model of plate boundaries*, G³ 4(3), doi:10.1029/2001GC000252), using the GeoJSON conversion by Hugo Ahlenius / Nordpil (github.com/fraxen/tectonicplates, ODC-BY 1.0), bundled as a lazily loaded chunk; subduction zones are highlighted.
@@ -130,6 +132,8 @@ Displayed geologic colors are supplied by Macrostrat map compilations and are no
 The geology parser is exercised by offline unit/contract tests using the [documented rmacrostrat Hell Creek example](https://rmacrostrat.palaeoverse.org/articles/geologic-map.html) and constructed edge-case fixtures. **These are not live API or production-browser smoke tests.**
 
 ## Open data attribution
+
+Geographic label positions are derived from [Natural Earth](https://www.naturalearthdata.com/) (public domain).
 
 The geologic map and unit queries are provided by [Macrostrat](https://macrostrat.org), CC BY 4.0. Attribute Macrostrat and underlying map providers where provided by the selected source_id. For source metadata see [Macrostrat sources](https://macrostrat.org/api/v2/defs/sources).
 

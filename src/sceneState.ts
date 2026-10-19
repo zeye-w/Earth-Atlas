@@ -3,7 +3,8 @@ export type LayerKey = typeof LAYER_KEYS[number];
 export interface SceneState {
   v: 1;
   camera: [number, number, number, number, number, number];
-  layers: Record<LayerKey, boolean>;
+  // geoLabels is optional (added later) so earlier shared links stay valid.
+  layers: Record<LayerKey, boolean> & { geoLabels?: boolean };
   point?: { latitude: number; longitude: number };
   options: { cloudOpacity: number; opacity: number; mapMode: 'raster'|'age'|'lithology'; ageFilter: 'all'|'cenozoic'|'mesozoic'|'paleozoic'|'precambrian'; rockFilter: 'all'|'sedimentary'|'igneous'|'metamorphic'; quakeRange: 'day'|'week'|'month'; atmosphereShells?: 0|1|5|20 };
 }
@@ -19,6 +20,7 @@ export function readScene(hash: string): SceneState | null {
     if (s.v !== 1 || !Array.isArray(s.camera) || s.camera.length !== 6 || !s.camera.every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) return null;
     if (!validCoordinates(s.camera[1], s.camera[0]) || s.camera[2] < 15000 || s.camera[2] > 65000000 || Math.abs(s.camera[3]) > 7 || Math.abs(s.camera[4]) > Math.PI / 2 || Math.abs(s.camera[5]) > 7) return null;
     if (!s.layers || !LAYER_KEYS.every(k => typeof s.layers[k] === 'boolean')) return null;
+    if (s.layers.geoLabels !== undefined && typeof s.layers.geoLabels !== 'boolean') return null;
     if (s.point && !validCoordinates(s.point.latitude,s.point.longitude)) return null;
     const o = s.options;
     if (!o || !Number.isFinite(o.cloudOpacity) || o.cloudOpacity < 10 || o.cloudOpacity > 100 || !Number.isFinite(o.opacity) || o.opacity < 15 || o.opacity > 100) return null;

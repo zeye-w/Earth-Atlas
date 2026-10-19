@@ -9,6 +9,11 @@ test('optional atmosphere shell scale round-trips and is validated',()=>{
   assert.deepEqual(readScene(sceneHash(withShells)),withShells);
   assert.equal(readScene('#scene='+encodeURIComponent(JSON.stringify({...scene,options:{...scene.options,atmosphereShells:7}}))),null);
 });
+test('optional geographic labels flag round-trips and is validated',()=>{
+  const withLabels={...scene,layers:{...scene.layers,geoLabels:true}};
+  assert.deepEqual(readScene(sceneHash(withLabels)),withLabels);
+  assert.equal(readScene('#scene='+encodeURIComponent(JSON.stringify({...scene,layers:{...scene.layers,geoLabels:'yes'}}))),null);
+});
 test('invalid or unsupported scene falls back without throwing',()=>{
   for(const hash of ['','#scene=garbage','#scene=null','#scene='+encodeURIComponent(JSON.stringify({...scene,v:2})),'#scene='+encodeURIComponent(JSON.stringify({...scene,camera:[0,91,1,0,0,0]})),'#scene='+encodeURIComponent(JSON.stringify({...scene,layers:{}})),'#scene='+encodeURIComponent(JSON.stringify({...scene,options:{...scene.options,opacity:900}}))]) assert.equal(readScene(hash),null);
 });

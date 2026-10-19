@@ -107,6 +107,16 @@ test("atmosphere shells expose the exaggeration warning", async ({ page }) => {
   await expect(layerPanel(page)).toContainText("高度已放大 20 倍");
 });
 
+test("geographic labels are on by default and can be turned off", async ({ page }) => {
+  await page.goto("/");
+  await waitForGlobe(page);
+  await openGroup(page, "EARTH VIEW");
+  const toggle = page.getByRole("checkbox", { name: "地理标注" });
+  await expect(toggle).toBeChecked();
+  await toggle.uncheck({ force: true });
+  await expect(toggle).not.toBeChecked();
+});
+
 test("manual quality choice turns off automatic quality", async ({ page }) => {
   await page.goto("/");
   await waitForGlobe(page);

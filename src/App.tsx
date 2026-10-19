@@ -14,6 +14,7 @@ import { useClouds } from "./layers/useClouds";
 import { useAurora } from "./layers/useAurora";
 import { useAtmosphereShells } from "./layers/useAtmosphereShells";
 import { useEarthquakes } from "./layers/useEarthquakes";
+import { useGeoLabels } from "./layers/useGeoLabels";
 import { usePlateBoundaries, useVolcanoes } from "./layers/useTectonics";
 import { useSatellites } from "./layers/useSatellites";
 import { useGeologyMap } from "./layers/useGeologyMap";
@@ -101,6 +102,7 @@ function App() {
   const aurora = useAurora(viewer, layers.aurora);
   useAtmosphereShells(viewer, layers.shells, options.shellScale);
   const quakes = useEarthquakes(viewer, layers.quakes, options.quakeRange);
+  useGeoLabels(viewer, layers.geoLabels);
   const plateStatus = usePlateBoundaries(viewer, layers.plates);
   const volcanoes = useVolcanoes(viewer, layers.volcanoes);
   const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId });
