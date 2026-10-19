@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { parseGeologicalUnits } from "../src/geology.ts";
 import { parseLithologyDictionary } from "../src/lithology.ts";
 import { OVATION_URL, northernProfile, parseOvation } from "../src/auroraData.ts";
+import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakes.ts";
 
 async function get(label, url, timeout = 20000) {
   const res = await fetch(url, {
@@ -104,6 +105,25 @@ try {
 } catch (error) {
   failed = true;
   console.error("LIVE_NOAA_OVATION_FAILURE:", error);
+}
+
+for (const [range, feed] of Object.entries(QUAKE_FEEDS)) {
+  try {
+    const response = await fetch(feed.url, {
+      signal: AbortSignal.timeout(20000),
+      headers: { Accept: "application/json", Origin: "https://earth-atlas.edwardlab.workers.dev" },
+    });
+    const cors = response.headers.get("access-control-allow-origin") ?? "(missing)";
+    console.log("USGS " + range, "HTTP", response.status, "Access-Control-Allow-Origin", cors);
+    assert.ok(response.ok, "USGS HTTP " + response.status);
+    assert.ok(cors === "*" || cors === "https://earth-atlas.edwardlab.workers.dev", "USGS CORS disallows deployed origin");
+    const quakes = parseQuakeFeed(await response.json());
+    const largest = quakes[quakes.length - 1];
+    console.log("  events:", quakes.length, "largest:", largest ? "M" + largest.magnitude + " " + largest.place : "none");
+  } catch (error) {
+    failed = true;
+    console.error("LIVE_USGS_FAILURE:", range, error);
+  }
 }
 
 for (const [label, url] of [

@@ -6,6 +6,7 @@ on:
       - "scripts/smoke-live.mjs"
       - "src/geology.ts"
       - "src/auroraData.ts"
+      - "src/earthquakes.ts"
       - ".github/workflows/live-smoke.yml"
   workflow_dispatch:
 permissions:

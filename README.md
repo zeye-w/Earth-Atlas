@@ -14,6 +14,8 @@ The first-load Earth experience prioritizes NASA Blue Marble / Natural Earth ima
 
 **Northern aurora (NOAA OVATION):** the aurora layer reads NOAA SWPC's OVATION nowcast (`services.swpc.noaa.gov/json/ovation_aurora_latest.json`, a 1° grid of visible-aurora probability, refreshed here every 10 minutes). For each longitude the curtain is drawn at the probability-weighted latitude of the northern oval (95–330 km altitude), with brightness from the peak probability there; the ripple animation and colours are stylistic. Curtains fade on the sunlit side. If the feed is unavailable nothing is drawn, and the panel says so.
 
+**Earthquakes and plate boundaries:** real-time earthquakes come from the USGS GeoJSON summary feeds (M2.5+ for the past day or week, M4.5+ for the past month), refreshed every 5 minutes while the layer is on. Marker size grows with magnitude, colour shows depth class (shallow <70 km, intermediate 70–300 km, deep >300 km), and events from the last 24 hours have a white outline; click one for time, magnitude, depth and a link to the USGS event page. If the feed fails nothing is drawn. Plate boundaries are Bird (2003) PB2002 (*An updated digital model of plate boundaries*, G³ 4(3), doi:10.1029/2001GC000252), using the GeoJSON conversion by Hugo Ahlenius / Nordpil (github.com/fraxen/tectonicplates, ODC-BY 1.0), bundled as a lazily loaded chunk; subduction zones are highlighted.
+
 ## Features
 
 - Drag the 3D globe to rotate; use wheel or touch to zoom.

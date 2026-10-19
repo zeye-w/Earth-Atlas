@@ -24,8 +24,8 @@ import {
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import {
-  ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
-  Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, X,
+  Activity, ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
+  Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, Waypoints, X,
 } from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
@@ -36,6 +36,8 @@ import { addWorldCityMarkers } from "./cityMarkers";
 import { CLOUD_REFRESH_MS, CLOUD_MAX_AGE_MS, cloudTileUrl, fetchCloudObservation } from "./cloudData";
 import { AuroraOverlay } from "./aurora";
 import { OVATION_REFRESH_MS, fetchOvation, northernProfile } from "./auroraData";
+import { DEPTH_CLASSES, EarthquakeOverlay, QUAKE_FEEDS, QUAKE_ID_PREFIX, QUAKE_RANGES, QUAKE_REFRESH_MS, fetchQuakes, type Earthquake, type QuakeRange } from "./earthquakes";
+import type { PlateBoundaryOverlay } from "./plateBoundaries";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "./satelliteOverlay";
@@ -119,6 +121,9 @@ function App() {
   const cityLightsLayerRef = useRef<ImageryLayer | null>(null);
   const cityMarkersRef = useRef<Entity[]>([]);
   const auroraRef = useRef<AuroraOverlay | null>(null);
+  const quakeOverlayRef = useRef<EarthquakeOverlay | null>(null);
+  const quakesByIdRef = useRef(new Map<string, Earthquake>());
+  const plateOverlayRef = useRef<PlateBoundaryOverlay | null>(null);
   const satelliteOverlayRef = useRef<SatelliteOverlay | null>(null);
   const vectorLayerRef = useRef<MVTDataProvider | null>(null);
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
@@ -134,6 +139,12 @@ function App() {
   const [atmosphereVisible, setAtmosphereVisible] = useState(true);
   const [auroraVisible, setAuroraVisible] = useState(true);
   const [cityLightsVisible, setCityLightsVisible] = useState(true);
+  const [quakesVisible, setQuakesVisible] = useState(true);
+  const [quakeRange, setQuakeRange] = useState<QuakeRange>("week");
+  const [quakeStatus, setQuakeStatus] = useState<{ state: "idle" | "loading" | "ready" | "error"; count?: number; largest?: Earthquake }>({ state: "idle" });
+  const [selectedQuake, setSelectedQuake] = useState<Earthquake | null>(null);
+  const [platesVisible, setPlatesVisible] = useState(true);
+  const [plateStatus, setPlateStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [auroraStatus, setAuroraStatus] = useState<{ state: "idle" | "loading" | "ready" | "quiet" | "error"; forecast?: string; max?: number }>({ state: "idle" });
   const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
   const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
@@ -341,6 +352,7 @@ function App() {
       // the default Earth view downloads no global geology imagery.
       cityMarkersRef.current = addWorldCityMarkers(viewer);
       auroraRef.current = new AuroraOverlay(viewer);
+      quakeOverlayRef.current = new EarthquakeOverlay(viewer);
       viewer.scene.requestRender();
 
       viewer.screenSpaceEventHandler.setInputAction((event: { position: Cartesian2 }) => {
@@ -349,6 +361,17 @@ function App() {
         const maybeEntity = picked && typeof picked === "object" && "id" in picked
           ? (picked as { id?: Entity }).id
           : undefined;
+        // Point primitives carry a plain string id.
+        const pickedId: unknown = picked && typeof picked === "object" && "id" in picked ? (picked as { id?: unknown }).id : undefined;
+        if (typeof pickedId === "string" && pickedId.startsWith(QUAKE_ID_PREFIX)) {
+          const quake = quakesByIdRef.current.get(pickedId.slice(QUAKE_ID_PREFIX.length));
+          if (quake) {
+            setSelectedQuake(quake);
+            setDetailsOpen(true);
+            if (window.innerWidth < 760) setControlsOpen(false);
+            return;
+          }
+        }
         if (typeof maybeEntity?.id === "string" && maybeEntity.id.startsWith("satellite:")) {
           setSelectedSatelliteId(maybeEntity.id.slice("satellite:".length));
           setControlsOpen(true);
@@ -360,6 +383,7 @@ function App() {
         const cartographic = Cartographic.fromCartesian(position);
         const latitude = CesiumMath.toDegrees(cartographic.latitude);
         const longitude = CesiumMath.toDegrees(cartographic.longitude);
+        setSelectedQuake(null);
         setCoordinates({ latitude, longitude });
         setDetailsOpen(true);
         if (window.innerWidth < 760) setControlsOpen(false);
@@ -395,6 +419,10 @@ function App() {
       cityLightsLayerRef.current = null;
       cityMarkersRef.current = [];
       auroraRef.current?.dispose();
+      quakeOverlayRef.current?.dispose();
+      quakeOverlayRef.current = null;
+      plateOverlayRef.current?.dispose();
+      plateOverlayRef.current = null;
       auroraRef.current = null;
       satelliteOverlayRef.current?.dispose();
       satelliteOverlayRef.current = null;
@@ -516,6 +544,57 @@ function App() {
     if (cloudLayerRef.current) cloudLayerRef.current.alpha = cloudOpacity / 100;
     viewerRef.current?.scene.requestRender();
   }, [cloudOpacity]);
+
+  // USGS real-time earthquakes; refreshed while the layer is visible.
+  useEffect(() => {
+    quakeOverlayRef.current?.setVisible(quakesVisible);
+    if (!quakesVisible) return;
+    const controller = new AbortController();
+    const load = () => {
+      setQuakeStatus((current) => current.state === "ready" ? current : { state: "loading" });
+      fetchQuakes(quakeRange, controller.signal).then((quakes) => {
+        if (controller.signal.aborted) return;
+        quakesByIdRef.current = new Map(quakes.map((quake) => [quake.id, quake]));
+        quakeOverlayRef.current?.setQuakes(quakes);
+        setQuakeStatus({ state: "ready", count: quakes.length, largest: quakes[quakes.length - 1] });
+      }).catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        console.warn("USGS earthquake feed unavailable; no events drawn.", error);
+        quakesByIdRef.current = new Map();
+        quakeOverlayRef.current?.setQuakes([]);
+        setQuakeStatus({ state: "error" });
+      });
+    };
+    setQuakeStatus({ state: "loading" });
+    load();
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") load(); }, QUAKE_REFRESH_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [quakesVisible, quakeRange]);
+
+  // Bundled PB2002 plate boundaries, loaded on first use.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (plateOverlayRef.current) {
+      plateOverlayRef.current.setVisible(platesVisible);
+      return;
+    }
+    if (!platesVisible || !viewer || viewer.isDestroyed()) return;
+    let active = true;
+    setPlateStatus("loading");
+    void import("./plateBoundaries").then(async (module) => {
+      const boundaries = await module.loadPlateBoundaries();
+      if (!active || viewer.isDestroyed() || plateOverlayRef.current) return;
+      plateOverlayRef.current = new module.PlateBoundaryOverlay(viewer, boundaries);
+      setPlateStatus("ready");
+    }).catch((error: unknown) => {
+      console.warn("Plate boundaries failed to load.", error);
+      if (active) setPlateStatus("error");
+    });
+    return () => { active = false; };
+  }, [platesVisible]);
 
   // NOAA OVATION nowcast; nothing is drawn when the data is unavailable.
   useEffect(() => {
@@ -751,6 +830,42 @@ function App() {
             </details>
 
             <details className="layer-group" open>
+              <summary><span>TECTONICS<small>地震与板块</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
+              <ToggleRow icon={<Activity {...ICON} />} title="实时地震" caption={"USGS · M" + QUAKE_FEEDS[quakeRange].minMagnitude + "+ · 每 5 分钟更新"} checked={quakesVisible} onChange={setQuakesVisible} />
+              {quakesVisible && (
+                <div className="layer-extra">
+                  <div className="segmented" role="radiogroup" aria-label="地震时间范围">
+                    {QUAKE_RANGES.map((range) => (
+                      <button key={range} type="button" role="radio" aria-checked={quakeRange === range} className={quakeRange === range ? "selected" : ""} onClick={() => setQuakeRange(range)}>
+                        {QUAKE_FEEDS[range].label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="layer-status" role="status">
+                    {quakeStatus.state === "loading" ? "正在读取 USGS 地震目录…" :
+                     quakeStatus.state === "error" ? "USGS 地震数据暂不可用，未显示地震。" :
+                     quakeStatus.state === "ready" ? (quakeStatus.count ? quakeStatus.count + " 次地震 · 最大 M" + quakeStatus.largest!.magnitude.toFixed(1) + (quakeStatus.largest!.place ? "（" + quakeStatus.largest!.place + "）" : "") : "该时段没有符合条件的地震") : ""}
+                  </p>
+                  <div className="thematic-legend">
+                    {DEPTH_CLASSES.map((item) => <span key={item.label}><i style={{ backgroundColor: item.color, borderRadius: "50%" }} />{item.label}</span>)}
+                  </div>
+                  <p className="layer-note">圆点越大震级越高，白色描边为 24 小时内发生；点击圆点查看详情。</p>
+                </div>
+              )}
+              <ToggleRow icon={<Waypoints {...ICON} />} title="板块边界" caption="Bird (2003) PB2002 全球板块模型" checked={platesVisible} onChange={setPlatesVisible} />
+              {platesVisible && (
+                <div className="layer-extra">
+                  {plateStatus === "error" ? <p className="layer-status" role="status">板块边界数据加载失败。</p> : (
+                    <div className="thematic-legend">
+                      <span><i style={{ backgroundColor: "#ff8a5c", height: 3, borderRadius: 2 }} />俯冲带</span>
+                      <span><i style={{ backgroundColor: "#ffd27a", height: 3, borderRadius: 2 }} />其他板块边界</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </details>
+
+            <details className="layer-group" open>
               <summary><span>SATELLITES<small>在轨卫星</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<Satellite {...ICON} />} title="真实卫星轨道" caption="公开 GP 根数 · SGP4 轨道预测" checked={satellitesVisible} onChange={setSatellitesVisible} />
               {satellitesVisible && (
@@ -837,7 +952,7 @@ function App() {
 
             <div className="sidebar-note">
               <Info size={14} className="note-icon" aria-hidden="true" />
-              <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
+              <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地震来自 USGS，板块边界来自 Bird (2003) PB2002（Nordpil 整理，ODC-BY），地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
             </div>
           </div>
           <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.2</div>
@@ -851,7 +966,7 @@ function App() {
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>
-          <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
@@ -859,10 +974,25 @@ function App() {
           <button type="button" className="panel-dismiss" onClick={() => setDetailsOpen(false)} aria-label="收起地点信息面板"><X size={15} aria-hidden="true" /></button>
           <div className="details-head">
             <div className="section-caption">LOCATION INSPECTOR <span>地点信息</span></div>
-            <span className="inspect-status">{status === "loading" ? "QUERYING" : status === "success" ? "RECORD FOUND" : "AWAITING POINT"}</span>
+            <span className="inspect-status">{selectedQuake ? "EARTHQUAKE" : status === "loading" ? "QUERYING" : status === "success" ? "RECORD FOUND" : "AWAITING POINT"}</span>
           </div>
 
-          {status === "idle" && (
+          {selectedQuake && (
+            <div className="inspector-body">
+              <div className="unit-heading">
+                <div className="metric-label">EARTHQUAKE · 地震</div>
+                <h2>M{selectedQuake.magnitude.toFixed(1)} {selectedQuake.place ?? "未命名地点"}</h2>
+              </div>
+              <div className="info-field"><span className="metric-label">TIME · 发震时间</span><strong>{selectedQuake.time.toISOString().replace("T", " ").slice(0, 19)} UTC</strong><p>本地时间：{selectedQuake.time.toLocaleString()}</p></div>
+              <div className="info-field"><span className="metric-label">MAGNITUDE · 震级</span><strong>{selectedQuake.magnitude.toFixed(1)}{selectedQuake.magnitudeType ? " (" + selectedQuake.magnitudeType + ")" : ""}</strong></div>
+              <div className="info-field"><span className="metric-label">DEPTH · 震源深度</span><strong>{selectedQuake.depthKm.toFixed(1)} km</strong><p>{DEPTH_CLASSES.find((item) => selectedQuake.depthKm < item.maxKm)?.label}</p></div>
+              <div className="info-field"><span className="metric-label">EPICENTER · 震中</span><strong>{coordinateLabel(selectedQuake.latitude, "N", "S")} · {coordinateLabel(selectedQuake.longitude, "E", "W")}</strong></div>
+              {selectedQuake.tsunami && <div className="message-card"><strong>USGS 标记了海啸相关信息</strong><p>这只表示该事件位于海域且震级较大，不代表发生了海啸；请以当地海啸预警机构为准。</p></div>}
+              <div className="source-card"><div className="metric-label">SOURCE / 数据来源</div><strong>USGS Earthquake Hazards Program</strong><span>Event ID: {selectedQuake.id}</span>{selectedQuake.url && <a href={selectedQuake.url} target="_blank" rel="noreferrer">在 USGS 查看事件详情 ↗</a>}<p>实时目录中的震级和位置可能在后续复核中修订。</p></div>
+            </div>
+          )}
+
+          {!selectedQuake && status === "idle" && (
             <div className="empty-inspector">
               <div className="empty-emblem"><MousePointerClick size={34} strokeWidth={1.4} aria-hidden="true" /></div>
               <h2>点击地球上的<br />任意位置</h2>
@@ -871,7 +1001,7 @@ function App() {
             </div>
           )}
 
-          {coordinates && status !== "idle" && (
+          {!selectedQuake && coordinates && status !== "idle" && (
             <div className="inspector-body">
               <div className="coordinates-block">
                 <div className="metric-label">SELECTED COORDINATES</div>
@@ -928,7 +1058,7 @@ function App() {
           )}
           <div className="details-footer">
             <span className="details-footer-dot" />
-            <span>科学数据来自 Macrostrat。岩性与地质年代取自地表地质图，并非直接地下测量；不同地区的比例尺和数据完整性不同。</span>
+            <span>{selectedQuake ? "地震数据来自 USGS 实时目录，震级、深度与位置可能在复核后修订。" : "科学数据来自 Macrostrat。岩性与地质年代取自地表地质图，并非直接地下测量；不同地区的比例尺和数据完整性不同。"}</span>
           </div>
         </aside>
       </main>

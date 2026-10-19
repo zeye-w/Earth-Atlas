@@ -188,6 +188,10 @@ h1 em { font-style:normal; color:var(--text-2); }
 .satellite-controls { margin:3px 0 13px 52px; padding:10px 11px 13px; border-radius:12px; background:var(--fill); border:1px solid var(--line); }
 .satellite-path-toggle { display:flex; align-items:center; gap:7px; font-size:10px; color:var(--text-2); cursor:pointer; }
 .satellite-path-toggle input { accent-color:#f4f5f7; }
+.layer-extra { margin:-4px 0 12px 52px; display:flex; flex-direction:column; gap:8px; }
+.layer-extra .layer-status { margin:0; }
+.layer-extra .segmented button { padding:5px 0; font-size:10px; }
+.layer-note { margin:0; font-size:10px; line-height:1.6; color:var(--text-3); }
 .layer-status { margin:-4px 0 10px 52px; font-size:10px; line-height:1.65; color:var(--text-3); }
 .satellite-speed { display:flex; align-items:center; gap:10px; margin-top:10px; font-size:10px; color:var(--text-2); }
 .satellite-speed .segmented { flex:1; }
