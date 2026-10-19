@@ -25,6 +25,7 @@ import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
 import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
+import { RENDER_PROFILES, RENDER_QUALITY_LABELS, initialRenderQuality, initialSpaceMotion, nextRenderQuality, type RenderQuality } from "./performance";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -32,8 +33,6 @@ type Coordinates = { latitude: number; longitude: number };
 type Region = { label: string; subtitle: string; lat: number; lon: number };
 
 const HOME_VIEW = Cartesian3.fromDegrees(58, 19, 17000000);
-// Idle spin in radians per second; stops at the first user interaction.
-const AUTO_ROTATE_SPEED = 0.035;
 
 const REGIONS: Region[] = [
   { label: "日本列岛", subtitle: "Japan", lat: 36.2, lon: 138.3 },
@@ -53,11 +52,11 @@ function App() {
   const vectorLayerRef = useRef<MVTDataProvider | null>(null);
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
-  const autoRotateRef = useRef(true);
-  const hasInteractedRef = useRef(false);
+  const [renderQuality, setRenderQuality] = useState<RenderQuality>(() => typeof window === "undefined" ? "balanced" : initialRenderQuality(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches, navigator.hardwareConcurrency));
+  const [pageVisible, setPageVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
   const [controlsOpen, setControlsOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 760);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [motionEnabled, setMotionEnabled] = useState(() => typeof window === "undefined" || !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [motionEnabled, setMotionEnabled] = useState(() => typeof window !== "undefined" && initialSpaceMotion(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches));
   const [fullscreenActive, setFullscreenActive] = useState(false);
   const [geologyVisible, setGeologyVisible] = useState(true);
   const [opacity, setOpacity] = useState(90);
@@ -76,11 +75,28 @@ function App() {
   const rockInfo = classifyLithologies(geologicalUnit?.lithIds ?? [], lithologyDictionary);
   const eraInfo = classifyGeologicEra(geologicalUnit?.youngAgeMa ?? null, geologicalUnit?.oldAgeMa ?? null);
 
-  // Respect system accessibility settings; never force an animation for users
-  // who have asked for reduced motion. The header also offers a manual pause.
+  // Pause decorative animation when the browser tab is hidden.
   useEffect(() => {
-    autoRotateRef.current = motionEnabled && !hasInteractedRef.current;
-  }, [motionEnabled]);
+    const onVisibilityChange = () => {
+      const visible = document.visibilityState === "visible";
+      setPageVisible(visible);
+      if (visible) viewerRef.current?.scene.requestRender();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
+
+  // Change render budget without recreating the WebGL context.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    const profile = RENDER_PROFILES[renderQuality];
+    viewer.resolutionScale = profile.resolutionScale;
+    viewer.targetFrameRate = profile.targetFrameRate;
+    viewer.scene.globe.maximumScreenSpaceError = profile.maximumScreenSpaceError;
+    viewer.scene.postProcessStages.fxaa.enabled = profile.fxaa;
+    viewer.scene.requestRender();
+  }, [renderQuality]);
 
   useEffect(() => {
     const update = () => setFullscreenActive(Boolean(document.fullscreenElement));
@@ -124,6 +140,9 @@ function App() {
         skyBox: SkyBox.createEarthSkyBox(),
         skyAtmosphere: new SkyAtmosphere(),
         shouldAnimate: false,
+        requestRenderMode: true,
+        maximumRenderTimeChange: Number.POSITIVE_INFINITY,
+        msaaSamples: 1,
       });
 
       viewerRef.current = viewer;
@@ -138,8 +157,11 @@ function App() {
       if (scene.moon) scene.moon.show = false;
       scene.screenSpaceCameraController.minimumZoomDistance = 15000;
       scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
-      viewer.resolutionScale = Math.min(window.devicePixelRatio || 1, 2);
-      scene.postProcessStages.fxaa.enabled = true;
+      const profile = RENDER_PROFILES[renderQuality];
+      viewer.resolutionScale = profile.resolutionScale;
+      viewer.targetFrameRate = profile.targetFrameRate;
+      scene.globe.maximumScreenSpaceError = profile.maximumScreenSpaceError;
+      scene.postProcessStages.fxaa.enabled = profile.fxaa;
 
       // Deep-space look: star field, limb glow, and soft terminator shading.
       // The light follows the camera from the upper left so the visible face
