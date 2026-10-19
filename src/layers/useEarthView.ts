@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Credit, ImageryLayer, UrlTemplateImageryProvider, type Entity, type Viewer } from "cesium";
-import { addWorldCityMarkers } from "../cityMarkers";
+import { addWorldCityMarkers, declutterCityLabels } from "../cityMarkers";
 import { NIGHT_LIGHTS_REFRESH_MS, NightLightsImageryProvider } from "../nightLights";
 
 // NASA Black Marble 2016 (VIIRS night lights composite, public domain).
@@ -31,7 +31,7 @@ function createNightBaseLayer(show: boolean): ImageryLayer {
 function createLightsLayer(show: boolean): ImageryLayer {
   const layer = new ImageryLayer(new NightLightsImageryProvider({
     url: BLACK_MARBLE_URL,
-    maximumLevel: 8,
+    maximumLevel: 6,
     credit: new Credit('<a href="https://earthobservatory.nasa.gov/features/NightLights" target="_blank" rel="noopener noreferrer">Night lights: NASA Black Marble 2016 (VIIRS)</a>'),
   }));
   layer.dayAlpha = 0;
@@ -51,10 +51,17 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
   useEffect(() => {
     if (!viewer) return;
     markersRef.current = addWorldCityMarkers(viewer);
-    nightBaseRef.current = createNightBaseLayer(lightsVisibleRef.current);
-    viewer.imageryLayers.add(nightBaseRef.current);
-    lightsRef.current = createLightsLayer(lightsVisibleRef.current);
-    viewer.imageryLayers.add(lightsRef.current);
+    const removeDeclutter = declutterCityLabels(viewer,markersRef.current);
+    // Let the base globe and controls paint before decoding/extracting lights.
+    const initializeLights = () => {
+      if (viewer.isDestroyed()) return;
+      nightBaseRef.current = createNightBaseLayer(lightsVisibleRef.current);
+      viewer.imageryLayers.add(nightBaseRef.current);
+      lightsRef.current = createLightsLayer(lightsVisibleRef.current);
+      viewer.imageryLayers.add(lightsRef.current);
+      viewer.scene.requestRender();
+    };
+    const startupTimer = window.setTimeout(initializeLights, 1800);
     // Skipped daylit tiles stay cached as blank, so rebuild the layer as the
     // terminator moves. The new layer is added above the old one, which is
     // removed once the replacement has had time to load (no blink).
@@ -70,6 +77,8 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
       }, 15_000);
     }, NIGHT_LIGHTS_REFRESH_MS);
     return () => {
+      removeDeclutter();
+      window.clearTimeout(startupTimer);
       window.clearInterval(refreshTimer);
       if (removeOldTimer !== null) window.clearTimeout(removeOldTimer);
       if (!viewer.isDestroyed()) {

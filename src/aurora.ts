@@ -23,7 +23,7 @@ const LAYERS = [
 ] as const;
 const INTENSITY_TEXELS = 512;
 // Curtains shimmer, so animate at a modest fixed rate while visible.
-export const AURORA_FPS = 12;
+export const AURORA_FPS = 6;
 
 /** Closed [lon, lat, ...] ring (361 points) from a 360-longitude profile. */
 export function profileRing(profile: AuroraProfile, polewardDeg = 0): number[] {
@@ -123,6 +123,7 @@ export class AuroraOverlay {
   private materials: Material[] = [];
   private frameHandle: number | null = null;
   private lastFrameMs = 0;
+  private readonly cameraScratch = new Cartesian3();
   private visible = true;
 
   constructor(viewer: Viewer) {
@@ -186,7 +187,7 @@ export class AuroraOverlay {
     if (!this.visible || this.materials.length === 0 || document.visibilityState !== "visible") return;
     if (frameMs - this.lastFrameMs < 1000 / AURORA_FPS) return;
     // Skip work while the northern polar region faces away from the camera.
-    const cameraDirection = Cartesian3.normalize(this.viewer.camera.positionWC, new Cartesian3());
+    const cameraDirection = Cartesian3.normalize(this.viewer.camera.positionWC, this.cameraScratch);
     if (Cartesian3.dot(cameraDirection, Cartesian3.UNIT_Z) < -0.35) return;
     this.lastFrameMs = frameMs;
     for (const material of this.materials) material.uniforms.time = frameMs / 1000;

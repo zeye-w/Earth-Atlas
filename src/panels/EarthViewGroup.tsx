@@ -53,7 +53,7 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
         </p>
       )}
       {layers.aurora && geomagnetic.status !== "idle" && <KpPanel geomagnetic={geomagnetic} />}
-      <ToggleRow icon={<Mountain {...ICON} />} title="地理标注" caption="大洋、海域、海峡与主要山脉 · 拉近显示更多" checked={layers.geoLabels} onChange={(v) => setLayer("geoLabels", v)} />
+      <ToggleRow icon={<Mountain {...ICON} />} title="地理标注" caption="海洋、山脉、沙漠、平原、盆地与河流 · 自动避让" checked={layers.geoLabels} onChange={(v) => setLayer("geoLabels", v)} />
       <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={layers.cities} onChange={(v) => setLayer("cities", v)} />
     </LayerGroup>
   );

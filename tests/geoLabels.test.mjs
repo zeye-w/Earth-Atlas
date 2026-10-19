@@ -7,7 +7,7 @@ const labels = JSON.parse(readFileSync(new URL("../src/data/geoLabels.json", imp
 
 test("bundled geographic labels are complete and well-formed", () => {
   const kinds = new Set(labels.map((label) => label.kind));
-  assert.deepEqual([...kinds].sort(), ["ocean", "range", "sea", "strait"]);
+  assert.deepEqual([...kinds].sort(), ["basin", "desert", "ocean", "plain", "range", "river", "sea", "strait"]);
   for (const label of labels) {
     assert.ok(label.tier === 1 || label.tier === 2, label.name);
     assert.ok(Math.abs(label.longitude) <= 180 && Math.abs(label.latitude) <= 90, label.name);
@@ -38,4 +38,15 @@ test("smaller features only show when the camera is closer", () => {
   assert.ok(minLabelDistance({ kind: "ocean" }) > 0 && minLabelDistance({ kind: "strait" }) === 0);
   assert.equal(spacedName({ kind: "ocean", name: "太平洋" }), "太 平 洋");
   assert.equal(spacedName({ kind: "strait", name: "琼州海峡" }), "琼州海峡");
+});
+
+
+test("new geography categories are bounded and river labels stay regional", () => {
+  assert.equal(labels.filter(l => l.kind === "desert").length,12);
+  assert.equal(labels.filter(l => l.kind === "plain").length,8);
+  assert.equal(labels.filter(l => l.kind === "basin").length,6);
+  assert.equal(labels.filter(l => l.kind === "river").length,14);
+  assert.ok(maxLabelDistance({kind:"river",tier:2}) < maxLabelDistance({kind:"sea",tier:2}));
+  const yangtze=labels.find(l => l.name === "长江");
+  assert.ok(yangtze.longitude > 90 && yangtze.longitude < 122 && yangtze.latitude > 24 && yangtze.latitude < 36);
 });

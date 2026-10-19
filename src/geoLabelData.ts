@@ -1,10 +1,10 @@
 /**
- * Geographic place names: oceans, seas, straits and mountain ranges.
+ * Geographic place names: oceans, seas, straits, mountains, deserts, plains, basins and rivers.
  * Positions are derived from Natural Earth 1:10m geography polygons (public
  * domain) by scripts/build-geo-labels.mjs; names are curated simplified
  * Chinese. Cesium-free so it can be unit tested.
  */
-export type GeoLabelKind = "ocean" | "sea" | "strait" | "range";
+export type GeoLabelKind = "ocean" | "sea" | "strait" | "range" | "desert" | "plain" | "basin" | "river";
 
 export interface GeoLabel {
   kind: GeoLabelKind;
@@ -24,6 +24,8 @@ export async function loadGeoLabels(): Promise<GeoLabel[]> {
 /** Camera distance (m) beyond which a label is hidden. */
 export function maxLabelDistance(label: Pick<GeoLabel, "kind" | "tier">): number {
   if (label.kind === "ocean") return 65_000_000;
+  if (label.kind === "river") return label.tier === 1 ? 7_000_000 : 3_500_000;
+  if (["desert", "plain", "basin"].includes(label.kind)) return label.tier === 1 ? 14_000_000 : 6_000_000;
   if (label.kind === "strait") return label.tier === 1 ? 11_000_000 : 5_000_000;
   return label.tier === 1 ? 19_000_000 : 8_000_000;
 }

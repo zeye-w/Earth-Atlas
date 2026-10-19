@@ -1,21 +1,22 @@
 /**
  * Build src/data/geoLabels.json: label points for oceans, seas, straits and
- * mountain ranges. Positions come from Natural Earth 1:10m geography polygons
+ * mountain ranges, deserts, plains, basins and rivers. Positions come from Natural Earth 1:10m geography polygons
  * (public domain); each label sits at the polygon's pole of inaccessibility
  * so it lands inside the feature. Natural Earth's Chinese names mix
  * simplified/traditional forms and contain some errors, so the names below
  * are curated (standard simplified Chinese geographic names).
  *
  * Usage: node scripts/build-geo-labels.mjs [dir-with-geojson]
- * Without a directory the two GeoJSON files are fetched from GitHub.
+ * Without a directory the three GeoJSON files are fetched from GitHub.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 
 const NE_BASE = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/";
 const MARINE = "ne_10m_geography_marine_polys.geojson";
+const RIVERS_FILE = "ne_10m_rivers_lake_centerlines.geojson";
 const REGIONS = "ne_10m_geography_regions_polys.geojson";
 
-// kind: ocean | sea | strait | range. tier 1 shows from far away, tier 2 closer.
+// kind: ocean | sea | strait | range | desert | plain | basin | river. tier 1 shows from far away, tier 2 closer.
 // [natural earth name, chinese, tier] or [english, chinese, tier, longitude,
 // latitude] placed by hand: where Natural Earth has no polygon, or where the
 // pole of inaccessibility of a long or irregular feature lands at one end.
@@ -79,6 +80,35 @@ const RANGES = [
   ["CASCADE RANGE", "喀斯喀特山脉", 2], ["COAST MOUNTAINS", "海岸山脉", 2], ["SIERRA NEVADA", "内华达山脉", 2],
   ["SIERRA MADRE OCCIDENTAL", "西马德雷山脉", 2], ["SIERRA MADRE ORIENTAL", "东马德雷山脉", 2],
   ["DRAKENSBERG", "德拉肯斯堡山脉", 2], ["SOUTHERN ALPS", "南阿尔卑斯山脉", 2],
+];
+
+
+// Keep every addition/removal here; positions derive from Natural Earth.
+const DESERTS = [
+  ["SAHARA", "撒哈拉沙漠", 1], ["GOBI DESERT", "戈壁沙漠", 1],
+  ["TAKLIMAKAN DESERT", "塔克拉玛干沙漠", 2], ["RUB’ AL KHALI", "鲁卜哈利沙漠", 1],
+  ["KALAHARI DESERT", "卡拉哈里沙漠", 2], ["NAMIB DESERT", "纳米布沙漠", 2],
+  ["DESIERTO DE ATACAMA", "阿塔卡马沙漠", 2], ["THAR DESERT", "塔尔沙漠", 2],
+  ["GREAT VICTORIA DESERT", "维多利亚大沙漠", 2], ["GREAT SANDY DESERT", "大沙沙漠", 2],
+  ["SONORAN DESERT", "索诺拉沙漠", 2], ["CHIHUAHUAN DESERT", "奇瓦瓦沙漠", 2],
+];
+const PLAINS = [
+  ["NORTH CHINA PLAIN", "华北平原", 2], ["MANCHURIAN PLAIN", "东北平原", 2],
+  ["GANGES PLAIN", "恒河平原", 2], ["NORTHERN EUROPEAN PLAIN", "欧洲北部平原", 1, 25, 53],
+  ["GREAT PLAINS", "大平原", 1, -100, 41], ["PAMPAS", "潘帕斯平原", 2],
+  ["NULLARBOR PLAIN", "纳拉伯平原", 2], ["LLANOS", "奥里诺科平原", 2],
+];
+const BASINS = [
+  ["AMAZON BASIN", "亚马孙盆地", 1], ["CONGO BASIN", "刚果盆地", 1],
+  ["SICHUAN BASIN", "四川盆地", 2], ["TARIM BASIN", "塔里木盆地", 2],
+  ["Qaidam Basin", "柴达木盆地", 2], ["Junggar Basin", "准噶尔盆地", 2],
+];
+const RIVERS = [
+  ["Yangtze", "长江", 1], ["Huang", "黄河", 1], ["Mekong", "湄公河", 2],
+  ["Nile", "尼罗河", 1], ["Amazonas", "亚马孙河", 1], ["Congo", "刚果河", 2],
+  ["Mississippi", "密西西比河", 1], ["Ganges", "恒河", 2], ["Indus", "印度河", 2],
+  ["Danube", "多瑙河", 2], ["Rhine", "莱茵河", 2], ["Volga", "伏尔加河", 2],
+  ["Yenisey", "叶尼塞河", 2], ["Lena", "勒拿河", 2],
 ];
 
 async function load(dir, file) {
@@ -164,6 +194,7 @@ function labelPoint(geometry) {
 const dir = process.argv[2];
 const marine = await load(dir, MARINE);
 const regions = await load(dir, REGIONS);
+const rivers = await load(dir, RIVERS_FILE);
 
 function findFeature(collection, name) {
   const key = (f) => (f.properties.name ?? f.properties.NAME ?? "").trim();
@@ -187,6 +218,26 @@ add("ocean", OCEANS, marine);
 add("sea", SEAS, marine);
 add("strait", STRAITS, marine);
 add("range", RANGES, regions);
+add("desert", DESERTS, regions);
+add("plain", PLAINS, regions);
+add("basin", BASINS, regions);
+// River labels sit halfway along the longest named line, not at an arbitrary
+// land centroid. This is a representative anchor, not the whole river extent.
+for (const [english, name, tier] of RIVERS) {
+  const lines = rivers.features.filter(f => f.properties.name === english).flatMap(f => f.geometry.type === "LineString" ? [f.geometry.coordinates] : f.geometry.type === "MultiLineString" ? f.geometry.coordinates : []);
+  const length = line => line.slice(1).reduce((n,p,i) => n + Math.hypot((p[0]-line[i][0])*Math.cos(p[1]*Math.PI/180),p[1]-line[i][1]),0);
+  if (!lines.length) throw new Error("Missing river: " + english);
+  const line = lines.sort((a,b) => length(b)-length(a))[0];
+  let remaining = length(line)/2;
+  let anchor = line[0];
+  for (let i=1;i<line.length;i++) {
+    const a=line[i-1], b=line[i];
+    const segment=Math.hypot((b[0]-a[0])*Math.cos(b[1]*Math.PI/180),b[1]-a[1]);
+    if (segment >= remaining && segment > 0) { const t=remaining/segment; anchor=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t]; break; }
+    remaining-=segment;
+  }
+  labels.push({kind:"river",tier,name,english,longitude:Math.round(anchor[0]*100)/100,latitude:Math.round(anchor[1]*100)/100});
+}
 
 writeFileSync(new URL("../src/data/geoLabels.json", import.meta.url), JSON.stringify(labels, null, 0).replace(/\},\{/g, "},\n{") + "\n");
 console.log("wrote", labels.length, "labels");

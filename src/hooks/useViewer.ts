@@ -53,6 +53,7 @@ export function useViewer(
     let created: Viewer | null = null;
     let solarClockTimer: number | null = null;
     let splashTimer: number | null = null;
+    let detailTimer: number | null = null;
     try {
       created = new Viewer(mountRef.current, {
         baseLayer: false,
@@ -145,12 +146,18 @@ export function useViewer(
       v.imageryLayers.add(
         ImageryLayer.fromProviderAsync(TileMapServiceImageryProvider.fromUrl(buildModuleUrl("Assets/Textures/NaturalEarthII"))),
       );
-      v.imageryLayers.addImageryProvider(new UrlTemplateImageryProvider({
-        url: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
-        // GoogleMapsCompatible_Level8 is published down to level 8 (~500 m).
-        maximumLevel: 8,
-        credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
-      }));
+      // Paint the bundled globe first. Remote imagery must not hold the
+      // initial splash open or compete with the first label atlas upload.
+      detailTimer = window.setTimeout(() => {
+        if (v.isDestroyed()) return;
+        v.imageryLayers.add(new ImageryLayer(new UrlTemplateImageryProvider({
+          url: "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg",
+          // GoogleMapsCompatible_Level8 is published down to level 8 (~500 m).
+          maximumLevel: 8,
+          credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
+        })), 1);
+        scene.requestRender();
+      }, 1500);
 
       v.screenSpaceEventHandler.setInputAction((event: { position: Cartesian2 }) => {
         if (!v.isDestroyed()) clickRef.current(v, event.position);
@@ -161,6 +168,7 @@ export function useViewer(
       return () => {
         if (solarClockTimer !== null) window.clearInterval(solarClockTimer);
         if (splashTimer !== null) window.clearTimeout(splashTimer);
+        if (detailTimer !== null) window.clearTimeout(detailTimer);
         document.removeEventListener("visibilitychange", syncClock);
         setViewer(null);
         if (!v.isDestroyed()) v.destroy();

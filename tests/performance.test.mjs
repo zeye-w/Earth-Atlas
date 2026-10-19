@@ -10,7 +10,7 @@ import { THEMATIC_MAX_ZOOM } from "../src/mapThematic.ts";
 test("default desktop quality is balanced and uses part of a high-DPI screen", () => {
   assert.equal(initialRenderQuality(1920, false, 8), "balanced");
   assert.equal(initialRenderQuality(1920, false, 4), "balanced");
-  assert.equal(renderSettings("balanced", 2).resolutionScale, 1.5);
+  assert.equal(renderSettings("balanced", 2).resolutionScale, 1.25);
   assert.equal(renderSettings("high", 2).resolutionScale, 2);
   assert.equal(renderSettings("high", 3).resolutionScale, 2);
   assert.equal(renderSettings("eco", 2).resolutionScale, 1);

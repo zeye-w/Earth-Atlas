@@ -13,7 +13,7 @@ export interface RenderProfile {
 }
 export const RENDER_PROFILES: Readonly<Record<RenderQuality, Readonly<RenderProfile>>> = {
   eco: { maxPixelRatio: 1, targetFrameRate: 30, maximumScreenSpaceError: 3 },
-  balanced: { maxPixelRatio: 1.5, targetFrameRate: 45, maximumScreenSpaceError: 2 },
+  balanced: { maxPixelRatio: 1.25, targetFrameRate: 45, maximumScreenSpaceError: 2 },
   high: { maxPixelRatio: 2, targetFrameRate: 60, maximumScreenSpaceError: 1.5 },
 };
 /** Below this pixel ratio FXAA is worth its slight texture softening. */

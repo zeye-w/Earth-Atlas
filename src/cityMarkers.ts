@@ -1,4 +1,9 @@
 import {
+  ConstantProperty,
+  Ellipsoid,
+  EllipsoidalOccluder,
+  Matrix4,
+  SceneTransforms,
   Cartesian2,
   Cartesian3,
   Color,
@@ -11,6 +16,7 @@ import {
   type Viewer,
 } from "cesium";
 import { WORLD_CITIES } from "./worldCities";
+import { layoutLabels, type LabelBox } from "./labelLayout.ts";
 import { LABEL_FONT } from "./labelFont";
 
 /**
@@ -55,4 +61,38 @@ export function addWorldCityMarkers(viewer: Viewer): Entity[] {
     }));
   }
   return collection;
+}
+
+/** City names share the same padded screen-space collision policy as areas. */
+export function declutterCityLabels(viewer: Viewer, markers: readonly Entity[]): () => void {
+  const matrix = new Matrix4();
+  const occluder = new EllipsoidalOccluder(Ellipsoid.WGS84,Cartesian3.ZERO);
+  let previous = "";
+  return viewer.scene.preRender.addEventListener(() => {
+    const {camera,canvas,clock,scene} = viewer;
+    const signature = `${canvas.clientWidth}:${canvas.clientHeight}:${markers.map(m=>Number(m.show)).join("")}`;
+    if (previous === signature && Matrix4.equalsEpsilon(matrix,camera.viewMatrix,1e-8)) return;
+    previous=signature; Matrix4.clone(camera.viewMatrix,matrix);
+    occluder.cameraPosition=camera.positionWC;
+    const boxes: LabelBox[]=[];
+    for (const marker of markers) {
+      if (!marker.show || !marker.label) continue;
+      const p=marker.position?.getValue(clock.currentTime);
+      if (!p || !occluder.isPointVisible(p)) continue;
+      const d=marker.label.distanceDisplayCondition?.getValue(clock.currentTime);
+      const distance=Cartesian3.distance(camera.positionWC,p);
+      if (d && distance > d.far) continue;
+      const screen=SceneTransforms.worldToWindowCoordinates(scene,p);
+      if (!screen) continue;
+      const name=String(marker.label.text?.getValue(clock.currentTime) ?? "");
+      const width=name.length*12+18;
+      boxes.push({id:String(marker.id),x:screen.x+9+(width-18)/2,y:screen.y-11,width,height:28,priority:String(marker.label.font?.getValue(clock.currentTime)).includes("500") ? 2 : 1});
+    }
+    const visible=layoutLabels(boxes,[],canvas.clientWidth,canvas.clientHeight);
+    for (const marker of markers) {
+      if (!marker.label) continue;
+      const show=visible.has(String(marker.id));
+      if (marker.label.show?.getValue(clock.currentTime) !== show) marker.label.show=new ConstantProperty(show);
+    }
+  });
 }
