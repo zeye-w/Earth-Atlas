@@ -22,6 +22,8 @@ The first-load Earth experience prioritizes NASA Blue Marble / Natural Earth ima
 
 **Automatic render quality:** while the camera moves (when Cesium renders continuously), the app measures the frame rate over 2-second windows; if it stays below 24 fps it steps quality down one level (high → balanced → eco) at most every 6 s and shows a notice. Choosing a quality manually in Settings turns this off; it can be re-enabled there.
 
+**Atmosphere layers:** optional translucent shells mark the tops of the troposphere (an ellipsoid, ~17 km at the equator to ~9 km at the poles), stratosphere (50 km), mesosphere (85 km), the Kármán line (100 km, a convention) and the thermosphere (~600 km; varies ~500–1000 km with solar activity), after the U.S. Standard Atmosphere 1976. A Fresnel rim shader makes each boundary glow only where the line of sight grazes it. At true scale the troposphere is under 0.3 % of Earth's radius, so the layers show as thin rings at the limb; a 5× / 20× height exaggeration is available and labelled as illustrative. The scale is kept in shared scene links (optional, so older links remain valid).
+
 ## Features
 
 - Drag the 3D globe to rotate; use wheel or touch to zoom.

@@ -5,7 +5,7 @@ export interface SceneState {
   camera: [number, number, number, number, number, number];
   layers: Record<LayerKey, boolean>;
   point?: { latitude: number; longitude: number };
-  options: { cloudOpacity: number; opacity: number; mapMode: 'raster'|'age'|'lithology'; ageFilter: 'all'|'cenozoic'|'mesozoic'|'paleozoic'|'precambrian'; rockFilter: 'all'|'sedimentary'|'igneous'|'metamorphic'; quakeRange: 'day'|'week'|'month' };
+  options: { cloudOpacity: number; opacity: number; mapMode: 'raster'|'age'|'lithology'; ageFilter: 'all'|'cenozoic'|'mesozoic'|'paleozoic'|'precambrian'; rockFilter: 'all'|'sedimentary'|'igneous'|'metamorphic'; quakeRange: 'day'|'week'|'month'; atmosphereShells?: 0|1|5|20 };
 }
 export function validCoordinates(lat: unknown, lon: unknown): boolean {
   return typeof lat === 'number' && Number.isFinite(lat) && Math.abs(lat) <= 90 && typeof lon === 'number' && Number.isFinite(lon) && Math.abs(lon) <= 180;
@@ -23,6 +23,8 @@ export function readScene(hash: string): SceneState | null {
     const o = s.options;
     if (!o || !Number.isFinite(o.cloudOpacity) || o.cloudOpacity < 10 || o.cloudOpacity > 100 || !Number.isFinite(o.opacity) || o.opacity < 15 || o.opacity > 100) return null;
     if (!['raster','age','lithology'].includes(o.mapMode) || !['all','cenozoic','mesozoic','paleozoic','precambrian'].includes(o.ageFilter) || !['all','sedimentary','igneous','metamorphic'].includes(o.rockFilter) || !['day','week','month'].includes(o.quakeRange)) return null;
+    // Optional (added later) so earlier shared links stay valid; 0 = off.
+    if (o.atmosphereShells !== undefined && ![0,1,5,20].includes(o.atmosphereShells)) return null;
     return s as SceneState;
   } catch { return null; }
 }

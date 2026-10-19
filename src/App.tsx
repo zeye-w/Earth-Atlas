@@ -25,7 +25,7 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import {
   Search, Share2, Activity, ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
-  Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, Triangle, Waypoints, X,
+  Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, Layers2, Triangle, Waypoints, X,
 } from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
@@ -47,6 +47,8 @@ import type { SatelliteChoice } from "./satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "./satelliteOverlay";
 import { PlaceSearch } from "./LocationSearch";
 import { readScene, sceneHash, type SceneState } from "./sceneState";
+import { ATMOSPHERE_LAYERS, ATMOSPHERE_SCALES, formatHeight, type AtmosphereScale } from "./atmosphereLayers";
+import type { AtmosphereShellOverlay } from "./atmosphereShells";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -154,6 +156,9 @@ function App() {
   const [dayNightEnabled, setDayNightEnabled] = useState(initialScene?.layers.dayNight ?? true);
   const [cityLabelsVisible, setCityLabelsVisible] = useState(initialScene?.layers.cities ?? true);
   const [atmosphereVisible, setAtmosphereVisible] = useState(initialScene?.layers.atmosphere ?? true);
+  const [shellsVisible, setShellsVisible] = useState(Boolean(initialScene?.options.atmosphereShells));
+  const [shellScale, setShellScale] = useState<AtmosphereScale>(initialScene?.options.atmosphereShells || 1);
+  const shellOverlayRef = useRef<AtmosphereShellOverlay | null>(null);
   const [auroraVisible, setAuroraVisible] = useState(initialScene?.layers.aurora ?? true);
   const [cityLightsVisible, setCityLightsVisible] = useState(initialScene?.layers.lights ?? true);
   const [quakesVisible, setQuakesVisible] = useState(initialScene?.layers.quakes ?? false);
@@ -469,6 +474,8 @@ function App() {
       plateOverlayRef.current = null;
       volcanoOverlayRef.current?.dispose();
       volcanoOverlayRef.current = null;
+      shellOverlayRef.current?.dispose();
+      shellOverlayRef.current = null;
       auroraRef.current = null;
       satelliteOverlayRef.current?.dispose();
       satelliteOverlayRef.current = null;
@@ -663,6 +670,28 @@ function App() {
     });
     return () => { active = false; };
   }, [volcanoesVisible]);
+
+  // Layered atmosphere shells at true (or labelled, exaggerated) heights.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (shellOverlayRef.current) {
+      shellOverlayRef.current.setVisible(shellsVisible);
+      return;
+    }
+    if (!shellsVisible || !viewer || viewer.isDestroyed()) return;
+    let active = true;
+    void import("./atmosphereShells").then((module) => {
+      if (!active || viewer.isDestroyed() || shellOverlayRef.current) return;
+      shellOverlayRef.current = new module.AtmosphereShellOverlay(viewer, shellScale);
+    }).catch((error: unknown) => console.warn("Atmosphere shells failed to load.", error));
+    return () => { active = false; };
+    // Scale changes are applied by the effect below.
+  }, [shellsVisible]);
+
+  useEffect(() => {
+    shellOverlayRef.current?.setScale(shellScale);
+    if (shellOverlayRef.current && !shellsVisible) shellOverlayRef.current.setVisible(false);
+  }, [shellScale]);
 
   // NOAA planetary K-index alongside the aurora layer.
   useEffect(() => {
@@ -865,7 +894,7 @@ function App() {
       camera:[CesiumMath.toDegrees(position.longitude),CesiumMath.toDegrees(position.latitude),Math.max(15000, Math.min(65000000,position.height)),camera.heading,camera.pitch,camera.roll],
       layers:{clouds:cloudsVisible,geology:geologyVisible,dayNight:dayNightEnabled,cities:cityLabelsVisible,atmosphere:atmosphereVisible,aurora:auroraVisible,lights:cityLightsVisible,quakes:quakesVisible,plates:platesVisible,volcanoes:volcanoesVisible,satellites:satellitesVisible,paths:satellitePathsVisible},
       point:point ?? undefined,
-      options:{cloudOpacity,opacity,mapMode,ageFilter,rockFilter,quakeRange},
+      options:{cloudOpacity,opacity,mapMode,ageFilter,rockFilter,quakeRange,atmosphereShells:shellsVisible ? shellScale : 0},
     };
     const url = new URL(window.location.href);
     try { url.hash = sceneHash(scene); } catch { setToast("当前视角无法分享，请调整视角后重试"); return; }
@@ -973,6 +1002,25 @@ function App() {
               <summary><span>EARTH VIEW<small>地球视图</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={dayNightEnabled} onChange={setDayNightEnabled} />
               <ToggleRow icon={<Globe {...ICON} />} title="大气散射" caption="地球边缘的蓝色大气辉光" checked={atmosphereVisible} onChange={setAtmosphereVisible} />
+              <ToggleRow icon={<Layers2 {...ICON} />} title="大气分层" caption="按真实高度绘制各层顶部边界" checked={shellsVisible} onChange={setShellsVisible} />
+              {shellsVisible && (
+                <div className="layer-extra">
+                  <div className="segmented" role="radiogroup" aria-label="大气层高度放大倍数">
+                    {ATMOSPHERE_SCALES.map((scale) => (
+                      <button key={scale} type="button" role="radio" aria-checked={shellScale === scale} className={shellScale === scale ? "selected" : ""} onClick={() => setShellScale(scale)}>
+                        {scale === 1 ? "真实比例" : "放大 " + scale + "×"}
+                      </button>
+                    ))}
+                  </div>
+                  {shellScale !== 1 && <p className="satellite-preview-note" role="status">高度已放大 {shellScale} 倍，仅为示意；真实大气比这薄得多。</p>}
+                  <ul className="shell-legend">
+                    {ATMOSPHERE_LAYERS.map((layer) => (
+                      <li key={layer.key} title={layer.note}><i style={{ backgroundColor: layer.color }} /><span>{layer.boundary}</span><b>{formatHeight(layer)}</b></li>
+                    ))}
+                  </ul>
+                  <p className="layer-note">真实比例下对流层不到地球半径的 0.3%，在全球视角里只有一两个像素厚；拉近到地球边缘侧看最清楚。高度参考美国标准大气 1976，实际随纬度、季节与太阳活动变化。</p>
+                </div>
+              )}
               <ToggleRow icon={<Cloud {...ICON} />} title="卫星云图（红外）" caption="SSEC 多卫星全球合成 · 逐小时观测" checked={cloudsVisible} onChange={setCloudsVisible} />
               {cloudsVisible && <div className="cloud-controls">
                 <p className="thematic-note" role="status">{cloudStatus === "loading" ? "正在读取卫星云图…" : cloudStatus === "error" ? "云图加载失败；如保留上一时次，请以观测时间为准。" : "观测时间 " + (cloudTime ?? "—")}</p>

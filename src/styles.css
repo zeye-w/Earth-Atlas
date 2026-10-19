@@ -189,6 +189,10 @@ h1 em { font-style:normal; color:var(--text-2); }
 .satellite-path-toggle { display:flex; align-items:center; gap:7px; font-size:10px; color:var(--text-2); cursor:pointer; }
 .satellite-path-toggle input { accent-color:#f4f5f7; }
 .layer-extra { margin:-4px 0 12px 52px; display:flex; flex-direction:column; gap:8px; }
+.shell-legend { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+.shell-legend li { display:flex; align-items:center; gap:8px; font-size:10px; color:var(--text-2); }
+.shell-legend i { width:14px; height:2px; border-radius:1px; flex:0 0 14px; }
+.shell-legend b { margin-left:auto; font-weight:500; color:var(--text); font-variant-numeric:tabular-nums; }
 .kp-head { display:flex; align-items:baseline; gap:10px; }
 .kp-value { font-size:15px; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; }
 .kp-level { font-size:11px; color:var(--text-2); }

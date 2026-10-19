@@ -4,6 +4,11 @@ import { LAYER_KEYS, readScene, sceneHash } from '../src/sceneState.ts';
 import { coordinateSearch, localSearch, searchPlaces } from '../src/placeSearch.ts';
 const scene = {v:1,camera:[116,39,1800000,0.3,-1.2,0],layers:Object.fromEntries(LAYER_KEYS.map(k=>[k,k==='clouds'])),point:{latitude:39.9,longitude:116.4},options:{cloudOpacity:45,opacity:75,mapMode:'age',ageFilter:'mesozoic',rockFilter:'all',quakeRange:'day'}};
 test('scene round trip preserves camera, all disabled layers, filters and point',()=>assert.deepEqual(readScene(sceneHash(scene)),scene));
+test('optional atmosphere shell scale round-trips and is validated',()=>{
+  const withShells={...scene,options:{...scene.options,atmosphereShells:5}};
+  assert.deepEqual(readScene(sceneHash(withShells)),withShells);
+  assert.equal(readScene('#scene='+encodeURIComponent(JSON.stringify({...scene,options:{...scene.options,atmosphereShells:7}}))),null);
+});
 test('invalid or unsupported scene falls back without throwing',()=>{
   for(const hash of ['','#scene=garbage','#scene=null','#scene='+encodeURIComponent(JSON.stringify({...scene,v:2})),'#scene='+encodeURIComponent(JSON.stringify({...scene,camera:[0,91,1,0,0,0]})),'#scene='+encodeURIComponent(JSON.stringify({...scene,layers:{}})),'#scene='+encodeURIComponent(JSON.stringify({...scene,options:{...scene.options,opacity:900}}))]) assert.equal(readScene(hash),null);
 });
