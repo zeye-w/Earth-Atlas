@@ -7,7 +7,9 @@ import {
   Credit,
   Cesium3DTileStyle,
   MVTDataProvider,
-  DirectionalLight,
+  JulianDate,
+  SunLight,
+  type Entity,
   Ellipsoid,
   EllipsoidTerrainProvider,
   ImageryLayer,
@@ -26,6 +28,7 @@ import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary
 import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
 import { RENDER_PROFILES, RENDER_QUALITY_LABELS, initialRenderQuality, initialSpaceMotion, nextRenderQuality, type RenderQuality } from "./performance";
+import { addWorldCityMarkers } from "./cityMarkers";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -49,6 +52,7 @@ function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
+  const cityMarkersRef = useRef<Entity[]>([]);
   const vectorLayerRef = useRef<MVTDataProvider | null>(null);
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
@@ -58,7 +62,10 @@ function App() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [motionEnabled, setMotionEnabled] = useState(() => typeof window !== "undefined" && initialSpaceMotion(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches));
   const [fullscreenActive, setFullscreenActive] = useState(false);
-  const [geologyVisible, setGeologyVisible] = useState(true);
+  const [geologyVisible, setGeologyVisible] = useState(false);
+  const [dayNightEnabled, setDayNightEnabled] = useState(true);
+  const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
+  const [utcTime, setUtcTime] = useState(() => new Date().toISOString().slice(11, 16));
   const [opacity, setOpacity] = useState(90);
   const [mapMode, setMapMode] = useState<ThematicMode>("raster");
   const [ageFilter, setAgeFilter] = useState<AgeFilter>("all");
@@ -80,7 +87,11 @@ function App() {
     const onVisibilityChange = () => {
       const visible = document.visibilityState === "visible";
       setPageVisible(visible);
-      if (visible) viewerRef.current?.scene.requestRender();
+      if (visible && viewerRef.current && !viewerRef.current.isDestroyed()) {
+        viewerRef.current.clock.currentTime = JulianDate.fromDate(new Date());
+        setUtcTime(new Date().toISOString().slice(11, 16));
+        viewerRef.current.scene.requestRender();
+      }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -123,6 +134,7 @@ function App() {
     if (!mountRef.current) return;
 
     let viewer: Viewer | null = null;
+    let solarClockTimer: number | null = null;
     try {
       viewer = new Viewer(mountRef.current, {
         baseLayer: false,
@@ -163,36 +175,34 @@ function App() {
       scene.globe.maximumScreenSpaceError = profile.maximumScreenSpaceError;
       scene.postProcessStages.fxaa.enabled = profile.fxaa;
 
-      // Deep-space look: star field, limb glow, and soft terminator shading.
-      // The light follows the camera from the upper left so the visible face
-      // stays readable while the lower-right limb falls into shadow. Lighting
-      // fades out when zoomed in, keeping regional geology evenly lit.
+      // Physically positioned SunLight replaces the camera-following studio
+      // light. A fixed viewer clock is refreshed from UTC every minute, keeping
+      // the true solar terminator without forcing continuous WebGL rendering.
+      viewer.clock.shouldAnimate = false;
+      viewer.clock.currentTime = JulianDate.fromDate(new Date());
+      scene.light = new SunLight({ intensity: 2.0 });
       scene.globe.enableLighting = true;
       scene.globe.showGroundAtmosphere = true;
       scene.globe.dynamicAtmosphereLighting = true;
-      scene.globe.dynamicAtmosphereLightingFromSun = false;
-      scene.globe.lightingFadeOutDistance = 6500000;
-      scene.globe.lightingFadeInDistance = 14000000;
-      scene.globe.atmosphereLightIntensity = 14;
+      scene.globe.dynamicAtmosphereLightingFromSun = true;
+      // Cesium's default distance fade would flatten the day/night terminator
+      // when zooming into a region. Keep solar lighting at all zoom levels.
+      scene.globe.lightingFadeOutDistance = 0;
+      scene.globe.lightingFadeInDistance = 0;
+      scene.globe.atmosphereLightIntensity = 12;
       if (scene.skyAtmosphere) {
         scene.skyAtmosphere.hueShift = -0.02;
         scene.skyAtmosphere.saturationShift = 0.1;
-        scene.skyAtmosphere.brightnessShift = 0.15;
-        scene.skyAtmosphere.atmosphereLightIntensity = 30;
+        scene.skyAtmosphere.brightnessShift = 0;
+        scene.skyAtmosphere.atmosphereLightIntensity = 12;
       }
-      const light = new DirectionalLight({ direction: new Cartesian3(0, 0, -1), intensity: 2.6 });
-      scene.light = light;
-      const lightDirection = new Cartesian3();
-      const scratch = new Cartesian3();
-      scene.preRender.addEventListener(() => {
-        // Follow the camera only when Cesium has work to render.
-        // Never rotate the globe during idle frames.
-        const camera = scene.camera;
-        Cartesian3.clone(camera.directionWC, lightDirection);
-        Cartesian3.add(lightDirection, Cartesian3.multiplyByScalar(camera.rightWC, 0.95, scratch), lightDirection);
-        Cartesian3.add(lightDirection, Cartesian3.multiplyByScalar(camera.upWC, -0.6, scratch), lightDirection);
-        Cartesian3.normalize(lightDirection, light.direction);
-      });
+      solarClockTimer = window.setInterval(() => {
+        if (!viewer || viewer.isDestroyed() || document.visibilityState !== "visible") return;
+        const now = new Date();
+        viewer.clock.currentTime = JulianDate.fromDate(now);
+        setUtcTime(now.toISOString().slice(11, 16));
+        viewer.scene.requestRender();
+      }, 60_000);
       viewer.camera.setView({ destination: HOME_VIEW });
 
       // Bundled Natural Earth II keeps a recognizable globe even offline; NASA
@@ -206,15 +216,9 @@ function App() {
         credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
       }));
 
-      const provider = new UrlTemplateImageryProvider({
-        url: "https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png",
-        minimumLevel: 0,
-        maximumLevel: 12,
-        credit: new Credit('<a href="https://macrostrat.org" target="_blank" rel="noopener noreferrer">Geologic map © Macrostrat / source geological surveys · CC BY 4.0</a>'),
-      });
-      const layer = viewer.imageryLayers.addImageryProvider(provider);
-      geologicalLayerRef.current = layer;
-      layer.alpha = 0.9;
+      // Defer Macrostrat raster provider creation until the user enables it;
+      // the default Earth view downloads no global geology imagery.
+      cityMarkersRef.current = addWorldCityMarkers(viewer);
       viewer.scene.requestRender();
 
       viewer.screenSpaceEventHandler.setInputAction((event: { position: Cartesian2 }) => {
@@ -250,9 +254,11 @@ function App() {
     }
 
     return () => {
+      if (solarClockTimer !== null) window.clearInterval(solarClockTimer);
       controllerRef.current?.abort();
       controllerRef.current = null;
       geologicalLayerRef.current = null;
+      cityMarkersRef.current = [];
       vectorLayerRef.current = null;
       vectorLoadingRef.current = null;
       viewerRef.current = null;
@@ -265,6 +271,15 @@ function App() {
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
+    if (geologyVisible && !geologicalLayerRef.current) {
+      const provider = new UrlTemplateImageryProvider({
+        url: "https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png",
+        minimumLevel: 0,
+        maximumLevel: 12,
+        credit: new Credit('<a href="https://macrostrat.org" target="_blank" rel="noopener noreferrer">Geologic map © Macrostrat / source geological surveys · CC BY 4.0</a>'),
+      });
+      geologicalLayerRef.current = viewer.imageryLayers.addImageryProvider(provider);
+    }
     if (geologicalLayerRef.current) {
       geologicalLayerRef.current.show = geologyVisible && (mapMode === "raster" || vectorState !== "ready");
       geologicalLayerRef.current.alpha = opacity / 100;
@@ -278,6 +293,22 @@ function App() {
     }
     viewer.scene.requestRender();
   }, [geologyVisible, opacity, mapMode, ageFilter, rockFilter, vectorState]);
+
+  // Independent overlays: no network request to show city markers.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    for (const marker of cityMarkersRef.current) marker.show = cityLabelsVisible;
+    viewer.scene.requestRender();
+  }, [cityLabelsVisible]);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.scene.globe.enableLighting = dayNightEnabled;
+    viewer.scene.globe.dynamicAtmosphereLighting = dayNightEnabled;
+    viewer.scene.requestRender();
+  }, [dayNightEnabled]);
 
   // Cesium's current MVTDataProvider creates its whole tile hierarchy eagerly:
   // Keep the global tree at z0..z5 (1,365 nodes). Higher regional detail stays in raster imagery.
@@ -389,8 +420,20 @@ function App() {
             <div className="section-caption">MAP LAYERS <span>图层控制</span></div>
             <label className="toggle-row">
               <span className="layer-icon">▧</span>
-              <span className="toggle-copy"><strong>全球地质图</strong><small>Macrostrat · Surface geology</small></span>
+              <span className="toggle-copy"><strong>全球地质图</strong><small>Macrostrat · 默认关闭</small></span>
               <input type="checkbox" checked={geologyVisible} onChange={(event) => setGeologyVisible(event.target.checked)} aria-label="显示全球地质图" />
+              <span className="switch" aria-hidden="true" />
+            </label>
+            <label className="toggle-row">
+              <span className="layer-icon" aria-hidden="true">◐</span>
+              <span className="toggle-copy"><strong>实时昼夜光照</strong><small>太阳位置 · 当前 UTC 时间</small></span>
+              <input type="checkbox" checked={dayNightEnabled} onChange={(event) => setDayNightEnabled(event.target.checked)} aria-label="启用真实昼夜光照" />
+              <span className="switch" aria-hidden="true" />
+            </label>
+            <label className="toggle-row">
+              <span className="layer-icon" aria-hidden="true">⌖</span>
+              <span className="toggle-copy"><strong>全球主要城市</strong><small>城市中心近似位置 · 自动避让远景</small></span>
+              <input type="checkbox" checked={cityLabelsVisible} onChange={(event) => setCityLabelsVisible(event.target.checked)} aria-label="显示全球主要城市" />
               <span className="switch" aria-hidden="true" />
             </label>
             <div className="thematic-controls">
@@ -450,7 +493,7 @@ function App() {
           </div>
           <div className="globe-top-left">
             <span className="map-tag"><span className="tag-dot" /> 3D GLOBAL VIEW</span>
-            <span className="map-subtitle">GEOLOGICAL SURFACE MAP</span>
+            <span className="map-subtitle">{dayNightEnabled ? "REAL-TIME SUNLIGHT" : "EARTH OBSERVATION"} · {utcTime} UTC</span>
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角">◎ <span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit">↔</span><span>拖动旋转 · 滚轮缩放 · 点击查询</span></div>
