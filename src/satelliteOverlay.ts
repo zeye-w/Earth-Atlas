@@ -4,6 +4,7 @@ import {
   Cartesian3,
   Color,
   ConstantPositionProperty,
+  ConstantProperty,
   DistanceDisplayCondition,
   HorizontalOrigin,
   LabelStyle,
@@ -92,7 +93,7 @@ export class SatelliteOverlay {
       pair.marker.show = Boolean(pos);
       if (updatePaths && this.showPaths) {
         const points = orbitPath(pair.record, now);
-        pair.path.polyline!.positions = points.map(toCartesian);
+        pair.path.polyline!.positions = new ConstantProperty(points.map(toCartesian));
         pair.path.show = points.length > 1;
       }
     }
