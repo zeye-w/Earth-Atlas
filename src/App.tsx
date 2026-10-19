@@ -309,6 +309,10 @@ function App() {
       // main source of drag jank; a class swaps them to a solid tint meanwhile.
       viewer.camera.moveStart.addEventListener(() => shellRef.current?.classList.add("is-moving"));
       viewer.camera.moveEnd.addEventListener(() => shellRef.current?.classList.remove("is-moving"));
+      // Same while imagery tiles stream in (e.g. right after enabling geology).
+      scene.globe.tileLoadProgressEvent.addEventListener((queued: number) => {
+        shellRef.current?.classList.toggle("is-loading", queued > 0);
+      });
 
       // Bundled Natural Earth II keeps a recognizable globe even offline; NASA
       // Blue Marble (public domain) adds shaded relief and ocean bathymetry.
@@ -787,7 +791,7 @@ function App() {
               )}
             </details>
 
-            <details className="layer-group" open={geologyVisible || undefined}>
+            <details className="layer-group">
               <summary><span>GEOLOGY<small>地表地质</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<Mountain {...ICON} />} title="全球地质图" caption="Macrostrat 地表地质单元" checked={geologyVisible} onChange={setGeologyVisible} />
               <div className="thematic-controls">

@@ -23,7 +23,7 @@ const LAYERS = [
 ] as const;
 const INTENSITY_TEXELS = 512;
 // Curtains shimmer, so animate at a modest fixed rate while visible.
-export const AURORA_FPS = 20;
+export const AURORA_FPS = 12;
 
 /** Closed [lon, lat, ...] ring (361 points) from a 360-longitude profile. */
 export function profileRing(profile: AuroraProfile, polewardDeg = 0): number[] {
