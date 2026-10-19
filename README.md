@@ -138,3 +138,11 @@ MVP: 3D globe + data query + map attribution. Next: official geologic age palett
 ## License
 
 MIT for this repository's code. Third-party geologic datasets retain their own licenses.
+
+## Satellite infrared cloud imagery
+
+The optional “卫星云图（红外）” layer uses the SSEC / UW–Madison RealEarth `globalir` multi-satellite hourly infrared composite. Metadata is checked every 15 minutes while visible; all tiles are pinned to one observation timestamp. Observations older than six hours are rejected. No cloud requests are made until enabled. Tile zoom is capped at 5 to limit traffic.
+
+This is infrared imagery containing cloud and surface signals, not a cloud mask, cloud height, or cloud fraction measurement. Cold surfaces, polar coverage and composite seams can be misleading. The imagery is draped on the globe, not a volumetric cloud model. Errors are displayed; no synthetic replacement is generated.
+
+RealEarth free access has pixel-volume and website-registration/watermark restrictions. Preserve provider attribution and watermarks. Review https://www.ssec.wisc.edu/realearth/realearth-pro/ before high-volume deployment. The browser calls the provider directly; no proxy is used to bypass quotas.

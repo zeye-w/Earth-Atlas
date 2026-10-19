@@ -25,7 +25,7 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import {
   ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
-  Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, X,
+  Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, X,
 } from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
@@ -33,6 +33,7 @@ import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
 import { RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, renderSettings, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
+import { CLOUD_REFRESH_MS, CLOUD_MAX_AGE_MS, cloudTileUrl, fetchCloudObservation } from "./cloudData";
 import { AuroraOverlay } from "./aurora";
 import { OVATION_REFRESH_MS, fetchOvation, northernProfile } from "./auroraData";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
@@ -106,6 +107,13 @@ function App() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
+  const cloudLayerRef = useRef<ImageryLayer | null>(null);
+  const [cloudsVisible, setCloudsVisible] = useState(false);
+  const [cloudOpacity, setCloudOpacity] = useState(65);
+  const cloudOpacityRef = useRef(cloudOpacity);
+  cloudOpacityRef.current = cloudOpacity;
+  const [cloudStatus, setCloudStatus] = useState("idle");
+  const [cloudTime, setCloudTime] = useState<string | null>(null);
   const cityLightsLayerRef = useRef<ImageryLayer | null>(null);
   const cityMarkersRef = useRef<Entity[]>([]);
   const auroraRef = useRef<AuroraOverlay | null>(null);
@@ -441,6 +449,68 @@ function App() {
     viewerRef.current?.scene.requestRender();
   }, [cityLightsVisible]);
 
+  // Pin every tile to the same observed hour; never mix latest tiles across hours.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!cloudsVisible || !viewer || viewer.isDestroyed()) return;
+    const controller = new AbortController();
+    let loading = false;
+    let observation = 0;
+    const clear = () => {
+      if (cloudLayerRef.current && !viewer.isDestroyed()) viewer.imageryLayers.remove(cloudLayerRef.current, true);
+      cloudLayerRef.current = null;
+      viewer.scene.requestRender();
+    };
+    const load = async () => {
+      if (loading) return;
+      loading = true;
+      try {
+        if (!observation) setCloudStatus("loading");
+        const date = await fetchCloudObservation(controller.signal);
+        if (controller.signal.aborted || viewer.isDestroyed()) return;
+        if (date.getTime() !== observation || !cloudLayerRef.current) {
+          const provider = new UrlTemplateImageryProvider({
+            url: cloudTileUrl(date), maximumLevel: 5,
+            credit: new Credit('<a href="https://www.ssec.wisc.edu/realearth/" target="_blank" rel="noopener noreferrer">Cloud imagery: SSEC / UW–Madison RealEarth</a>'),
+          });
+          // Fail visibly on tile errors instead of claiming an empty map is clear sky.
+          provider.errorEvent.addEventListener(() => {
+            if (controller.signal.aborted || viewer.isDestroyed() || cloudLayerRef.current?.imageryProvider !== provider) return;
+            clear();
+            setCloudStatus("error");
+          });
+          clear();
+          const layer = viewer.imageryLayers.addImageryProvider(provider);
+          layer.alpha = cloudOpacityRef.current / 100;
+          cloudLayerRef.current = layer;
+          observation = date.getTime();
+        }
+        setCloudTime(date.toISOString().slice(0,16).replace("T", " ") + " UTC");
+        setCloudStatus("ready");
+        viewer.scene.requestRender();
+      } catch {
+        if (controller.signal.aborted || viewer.isDestroyed()) return;
+        if (!observation || Date.now() - observation > CLOUD_MAX_AGE_MS) clear();
+        setCloudStatus("error");
+      } finally { loading = false; }
+    };
+    void load();
+    const refresh = () => { if (document.visibilityState === "visible") void load(); };
+    const timer = window.setInterval(refresh, CLOUD_REFRESH_MS);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+      if (!viewer.isDestroyed()) clear();
+    };
+  }, [cloudsVisible]);
+
+  useEffect(() => {
+    if (cloudLayerRef.current) cloudLayerRef.current.alpha = cloudOpacity / 100;
+    viewerRef.current?.scene.requestRender();
+  }, [cloudOpacity]);
+
   // NOAA OVATION nowcast; nothing is drawn when the data is unavailable.
   useEffect(() => {
     auroraRef.current?.setVisible(auroraVisible);
@@ -653,6 +723,14 @@ function App() {
               <summary><span>EARTH VIEW<small>地球视图</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={dayNightEnabled} onChange={setDayNightEnabled} />
               <ToggleRow icon={<Globe {...ICON} />} title="大气散射" caption="地球边缘的蓝色大气辉光" checked={atmosphereVisible} onChange={setAtmosphereVisible} />
+              <ToggleRow icon={<Cloud {...ICON} />} title="卫星云图（红外）" caption="SSEC 多卫星全球合成 · 逐小时观测" checked={cloudsVisible} onChange={setCloudsVisible} />
+              {cloudsVisible && <div className="cloud-controls">
+                <p className="thematic-note" role="status">{cloudStatus === "loading" ? "正在读取卫星云图…" : cloudStatus === "error" ? "云图加载失败；如保留上一时次，请以观测时间为准。" : "观测时间 " + (cloudTime ?? "—")}</p>
+                <label className="opacity-head" htmlFor="cloud-opacity"><span>云图不透明度</span><span>{cloudOpacity}%</span></label>
+                <input id="cloud-opacity" type="range" min="10" max="100" step="5" value={cloudOpacity} onChange={(event) => setCloudOpacity(Number(event.target.value))} />
+                <p className="thematic-note">亮白通常表示较冷云顶；包含地表信号，并非精确云掩膜。极区与拼接处可能有误差。免费服务可能显示水印。</p>
+                <a href="https://www.ssec.wisc.edu/realearth/" target="_blank" rel="noreferrer">数据：SSEC / UW–Madison</a>
+              </div>}
               <ToggleRow icon={<Lightbulb {...ICON} />} title="城市夜光" caption={dayNightEnabled ? "NASA Black Marble 卫星夜光 · 仅夜侧" : "需开启实时昼夜光照"} checked={cityLightsVisible} onChange={setCityLightsVisible} />
               <ToggleRow icon={<Sparkles {...ICON} />} title="北极极光" caption="NOAA OVATION 实时预报 · 夜侧可见" checked={auroraVisible} onChange={setAuroraVisible} />
               {auroraVisible && auroraStatus.state !== "idle" && (
