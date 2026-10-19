@@ -36,7 +36,8 @@ import { addWorldCityMarkers } from "./cityMarkers";
 import { CLOUD_REFRESH_MS, CLOUD_MAX_AGE_MS, cloudTileUrl, fetchCloudObservation } from "./cloudData";
 import { AuroraOverlay } from "./aurora";
 import { OVATION_REFRESH_MS, fetchOvation, northernProfile } from "./auroraData";
-import { DEPTH_CLASSES, EarthquakeOverlay, QUAKE_FEEDS, QUAKE_ID_PREFIX, QUAKE_RANGES, QUAKE_REFRESH_MS, fetchQuakes, type Earthquake, type QuakeRange } from "./earthquakes";
+import { DEPTH_CLASSES, QUAKE_FEEDS, QUAKE_ID_PREFIX, QUAKE_RANGES, QUAKE_REFRESH_MS, fetchQuakes, type Earthquake, type QuakeRange } from "./earthquakeData";
+import { EarthquakeOverlay } from "./earthquakes";
 import type { PlateBoundaryOverlay } from "./plateBoundaries";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";

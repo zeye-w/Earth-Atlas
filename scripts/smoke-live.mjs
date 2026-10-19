@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { parseGeologicalUnits } from "../src/geology.ts";
 import { parseLithologyDictionary } from "../src/lithology.ts";
 import { OVATION_URL, northernProfile, parseOvation } from "../src/auroraData.ts";
-import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakes.ts";
+import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
 
 async function get(label, url, timeout = 20000) {
   const res = await fetch(url, {

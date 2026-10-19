@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { depthColor, magnitudePixelSize, parseQuakeFeed, DEPTH_CLASSES } from "../src/earthquakes.ts";
+import { depthColor, magnitudePixelSize, parseQuakeFeed, DEPTH_CLASSES } from "../src/earthquakeData.ts";
 import { densify, MAX_SEGMENT_DEG } from "../src/plateBoundaries.ts";
 
 // Synthetic USGS-shaped features for parser tests only (NOT real events).
