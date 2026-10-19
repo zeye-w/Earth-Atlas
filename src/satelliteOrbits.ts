@@ -25,6 +25,8 @@ export const SATELLITE_CHOICES: readonly SatelliteChoice[] = [
 export const GP_CACHE_MS = 2 * 60 * 60 * 1000;
 export const MAX_ELEMENT_AGE_DAYS = 10;
 const STORAGE_KEY = "earth-atlas-orbits-omm-v1";
+let memoryCache: { at: number; records: GPRecord[] } | null = null;
+let pendingRequest: Promise<OrbitalCatalog> | null = null;
 const BASE_URL = "https://celestrak.org/NORAD/elements/gp.php";
 const REMOTE_QUERIES = ["GROUP=STATIONS", ...SATELLITE_CHOICES.filter((item) => item.category !== "station").map((item) => "CATNR=" + item.noradId)];
 
@@ -119,18 +121,25 @@ export function formatEpoch(epoch: Date): string {
   return epoch.toISOString().replace("T", " ").slice(0, 16) + " UTC";
 }
 function readCache(now: Date): { records: GPRecord[]; receivedAt: Date } | null {
+  if (memoryCache && now.getTime() - memoryCache.at >= 0 &&
+      now.getTime() - memoryCache.at < GP_CACHE_MS) {
+    return { receivedAt: new Date(memoryCache.at), records: memoryCache.records };
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const payload = JSON.parse(raw) as { at: number; records: unknown };
     if (!Number.isFinite(payload.at) || now.getTime() - payload.at >= GP_CACHE_MS ||
         payload.at > now.getTime() + 60_000) return null;
-    return { receivedAt: new Date(payload.at), records: parseGPRecords(payload.records) };
+    const records = parseGPRecords(payload.records);
+    memoryCache = { at: payload.at, records };
+    return { receivedAt: new Date(payload.at), records };
   } catch {
     return null;
   }
 }
 function saveCache(records: GPRecord[], now: Date): void {
+  memoryCache = { at: now.getTime(), records };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ at: now.getTime(), records }));
   } catch {
@@ -141,16 +150,11 @@ function saveCache(records: GPRecord[], now: Date): void {
  * Fails only if no usable orbits are available. Individual CelesTrak endpoints
  * may return [] for decayed satellites and do not block the others.
  */
-export async function fetchSatelliteCatalog(signal?: AbortSignal): Promise<OrbitalCatalog> {
+async function refreshSatelliteCatalog(): Promise<OrbitalCatalog> {
   const now = new Date();
-  const cached = readCache(now);
-  if (cached) {
-    return { receivedAt: cached.receivedAt, satellites: convertGPRecords(cached.records, now) };
-  }
   const results = await Promise.allSettled(REMOTE_QUERIES.map(async (query) => {
     const response = await fetch(BASE_URL + "?" + query + "&FORMAT=JSON", {
       headers: { Accept: "application/json" },
-      signal,
     });
     if (!response.ok) throw new Error("CelesTrak HTTP " + response.status);
     if (!/json/i.test(response.headers.get("content-type") ?? "")) {
@@ -158,10 +162,25 @@ export async function fetchSatelliteCatalog(signal?: AbortSignal): Promise<Orbit
     }
     return parseGPRecords(await response.json());
   }));
-  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   const records = results.flatMap((result) => result.status === "fulfilled" ? result.value : []);
   const satellites = convertGPRecords(records, now);
   if (satellites.length === 0) throw new Error("No current orbital elements available from CelesTrak");
   saveCache(records, now);
   return { satellites, receivedAt: now };
+}
+/**
+ * Share in-flight work across StrictMode mount cycles and rapid toggles.
+ * Let the small request finish and populate the two-hour cache even if the
+ * overlay is closed; callers guard UI updates with an active flag.
+ */
+export function fetchSatelliteCatalog(): Promise<OrbitalCatalog> {
+  const now = new Date();
+  const cached = readCache(now);
+  if (cached) {
+    const satellites = convertGPRecords(cached.records, now);
+    if (satellites.length) return Promise.resolve({ receivedAt: cached.receivedAt, satellites });
+  }
+  if (pendingRequest) return pendingRequest;
+  pendingRequest = refreshSatelliteCatalog().finally(() => { pendingRequest = null; });
+  return pendingRequest;
 }
