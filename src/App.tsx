@@ -335,6 +335,59 @@ function App() {
     viewer.scene.requestRender();
   }, [dayNightEnabled]);
 
+  // Native sky and ground scattering without a decorative mesh.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = atmosphereVisible;
+    viewer.scene.globe.showGroundAtmosphere = atmosphereVisible;
+    viewer.scene.requestRender();
+  }, [atmosphereVisible]);
+
+  // Lazy loading and two-hour orbital-data cache; no network when disabled.
+  // Six satellites, updates every five seconds, not every WebGL frame.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) return;
+    if (!satellitesVisible) {
+      satelliteOverlayRef.current?.dispose();
+      satelliteOverlayRef.current = null;
+      setSatelliteStatus("idle");
+      return;
+    }
+    let active = true;
+    let interval: number | null = null;
+    const controller = new AbortController();
+    setSatelliteStatus("loading");
+    void fetchSatelliteCatalog(controller.signal).then(({ satellites }) => {
+      if (!active || viewer.isDestroyed()) return;
+      satelliteOverlayRef.current?.dispose();
+      const overlay = new SatelliteOverlay(viewer, satellites, satellitePathsVisible);
+      satelliteOverlayRef.current = overlay;
+      setSatelliteCatalog(satellites.map(({ choice, epoch }) => ({ choice, epoch })));
+      setSatelliteStatus(overlay.count > 0 ? "ready" : "error");
+      interval = window.setInterval(() => {
+        if (document.visibilityState === "visible") overlay.update(new Date());
+      }, SATELLITE_UPDATE_MS);
+    }).catch((error: unknown) => {
+      if (!active || controller.signal.aborted) return;
+      console.warn("Satellite elements unavailable; no fabricated orbit rendered.", error);
+      setSatelliteStatus("error");
+      setSatelliteCatalog([]);
+    });
+    return () => {
+      active = false;
+      controller.abort();
+      if (interval !== null) window.clearInterval(interval);
+      satelliteOverlayRef.current?.dispose();
+      satelliteOverlayRef.current = null;
+    };
+  }, [satellitesVisible]);
+
+  useEffect(() => {
+    satelliteOverlayRef.current?.togglePaths(satellitePathsVisible);
+  }, [satellitePathsVisible]);
+
   // Cesium's current MVTDataProvider creates its whole tile hierarchy eagerly:
   // Keep the global tree at z0..z5 (1,365 nodes). Higher regional detail stays in raster imagery.
   useEffect(() => {
