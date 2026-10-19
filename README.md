@@ -12,7 +12,7 @@ The first-load Earth experience prioritizes NASA Blue Marble / Natural Earth ima
 
 **Important cities:** A bounded hand-curated WGS84 marker set of approximately 50 prominent world cities displays approximate city-centre positions. Primary labels are visible in global views, and secondary labels appear only at regional zoom to reduce clutter. The list is an illustrative selection, **not** a definitive population ranking or authoritative municipal-boundary centroid dataset. Labels are depth-tested against the globe and can be turned off independently. No paid city map service or tracking API is used.
 
-**Northern aurora (illustrative):** animated translucent curtains are drawn around the IGRF geomagnetic north pole at typical auroral-oval distances (~20–23°) and altitudes (~95–330 km), and fade out on the sunlit side using the real sun direction. They are an artistic illustration only, **not** an aurora observation or forecast (e.g. NOAA OVATION); the layer can be turned off.
+**Northern aurora (NOAA OVATION):** the aurora layer reads NOAA SWPC's OVATION nowcast (`services.swpc.noaa.gov/json/ovation_aurora_latest.json`, a 1° grid of visible-aurora probability, refreshed here every 10 minutes). For each longitude the curtain is drawn at the probability-weighted latitude of the northern oval (95–330 km altitude), with brightness from the peak probability there; the ripple animation and colours are stylistic. Curtains fade on the sunlit side. If the feed is unavailable nothing is drawn, and the panel says so.
 
 ## Features
 

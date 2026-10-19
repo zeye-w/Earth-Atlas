@@ -1,28 +1,51 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { GEOMAGNETIC_POLE, auroralRing, destination } from "../src/aurora.ts";
+import { Cartesian3 } from "cesium";
+import { AURORA_THRESHOLD, northernProfile, parseOvation } from "../src/auroraData.ts";
+import { intensityAlongRing, profileRing } from "../src/aurora.ts";
 
-function angularDistanceDeg(a, b) {
-  const r = Math.PI / 180;
-  const cos = Math.sin(a.latitude * r) * Math.sin(b.latitude * r) +
-    Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.cos((a.longitude - b.longitude) * r);
-  return Math.acos(Math.min(1, Math.max(-1, cos))) / r;
+// Synthetic OVATION-shaped payload for parser/geometry tests only (NOT NOAA
+// data): an oval peaking at 67 deg N, strong on the night side (lon 180-359).
+function syntheticPayload({ quiet = false } = {}) {
+  const coordinates = [];
+  for (let lon = 0; lon < 360; lon++) {
+    for (let lat = -90; lat <= 90; lat++) {
+      const peak = quiet ? 1 : (lon >= 180 ? 40 : 8);
+      coordinates.push([lon, lat, Math.max(0, peak - 12 * Math.abs(lat - 67))]);
+    }
+  }
+  return { "Observation Time": "2026-10-19T04:00:00Z", "Forecast Time": "2026-10-19T04:35:00Z", "Data Format": "[Longitude, Latitude, Aurora]", coordinates };
 }
 
-test("destination keeps the requested angular distance from the origin", () => {
-  const origin = { latitude: GEOMAGNETIC_POLE.latitude, longitude: GEOMAGNETIC_POLE.longitude };
-  for (const bearing of [0, 90, 180, 270]) {
-    const point = destination(origin.latitude, origin.longitude, 20, bearing);
-    assert.ok(Math.abs(angularDistanceDeg(origin, point) - 20) < 1e-6);
-    assert.ok(point.longitude >= -180 && point.longitude < 180);
-  }
+test("OVATION parser reads the grid, times and maximum probability", () => {
+  const grid = parseOvation(syntheticPayload());
+  assert.equal(grid.values.length, 360 * 181);
+  assert.equal(grid.maxProbability, 40);
+  assert.equal(grid.forecastTime?.toISOString(), "2026-10-19T04:35:00.000Z");
+  assert.throws(() => parseOvation({ coordinates: [] }));
+  assert.throws(() => parseOvation(null));
 });
 
-test("auroral ring is closed and stays at auroral-oval latitudes", () => {
-  const coords = auroralRing(20.5, 90);
-  assert.equal(coords.length, 91 * 2);
-  assert.deepEqual(coords.slice(0, 2).map((v) => v.toFixed(6)), coords.slice(-2).map((v) => v.toFixed(6)));
-  for (let i = 1; i < coords.length; i += 2) {
-    assert.ok(coords[i] > 55 && coords[i] < 85, "latitude " + coords[i]);
-  }
+test("northern profile follows the oval latitude and scales brightness by probability", () => {
+  const profile = northernProfile(parseOvation(syntheticPayload()));
+  assert.ok(profile);
+  assert.equal(profile.latitudes.length, 360);
+  assert.ok(profile.latitudes.every((lat) => Math.abs(lat - 67) < 0.5));
+  assert.ok(profile.intensities[270] > profile.intensities[90], "night-side oval brighter");
+  assert.ok(profile.intensities.every((v) => v >= 0 && v <= 1));
+});
+
+test("no aurora is drawn when nothing exceeds the threshold", () => {
+  assert.ok(AURORA_THRESHOLD > 1);
+  assert.equal(northernProfile(parseOvation(syntheticPayload({ quiet: true }))), null);
+});
+
+test("ring is closed and brightness texture follows the ring", () => {
+  const profile = northernProfile(parseOvation(syntheticPayload()));
+  const coords = profileRing(profile);
+  assert.equal(coords.length, 361 * 2);
+  assert.equal(coords[1], coords[coords.length - 1]);
+  const positions = Cartesian3.fromDegreesArray(coords);
+  const texture = intensityAlongRing(positions, profile, 360);
+  assert.ok(texture[270] > texture[90]);
 });

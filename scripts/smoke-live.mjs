@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { parseGeologicalUnits } from "../src/geology.ts";
 import { parseLithologyDictionary } from "../src/lithology.ts";
+import { OVATION_URL, northernProfile, parseOvation } from "../src/auroraData.ts";
 
 async function get(label, url, timeout = 20000) {
   const res = await fetch(url, {
@@ -85,6 +86,24 @@ try {
 } catch (error) {
   failed = true;
   console.error("LIVE_LITHOLOGY_FAILURE:", error);
+}
+
+try {
+  const response = await fetch(OVATION_URL, {
+    signal: AbortSignal.timeout(20000),
+    headers: { Accept: "application/json", Origin: "https://earth-atlas.edwardlab.workers.dev" },
+  });
+  const cors = response.headers.get("access-control-allow-origin") ?? "(missing)";
+  console.log("NOAA OVATION HTTP", response.status, "content-type", response.headers.get("content-type"), "Access-Control-Allow-Origin", cors);
+  assert.ok(response.ok, "NOAA OVATION HTTP " + response.status);
+  assert.ok(cors === "*" || cors === "https://earth-atlas.edwardlab.workers.dev", "NOAA OVATION CORS disallows deployed origin");
+  const grid = parseOvation(await response.json());
+  const profile = northernProfile(grid);
+  console.log("NOAA OVATION forecast:", grid.forecastTime?.toISOString(), "max probability:", grid.maxProbability,
+    "northern oval:", profile ? "lat range " + Math.min(...profile.latitudes).toFixed(1) + "-" + Math.max(...profile.latitudes).toFixed(1) : "none above threshold");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_NOAA_OVATION_FAILURE:", error);
 }
 
 const site = "https://earth-atlas.edwardlab.workers.dev";

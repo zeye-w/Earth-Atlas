@@ -34,6 +34,7 @@ import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type T
 import { RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, renderSettings, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
 import { AuroraOverlay } from "./aurora";
+import { OVATION_REFRESH_MS, fetchOvation, northernProfile } from "./auroraData";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "./satelliteOverlay";
@@ -118,6 +119,7 @@ function App() {
   const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
   const [atmosphereVisible, setAtmosphereVisible] = useState(true);
   const [auroraVisible, setAuroraVisible] = useState(true);
+  const [auroraStatus, setAuroraStatus] = useState<{ state: "idle" | "loading" | "ready" | "quiet" | "error"; forecast?: string; max?: number }>({ state: "idle" });
   const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
   const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
   const [satelliteStatus, setSatelliteStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -416,8 +418,32 @@ function App() {
     viewer.scene.requestRender();
   }, [dayNightEnabled]);
 
+  // NOAA OVATION nowcast; nothing is drawn when the data is unavailable.
   useEffect(() => {
     auroraRef.current?.setVisible(auroraVisible);
+    if (!auroraVisible) return;
+    const controller = new AbortController();
+    const load = () => {
+      setAuroraStatus((current) => current.state === "ready" ? current : { state: "loading" });
+      fetchOvation(controller.signal).then((grid) => {
+        if (controller.signal.aborted) return;
+        const profile = northernProfile(grid);
+        auroraRef.current?.setProfile(profile);
+        const forecast = grid.forecastTime ? grid.forecastTime.toISOString().slice(11, 16) + " UTC" : undefined;
+        setAuroraStatus({ state: profile ? "ready" : "quiet", forecast, max: Math.round(grid.maxProbability) });
+      }).catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        console.warn("NOAA OVATION unavailable; no aurora drawn.", error);
+        auroraRef.current?.setProfile(null);
+        setAuroraStatus({ state: "error" });
+      });
+    };
+    load();
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") load(); }, OVATION_REFRESH_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
   }, [auroraVisible]);
 
   // Native sky and ground scattering without a decorative mesh.
@@ -604,7 +630,15 @@ function App() {
               <summary><span>EARTH VIEW<small>地球视图</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={dayNightEnabled} onChange={setDayNightEnabled} />
               <ToggleRow icon={<Globe {...ICON} />} title="大气散射" caption="地球边缘的蓝色大气辉光" checked={atmosphereVisible} onChange={setAtmosphereVisible} />
-              <ToggleRow icon={<Sparkles {...ICON} />} title="北极极光（示意）" caption="地磁北极周围的极光带 · 仅夜侧可见" checked={auroraVisible} onChange={setAuroraVisible} />
+              <ToggleRow icon={<Sparkles {...ICON} />} title="北极极光" caption="NOAA OVATION 实时预报 · 夜侧可见" checked={auroraVisible} onChange={setAuroraVisible} />
+              {auroraVisible && auroraStatus.state !== "idle" && (
+                <p className="layer-status" role="status">
+                  {auroraStatus.state === "loading" ? "正在读取 NOAA 极光预报…" :
+                   auroraStatus.state === "error" ? "NOAA 极光数据暂不可用，未显示极光；不会绘制虚构极光。" :
+                   auroraStatus.state === "quiet" ? "当前预报无明显极光（最高可见概率 " + auroraStatus.max + "%）" :
+                   "预报时间 " + (auroraStatus.forecast ?? "—") + " · 最高可见概率 " + auroraStatus.max + "% · 亮度按概率显示"}
+                </p>
+              )}
               <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={cityLabelsVisible} onChange={setCityLabelsVisible} />
             </details>
 
@@ -695,7 +729,7 @@ function App() {
 
             <div className="sidebar-note">
               <Info size={14} className="note-icon" aria-hidden="true" />
-              <p>影像来自 NASA GIBS 与 Natural Earth，卫星轨道来自 CelesTrak，地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
+              <p>影像来自 NASA GIBS 与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
             </div>
           </div>
           <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.2</div>
@@ -709,7 +743,7 @@ function App() {
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>
-          <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
