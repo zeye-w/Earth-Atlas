@@ -336,3 +336,6 @@ h1 em { font-style:normal; color:var(--text-2); }
 @media(prefers-reduced-motion:reduce) {
   *, *:before, *:after { animation-duration:.01ms!important; transition-duration:.01ms!important; }
 }
+.cloud-controls { margin: 8px 0 16px; padding: 0 4px 0 12px; }
+.cloud-controls input[type="range"] { width: 100%; }
+.cloud-controls > a { font-size: 10px; color: var(--text-2); }
