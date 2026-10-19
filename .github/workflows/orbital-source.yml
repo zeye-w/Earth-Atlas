@@ -1,10 +1,5 @@
 name: Orbital Source Check
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "scripts/inspect-orbital-source.mjs"
-      - ".github/workflows/orbital-source.yml"
   workflow_dispatch:
 permissions:
   contents: read
