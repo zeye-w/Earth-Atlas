@@ -24,7 +24,7 @@ import {
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import {
-  Activity, ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
+  Search, Share2, Activity, ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
   Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, Triangle, Waypoints, X,
 } from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
@@ -45,6 +45,8 @@ import { KP_REFRESH_MS, fetchGeomagnetic, kpLevel, type GeomagneticState } from 
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "./satelliteOverlay";
+import { PlaceSearch } from "./LocationSearch";
+import { readScene, sceneHash, type SceneState } from "./sceneState";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -110,14 +112,23 @@ function ToggleRow({ icon, title, caption, checked, onChange }: ToggleRowProps) 
 }
 
 function App() {
+  const [initialScene] = useState(() => readScene(window.location.hash));
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!searchOpen && !shareUrl) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") { setSearchOpen(false); setShareUrl(null); } };
+    document.addEventListener("keydown",close);
+    return () => document.removeEventListener("keydown",close);
+  }, [searchOpen,shareUrl]);
   const shellRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
   const cloudLayerRef = useRef<ImageryLayer | null>(null);
-  const [cloudsVisible, setCloudsVisible] = useState(false);
-  const [cloudOpacity, setCloudOpacity] = useState(65);
+  const [cloudsVisible, setCloudsVisible] = useState(initialScene?.layers.clouds ?? false);
+  const [cloudOpacity, setCloudOpacity] = useState(initialScene?.options.cloudOpacity ?? 65);
   const cloudOpacityRef = useRef(cloudOpacity);
   cloudOpacityRef.current = cloudOpacity;
   const [cloudStatus, setCloudStatus] = useState("idle");
@@ -139,19 +150,19 @@ function App() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [geologyVisible, setGeologyVisible] = useState(false);
-  const [dayNightEnabled, setDayNightEnabled] = useState(true);
-  const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
-  const [atmosphereVisible, setAtmosphereVisible] = useState(true);
-  const [auroraVisible, setAuroraVisible] = useState(true);
-  const [cityLightsVisible, setCityLightsVisible] = useState(true);
-  const [quakesVisible, setQuakesVisible] = useState(false);
-  const [quakeRange, setQuakeRange] = useState<QuakeRange>("week");
+  const [geologyVisible, setGeologyVisible] = useState(initialScene?.layers.geology ?? false);
+  const [dayNightEnabled, setDayNightEnabled] = useState(initialScene?.layers.dayNight ?? true);
+  const [cityLabelsVisible, setCityLabelsVisible] = useState(initialScene?.layers.cities ?? true);
+  const [atmosphereVisible, setAtmosphereVisible] = useState(initialScene?.layers.atmosphere ?? true);
+  const [auroraVisible, setAuroraVisible] = useState(initialScene?.layers.aurora ?? true);
+  const [cityLightsVisible, setCityLightsVisible] = useState(initialScene?.layers.lights ?? true);
+  const [quakesVisible, setQuakesVisible] = useState(initialScene?.layers.quakes ?? false);
+  const [quakeRange, setQuakeRange] = useState<QuakeRange>(initialScene?.options.quakeRange ?? "week");
   const [quakeStatus, setQuakeStatus] = useState<{ state: "idle" | "loading" | "ready" | "error"; count?: number; largest?: Earthquake }>({ state: "idle" });
   const [selectedQuake, setSelectedQuake] = useState<Earthquake | null>(null);
-  const [platesVisible, setPlatesVisible] = useState(false);
+  const [platesVisible, setPlatesVisible] = useState(initialScene?.layers.plates ?? false);
   const [plateStatus, setPlateStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [volcanoesVisible, setVolcanoesVisible] = useState(false);
+  const [volcanoesVisible, setVolcanoesVisible] = useState(initialScene?.layers.volcanoes ?? false);
   const [volcanoInfo, setVolcanoInfo] = useState<{ state: "idle" | "loading" | "ready" | "error"; total?: number; recent?: number; retrieved?: string }>({ state: "idle" });
   const [selectedVolcano, setSelectedVolcano] = useState<Volcano | null>(null);
   const [geomagnetic, setGeomagnetic] = useState<{ state: "idle" | "loading" | "ready" | "error"; data?: GeomagneticState }>({ state: "idle" });
@@ -162,8 +173,8 @@ function App() {
   renderQualityRef.current = renderQuality;
   autoQualityRef.current = autoQuality;
   const [auroraStatus, setAuroraStatus] = useState<{ state: "idle" | "loading" | "ready" | "quiet" | "error"; forecast?: string; max?: number }>({ state: "idle" });
-  const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
-  const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
+  const [satellitesVisible, setSatellitesVisible] = useState(() => initialScene?.layers.satellites ?? (typeof window !== "undefined" && window.innerWidth >= 760));
+  const [satellitePathsVisible, setSatellitePathsVisible] = useState(initialScene?.layers.paths ?? true);
   const [satelliteStatus, setSatelliteStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [satelliteCatalog, setSatelliteCatalog] = useState<Array<{ choice: SatelliteChoice; epochLabel: string }>>([]);
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
@@ -171,10 +182,10 @@ function App() {
   const [satelliteSpeed, setSatelliteSpeed] = useState<SatelliteSpeed>(1);
   const satelliteSpeedRef = useRef<SatelliteSpeed>(1);
   const [utcTime, setUtcTime] = useState(() => new Date().toISOString().slice(11, 16));
-  const [opacity, setOpacity] = useState(90);
-  const [mapMode, setMapMode] = useState<ThematicMode>("raster");
-  const [ageFilter, setAgeFilter] = useState<AgeFilter>("all");
-  const [rockFilter, setRockFilter] = useState<RockFilter>("all");
+  const [opacity, setOpacity] = useState(initialScene?.options.opacity ?? 90);
+  const [mapMode, setMapMode] = useState<ThematicMode>(initialScene?.options.mapMode ?? "raster");
+  const [ageFilter, setAgeFilter] = useState<AgeFilter>(initialScene?.options.ageFilter ?? "all");
+  const [rockFilter, setRockFilter] = useState<RockFilter>(initialScene?.options.rockFilter ?? "all");
   const [vectorState, setVectorState] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
   const [geologicalUnits, setGeologicalUnits] = useState<GeologicalUnit[]>([]);
@@ -324,7 +335,10 @@ function App() {
         setUtcTime(now.toISOString().slice(11, 16));
         viewer.scene.requestRender();
       }, 60_000);
-      viewer.camera.setView({ destination: HOME_VIEW });
+      if (initialScene) {
+        const [lon, lat, height, heading, pitch, roll] = initialScene.camera;
+        viewer.camera.setView({ destination: Cartesian3.fromDegrees(lon, lat, height), orientation: { heading, pitch, roll } });
+      } else viewer.camera.setView({ destination: HOME_VIEW });
       const removeSplashListener = scene.postRender.addEventListener(() => {
         if (!scene.globe.tilesLoaded) return;
         removeSplashListener();
@@ -431,26 +445,7 @@ function App() {
         const cartographic = Cartographic.fromCartesian(position);
         const latitude = CesiumMath.toDegrees(cartographic.latitude);
         const longitude = CesiumMath.toDegrees(cartographic.longitude);
-        setSelectedQuake(null);
-        setSelectedVolcano(null);
-        setCoordinates({ latitude, longitude });
-        setDetailsOpen(true);
-        if (window.innerWidth < 760) setControlsOpen(false);
-        setGeologicalUnits([]);
-        setSelectedUnitIndex(0);
-        setStatus("loading");
-        controllerRef.current?.abort();
-        const controller = new AbortController();
-        controllerRef.current = controller;
-        void queryGeology(latitude, longitude, controller.signal)
-          .then((units) => {
-            if (controller.signal.aborted) return;
-            setGeologicalUnits(units);
-            setStatus(units.length ? "success" : "empty");
-          })
-          .catch(() => {
-            if (!controller.signal.aborted) setStatus("error");
-          });
+        selectLocation(latitude, longitude);
       }, ScreenSpaceEventType.LEFT_CLICK);
     } catch (error) {
       setGlobeError(error instanceof Error ? error.message : "3D globe initialization failed");
@@ -832,6 +827,53 @@ function App() {
     return () => { active = false; };
   }, [status, geologicalUnits, lithologyDictionary]);
 
+  const selectLocation = (latitude: number, longitude: number) => {
+        setSelectedQuake(null);
+        setSelectedVolcano(null);
+        setCoordinates({ latitude, longitude });
+        setDetailsOpen(true);
+        if (window.innerWidth < 760) setControlsOpen(false);
+        setGeologicalUnits([]);
+        setSelectedUnitIndex(0);
+        setStatus("loading");
+        controllerRef.current?.abort();
+        const controller = new AbortController();
+        controllerRef.current = controller;
+        void queryGeology(latitude, longitude, controller.signal)
+          .then((units) => {
+            if (controller.signal.aborted) return;
+            setGeologicalUnits(units);
+            setStatus(units.length ? "success" : "empty");
+          })
+          .catch(() => {
+            if (!controller.signal.aborted) setStatus("error");
+          });
+  };
+
+  useEffect(() => {
+    if (initialScene?.point) selectLocation(initialScene.point.latitude, initialScene.point.longitude);
+  }, [initialScene]);
+
+  const shareScene = async () => {
+    const viewer = viewerRef.current;
+    if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
+    const camera = viewer.camera;
+    const position = camera.positionCartographic;
+    const point = selectedVolcano ? {latitude:selectedVolcano.lat,longitude:selectedVolcano.lon} : selectedQuake ? {latitude:selectedQuake.latitude,longitude:selectedQuake.longitude} : coordinates;
+    const scene: SceneState = {
+      v:1,
+      camera:[CesiumMath.toDegrees(position.longitude),CesiumMath.toDegrees(position.latitude),Math.max(15000, Math.min(65000000,position.height)),camera.heading,camera.pitch,camera.roll],
+      layers:{clouds:cloudsVisible,geology:geologyVisible,dayNight:dayNightEnabled,cities:cityLabelsVisible,atmosphere:atmosphereVisible,aurora:auroraVisible,lights:cityLightsVisible,quakes:quakesVisible,plates:platesVisible,volcanoes:volcanoesVisible,satellites:satellitesVisible,paths:satellitePathsVisible},
+      point:point ?? undefined,
+      options:{cloudOpacity,opacity,mapMode,ageFilter,rockFilter,quakeRange},
+    };
+    const url = new URL(window.location.href);
+    try { url.hash = sceneHash(scene); } catch { setToast("当前视角无法分享，请调整视角后重试"); return; }
+    setShareUrl(url.toString());
+    try { await navigator.clipboard.writeText(url.toString()); setToast("场景链接已复制"); }
+    catch { setToast("请在分享框中手动复制链接"); }
+  };
+
   const flyTo = (region: Region) => {
     const viewer = viewerRef.current;
     if (!viewer || viewer.isDestroyed()) return;
@@ -852,6 +894,22 @@ function App() {
 
   return (
     <div ref={shellRef} className={"app-shell quality-" + renderQuality}>
+      {searchOpen && <section id="place-search-panel" className="scene-tool-panel glass-panel" aria-label="地点搜索">
+        <button className="tool-close" type="button" aria-label="关闭搜索" onClick={() => setSearchOpen(false)}><X size={16} /></button>
+        <PlaceSearch onSelect={place => {
+          const viewer = viewerRef.current;
+          if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
+          viewer.camera.flyTo({destination:Cartesian3.fromDegrees(place.longitude,place.latitude,place.height),duration:1.5});
+          selectLocation(place.latitude,place.longitude);
+          setSearchOpen(false);
+        }} />
+      </section>}
+      {shareUrl && <section className="scene-tool-panel share-panel glass-panel" role="dialog" aria-label="分享当前场景">
+        <button className="tool-close" type="button" aria-label="关闭分享" onClick={() => setShareUrl(null)}><X size={16} /></button>
+        <label htmlFor="scene-share-url">分享当前场景</label>
+        <input id="scene-share-url" readOnly value={shareUrl} onFocus={event => event.currentTarget.select()} />
+        <p className="search-hint">链接保存视角、图层和所选坐标。观测与预报数据会更新，不是历史快照。</p>
+      </section>}
       <header className="topbar">
         <a className="brand" href="/" aria-label="TerraScope 首页">
           <span className="brand-symbol" aria-hidden="true"><Orbit size={18} strokeWidth={1.6} /></span>
@@ -862,6 +920,8 @@ function App() {
         <div className="header-right">
           <span className="online-indicator"><span /> LIVE · {utcTime} UTC</span>
           <div className="header-actions" role="group" aria-label="页面视图控制">
+            <button type="button" className="header-action" aria-label="搜索地点" aria-expanded={searchOpen} aria-controls="place-search-panel" onClick={() => setSearchOpen(open => !open)}><Search {...ICON} /><span className="action-caption">搜索</span></button>
+            <button type="button" className="header-action" aria-label="分享当前场景" onClick={() => void shareScene()}><Share2 {...ICON} /><span className="action-caption">分享</span></button>
             <button type="button" className={"header-action" + (controlsOpen ? " active" : "")} onClick={toggleControls} aria-label="图层" aria-expanded={controlsOpen} aria-controls="earth-layer-panel">
               <Layers {...ICON} aria-hidden="true" /><span className="action-caption">图层</span>
             </button>

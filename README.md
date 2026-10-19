@@ -154,3 +154,9 @@ The optional “卫星云图（红外）” layer uses the SSEC / UW–Madison R
 This is infrared imagery containing cloud and surface signals, not a cloud mask, cloud height, or cloud fraction measurement. Cold surfaces, polar coverage and composite seams can be misleading. The imagery is draped on the globe, not a volumetric cloud model. Errors are displayed; no synthetic replacement is generated.
 
 RealEarth free access has pixel-volume and website-registration/watermark restrictions. Preserve provider attribution and watermarks. Review https://www.ssec.wisc.edu/realearth/realearth-pro/ before high-volume deployment. The browser calls the provider directly; no proxy is used to bypass quotas.
+
+## Location search and scene links
+
+Use the header search to find cities, countries/territories, or latitude-first decimal coordinates (`39.9, 116.4`). Countries use bundled representative coordinates from [mledoze/countries](https://github.com/mledoze/countries), licensed under ODbL (see `src/data/countries.LICENSE`); these are navigation targets, not boundary or sovereignty determinations. Cities use the curated local list and [Open-Meteo / GeoNames](https://open-meteo.com/en/docs/geocoding-api). Online city searches send the entered search term to that service; the free API is for non-commercial use. Country and coordinate searches work locally.
+
+Share captures camera longitude/latitude/height and orientation, all layer switches, cloud/geology opacity, thematic filters, earthquake time range, and selected location coordinates in a versioned URL fragment. Open a shared link to restore that scene and re-query the selected coordinate. Event selections are shared as their location, not a frozen event record. Live observations, predictions, and catalogs continue updating; a scene link is not a historical data snapshot. Invalid links safely retain normal defaults. If clipboard access is unavailable, copy the URL from the share field.

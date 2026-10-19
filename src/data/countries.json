@@ -1,0 +1,2252 @@
+[
+  {
+    "code": "AW",
+    "name": "Aruba",
+    "official": "Aruba",
+    "chinese": "阿鲁巴",
+    "lat": 12.5,
+    "lon": -69.96666666,
+    "area": 180
+  },
+  {
+    "code": "AF",
+    "name": "Afghanistan",
+    "official": "Islamic Republic of Afghanistan",
+    "chinese": "阿富汗",
+    "lat": 33,
+    "lon": 65,
+    "area": 652230
+  },
+  {
+    "code": "AO",
+    "name": "Angola",
+    "official": "Republic of Angola",
+    "chinese": "安哥拉",
+    "lat": -12.5,
+    "lon": 18.5,
+    "area": 1246700
+  },
+  {
+    "code": "AI",
+    "name": "Anguilla",
+    "official": "Anguilla",
+    "chinese": "安圭拉",
+    "lat": 18.25,
+    "lon": -63.16666666,
+    "area": 91
+  },
+  {
+    "code": "AX",
+    "name": "Åland Islands",
+    "official": "Åland Islands",
+    "chinese": "奥兰群岛",
+    "lat": 60.116667,
+    "lon": 19.9,
+    "area": 1580
+  },
+  {
+    "code": "AL",
+    "name": "Albania",
+    "official": "Republic of Albania",
+    "chinese": "阿尔巴尼亚",
+    "lat": 41,
+    "lon": 20,
+    "area": 28748
+  },
+  {
+    "code": "AD",
+    "name": "Andorra",
+    "official": "Principality of Andorra",
+    "chinese": "安道尔",
+    "lat": 42.5,
+    "lon": 1.5,
+    "area": 468
+  },
+  {
+    "code": "AE",
+    "name": "United Arab Emirates",
+    "official": "United Arab Emirates",
+    "chinese": "阿拉伯联合酋长国",
+    "lat": 24,
+    "lon": 54,
+    "area": 83600
+  },
+  {
+    "code": "AR",
+    "name": "Argentina",
+    "official": "Argentine Republic",
+    "chinese": "阿根廷",
+    "lat": -34,
+    "lon": -64,
+    "area": 2780400
+  },
+  {
+    "code": "AM",
+    "name": "Armenia",
+    "official": "Republic of Armenia",
+    "chinese": "亚美尼亚",
+    "lat": 40,
+    "lon": 45,
+    "area": 29743
+  },
+  {
+    "code": "AS",
+    "name": "American Samoa",
+    "official": "American Samoa",
+    "chinese": "美属萨摩亚",
+    "lat": -14.33333333,
+    "lon": -170,
+    "area": 199
+  },
+  {
+    "code": "AQ",
+    "name": "Antarctica",
+    "official": "Antarctica",
+    "chinese": "南极洲",
+    "lat": -90,
+    "lon": 0,
+    "area": 14000000
+  },
+  {
+    "code": "TF",
+    "name": "French Southern and Antarctic Lands",
+    "official": "Territory of the French Southern and Antarctic Lands",
+    "chinese": "法国南部和南极土地",
+    "lat": -49.25,
+    "lon": 69.167,
+    "area": 7747
+  },
+  {
+    "code": "AG",
+    "name": "Antigua and Barbuda",
+    "official": "Antigua and Barbuda",
+    "chinese": "安提瓜和巴布达",
+    "lat": 17.05,
+    "lon": -61.8,
+    "area": 442
+  },
+  {
+    "code": "AU",
+    "name": "Australia",
+    "official": "Commonwealth of Australia",
+    "chinese": "澳大利亚",
+    "lat": -27,
+    "lon": 133,
+    "area": 7692024
+  },
+  {
+    "code": "AT",
+    "name": "Austria",
+    "official": "Republic of Austria",
+    "chinese": "奥地利",
+    "lat": 47.33333333,
+    "lon": 13.33333333,
+    "area": 83871
+  },
+  {
+    "code": "AZ",
+    "name": "Azerbaijan",
+    "official": "Republic of Azerbaijan",
+    "chinese": "阿塞拜疆",
+    "lat": 40.5,
+    "lon": 47.5,
+    "area": 86600
+  },
+  {
+    "code": "BI",
+    "name": "Burundi",
+    "official": "Republic of Burundi",
+    "chinese": "布隆迪",
+    "lat": -3.5,
+    "lon": 30,
+    "area": 27834
+  },
+  {
+    "code": "BE",
+    "name": "Belgium",
+    "official": "Kingdom of Belgium",
+    "chinese": "比利时",
+    "lat": 50.83333333,
+    "lon": 4,
+    "area": 30528
+  },
+  {
+    "code": "BJ",
+    "name": "Benin",
+    "official": "Republic of Benin",
+    "chinese": "贝宁",
+    "lat": 9.5,
+    "lon": 2.25,
+    "area": 112622
+  },
+  {
+    "code": "BF",
+    "name": "Burkina Faso",
+    "official": "Burkina Faso",
+    "chinese": "布基纳法索",
+    "lat": 13,
+    "lon": -2,
+    "area": 272967
+  },
+  {
+    "code": "BD",
+    "name": "Bangladesh",
+    "official": "People's Republic of Bangladesh",
+    "chinese": "孟加拉国",
+    "lat": 24,
+    "lon": 90,
+    "area": 147570
+  },
+  {
+    "code": "BG",
+    "name": "Bulgaria",
+    "official": "Republic of Bulgaria",
+    "chinese": "保加利亚",
+    "lat": 43,
+    "lon": 25,
+    "area": 110879
+  },
+  {
+    "code": "BH",
+    "name": "Bahrain",
+    "official": "Kingdom of Bahrain",
+    "chinese": "巴林",
+    "lat": 26,
+    "lon": 50.55,
+    "area": 765
+  },
+  {
+    "code": "BS",
+    "name": "Bahamas",
+    "official": "Commonwealth of the Bahamas",
+    "chinese": "巴哈马",
+    "lat": 24.25,
+    "lon": -76,
+    "area": 13943
+  },
+  {
+    "code": "BA",
+    "name": "Bosnia and Herzegovina",
+    "official": "Bosnia and Herzegovina",
+    "chinese": "波斯尼亚和黑塞哥维那",
+    "lat": 44,
+    "lon": 18,
+    "area": 51209
+  },
+  {
+    "code": "BL",
+    "name": "Saint Barthélemy",
+    "official": "Collectivity of Saint Barthélemy",
+    "chinese": "圣巴泰勒米",
+    "lat": 18.5,
+    "lon": -63.41666666,
+    "area": 21
+  },
+  {
+    "code": "SH",
+    "name": "Saint Helena, Ascension and Tristan da Cunha",
+    "official": "Saint Helena, Ascension and Tristan da Cunha",
+    "chinese": "圣赫勒拿、阿森松和特里斯坦-达库尼亚",
+    "lat": -15.95,
+    "lon": -5.72,
+    "area": 394
+  },
+  {
+    "code": "BY",
+    "name": "Belarus",
+    "official": "Republic of Belarus",
+    "chinese": "白俄罗斯",
+    "lat": 53,
+    "lon": 28,
+    "area": 207600
+  },
+  {
+    "code": "BZ",
+    "name": "Belize",
+    "official": "Belize",
+    "chinese": "伯利兹",
+    "lat": 17.25,
+    "lon": -88.75,
+    "area": 22966
+  },
+  {
+    "code": "BM",
+    "name": "Bermuda",
+    "official": "Bermuda",
+    "chinese": "百慕大",
+    "lat": 32.33333333,
+    "lon": -64.75,
+    "area": 54
+  },
+  {
+    "code": "BO",
+    "name": "Bolivia",
+    "official": "Plurinational State of Bolivia",
+    "chinese": "玻利维亚",
+    "lat": -17,
+    "lon": -65,
+    "area": 1098581
+  },
+  {
+    "code": "BQ",
+    "name": "Caribbean Netherlands",
+    "official": "Bonaire, Sint Eustatius and Saba",
+    "chinese": "荷蘭加勒比區",
+    "lat": 12.18,
+    "lon": -68.25,
+    "area": 328
+  },
+  {
+    "code": "BR",
+    "name": "Brazil",
+    "official": "Federative Republic of Brazil",
+    "chinese": "巴西",
+    "lat": -10,
+    "lon": -55,
+    "area": 8515767
+  },
+  {
+    "code": "BB",
+    "name": "Barbados",
+    "official": "Barbados",
+    "chinese": "巴巴多斯",
+    "lat": 13.16666666,
+    "lon": -59.53333333,
+    "area": 430
+  },
+  {
+    "code": "BN",
+    "name": "Brunei",
+    "official": "Nation of Brunei, Abode of Peace",
+    "chinese": "文莱",
+    "lat": 4.5,
+    "lon": 114.66666666,
+    "area": 5765
+  },
+  {
+    "code": "BT",
+    "name": "Bhutan",
+    "official": "Kingdom of Bhutan",
+    "chinese": "不丹",
+    "lat": 27.5,
+    "lon": 90.5,
+    "area": 38394
+  },
+  {
+    "code": "BV",
+    "name": "Bouvet Island",
+    "official": "Bouvet Island",
+    "chinese": "布维岛",
+    "lat": -54.43333333,
+    "lon": 3.4,
+    "area": 49
+  },
+  {
+    "code": "BW",
+    "name": "Botswana",
+    "official": "Republic of Botswana",
+    "chinese": "博茨瓦纳",
+    "lat": -22,
+    "lon": 24,
+    "area": 582000
+  },
+  {
+    "code": "CF",
+    "name": "Central African Republic",
+    "official": "Central African Republic",
+    "chinese": "中非共和国",
+    "lat": 7,
+    "lon": 21,
+    "area": 622984
+  },
+  {
+    "code": "CA",
+    "name": "Canada",
+    "official": "Canada",
+    "chinese": "加拿大",
+    "lat": 60,
+    "lon": -95,
+    "area": 9984670
+  },
+  {
+    "code": "CC",
+    "name": "Cocos (Keeling) Islands",
+    "official": "Territory of the Cocos (Keeling) Islands",
+    "chinese": "科科斯",
+    "lat": -12.5,
+    "lon": 96.83333333,
+    "area": 14
+  },
+  {
+    "code": "CH",
+    "name": "Switzerland",
+    "official": "Swiss Confederation",
+    "chinese": "瑞士",
+    "lat": 47,
+    "lon": 8,
+    "area": 41284
+  },
+  {
+    "code": "CL",
+    "name": "Chile",
+    "official": "Republic of Chile",
+    "chinese": "智利",
+    "lat": -30,
+    "lon": -71,
+    "area": 756102
+  },
+  {
+    "code": "CN",
+    "name": "China",
+    "official": "People's Republic of China",
+    "chinese": "中国",
+    "lat": 35,
+    "lon": 105,
+    "area": 9706961
+  },
+  {
+    "code": "CI",
+    "name": "Ivory Coast",
+    "official": "Republic of Côte d'Ivoire",
+    "chinese": "科特迪瓦",
+    "lat": 8,
+    "lon": -5,
+    "area": 322463
+  },
+  {
+    "code": "CM",
+    "name": "Cameroon",
+    "official": "Republic of Cameroon",
+    "chinese": "喀麦隆",
+    "lat": 6,
+    "lon": 12,
+    "area": 475442
+  },
+  {
+    "code": "CD",
+    "name": "DR Congo",
+    "official": "Democratic Republic of the Congo",
+    "chinese": "民主刚果",
+    "lat": 0,
+    "lon": 25,
+    "area": 2344858
+  },
+  {
+    "code": "CG",
+    "name": "Congo",
+    "official": "Republic of the Congo",
+    "chinese": "刚果",
+    "lat": -1,
+    "lon": 15,
+    "area": 342000
+  },
+  {
+    "code": "CK",
+    "name": "Cook Islands",
+    "official": "Cook Islands",
+    "chinese": "库克群岛",
+    "lat": -21.23333333,
+    "lon": -159.76666666,
+    "area": 236
+  },
+  {
+    "code": "CO",
+    "name": "Colombia",
+    "official": "Republic of Colombia",
+    "chinese": "哥伦比亚",
+    "lat": 4,
+    "lon": -72,
+    "area": 1141748
+  },
+  {
+    "code": "KM",
+    "name": "Comoros",
+    "official": "Union of the Comoros",
+    "chinese": "科摩罗",
+    "lat": -12.16666666,
+    "lon": 44.25,
+    "area": 1862
+  },
+  {
+    "code": "CV",
+    "name": "Cape Verde",
+    "official": "Republic of Cabo Verde",
+    "chinese": "佛得角",
+    "lat": 16,
+    "lon": -24,
+    "area": 4033
+  },
+  {
+    "code": "CR",
+    "name": "Costa Rica",
+    "official": "Republic of Costa Rica",
+    "chinese": "哥斯达黎加",
+    "lat": 10,
+    "lon": -84,
+    "area": 51100
+  },
+  {
+    "code": "CU",
+    "name": "Cuba",
+    "official": "Republic of Cuba",
+    "chinese": "古巴",
+    "lat": 21.5,
+    "lon": -80,
+    "area": 109884
+  },
+  {
+    "code": "CW",
+    "name": "Curaçao",
+    "official": "Country of Curaçao",
+    "chinese": "库拉索",
+    "lat": 12.116667,
+    "lon": -68.933333,
+    "area": 444
+  },
+  {
+    "code": "CX",
+    "name": "Christmas Island",
+    "official": "Territory of Christmas Island",
+    "chinese": "圣诞岛",
+    "lat": -10.5,
+    "lon": 105.66666666,
+    "area": 135
+  },
+  {
+    "code": "KY",
+    "name": "Cayman Islands",
+    "official": "Cayman Islands",
+    "chinese": "开曼群岛",
+    "lat": 19.5,
+    "lon": -80.5,
+    "area": 264
+  },
+  {
+    "code": "CY",
+    "name": "Cyprus",
+    "official": "Republic of Cyprus",
+    "chinese": "塞浦路斯",
+    "lat": 35,
+    "lon": 33,
+    "area": 9251
+  },
+  {
+    "code": "CZ",
+    "name": "Czechia",
+    "official": "Czech Republic",
+    "chinese": "捷克",
+    "lat": 49.75,
+    "lon": 15.5,
+    "area": 78865
+  },
+  {
+    "code": "DE",
+    "name": "Germany",
+    "official": "Federal Republic of Germany",
+    "chinese": "德国",
+    "lat": 51,
+    "lon": 9,
+    "area": 357114
+  },
+  {
+    "code": "DJ",
+    "name": "Djibouti",
+    "official": "Republic of Djibouti",
+    "chinese": "吉布提",
+    "lat": 11.5,
+    "lon": 43,
+    "area": 23200
+  },
+  {
+    "code": "DM",
+    "name": "Dominica",
+    "official": "Commonwealth of Dominica",
+    "chinese": "多米尼加",
+    "lat": 15.41666666,
+    "lon": -61.33333333,
+    "area": 751
+  },
+  {
+    "code": "DK",
+    "name": "Denmark",
+    "official": "Kingdom of Denmark",
+    "chinese": "丹麦",
+    "lat": 56,
+    "lon": 10,
+    "area": 43094
+  },
+  {
+    "code": "DO",
+    "name": "Dominican Republic",
+    "official": "Dominican Republic",
+    "chinese": "多明尼加",
+    "lat": 19,
+    "lon": -70.66666666,
+    "area": 48671
+  },
+  {
+    "code": "DZ",
+    "name": "Algeria",
+    "official": "People's Democratic Republic of Algeria",
+    "chinese": "阿尔及利亚",
+    "lat": 28,
+    "lon": 3,
+    "area": 2381741
+  },
+  {
+    "code": "EC",
+    "name": "Ecuador",
+    "official": "Republic of Ecuador",
+    "chinese": "厄瓜多尔",
+    "lat": -2,
+    "lon": -77.5,
+    "area": 276841
+  },
+  {
+    "code": "EG",
+    "name": "Egypt",
+    "official": "Arab Republic of Egypt",
+    "chinese": "埃及",
+    "lat": 27,
+    "lon": 30,
+    "area": 1002450
+  },
+  {
+    "code": "ER",
+    "name": "Eritrea",
+    "official": "State of Eritrea",
+    "chinese": "厄立特里亚",
+    "lat": 15,
+    "lon": 39,
+    "area": 117600
+  },
+  {
+    "code": "EH",
+    "name": "Western Sahara",
+    "official": "Sahrawi Arab Democratic Republic",
+    "chinese": "西撒哈拉",
+    "lat": 24.5,
+    "lon": -13,
+    "area": 266000
+  },
+  {
+    "code": "ES",
+    "name": "Spain",
+    "official": "Kingdom of Spain",
+    "chinese": "西班牙",
+    "lat": 40,
+    "lon": -4,
+    "area": 505992
+  },
+  {
+    "code": "EE",
+    "name": "Estonia",
+    "official": "Republic of Estonia",
+    "chinese": "爱沙尼亚",
+    "lat": 59,
+    "lon": 26,
+    "area": 45227
+  },
+  {
+    "code": "ET",
+    "name": "Ethiopia",
+    "official": "Federal Democratic Republic of Ethiopia",
+    "chinese": "埃塞俄比亚",
+    "lat": 8,
+    "lon": 38,
+    "area": 1104300
+  },
+  {
+    "code": "FI",
+    "name": "Finland",
+    "official": "Republic of Finland",
+    "chinese": "芬兰",
+    "lat": 64,
+    "lon": 26,
+    "area": 338424
+  },
+  {
+    "code": "FJ",
+    "name": "Fiji",
+    "official": "Republic of Fiji",
+    "chinese": "斐济",
+    "lat": -18,
+    "lon": 175,
+    "area": 18272
+  },
+  {
+    "code": "FK",
+    "name": "Falkland Islands",
+    "official": "Falkland Islands",
+    "chinese": "福克兰群岛",
+    "lat": -51.75,
+    "lon": -59,
+    "area": 12173
+  },
+  {
+    "code": "FR",
+    "name": "France",
+    "official": "French Republic",
+    "chinese": "法国",
+    "lat": 46,
+    "lon": 2,
+    "area": 551695
+  },
+  {
+    "code": "FO",
+    "name": "Faroe Islands",
+    "official": "Faroe Islands",
+    "chinese": "法罗群岛",
+    "lat": 62,
+    "lon": -7,
+    "area": 1393
+  },
+  {
+    "code": "FM",
+    "name": "Micronesia",
+    "official": "Federated States of Micronesia",
+    "chinese": "密克罗尼西亚",
+    "lat": 6.91666666,
+    "lon": 158.25,
+    "area": 702
+  },
+  {
+    "code": "GA",
+    "name": "Gabon",
+    "official": "Gabonese Republic",
+    "chinese": "加蓬",
+    "lat": -1,
+    "lon": 11.75,
+    "area": 267668
+  },
+  {
+    "code": "GB",
+    "name": "United Kingdom",
+    "official": "United Kingdom of Great Britain and Northern Ireland",
+    "chinese": "英国",
+    "lat": 54,
+    "lon": -2,
+    "area": 242900
+  },
+  {
+    "code": "GE",
+    "name": "Georgia",
+    "official": "Georgia",
+    "chinese": "格鲁吉亚",
+    "lat": 42,
+    "lon": 43.5,
+    "area": 69700
+  },
+  {
+    "code": "GG",
+    "name": "Guernsey",
+    "official": "Bailiwick of Guernsey",
+    "chinese": "根西岛",
+    "lat": 49.46666666,
+    "lon": -2.58333333,
+    "area": 78
+  },
+  {
+    "code": "GH",
+    "name": "Ghana",
+    "official": "Republic of Ghana",
+    "chinese": "加纳",
+    "lat": 8,
+    "lon": -2,
+    "area": 238533
+  },
+  {
+    "code": "GI",
+    "name": "Gibraltar",
+    "official": "Gibraltar",
+    "chinese": "直布罗陀",
+    "lat": 36.13333333,
+    "lon": -5.35,
+    "area": 6
+  },
+  {
+    "code": "GN",
+    "name": "Guinea",
+    "official": "Republic of Guinea",
+    "chinese": "几内亚",
+    "lat": 11,
+    "lon": -10,
+    "area": 245857
+  },
+  {
+    "code": "GP",
+    "name": "Guadeloupe",
+    "official": "Guadeloupe",
+    "chinese": "瓜德罗普岛",
+    "lat": 16.25,
+    "lon": -61.583333,
+    "area": 1628
+  },
+  {
+    "code": "GM",
+    "name": "Gambia",
+    "official": "Republic of the Gambia",
+    "chinese": "冈比亚",
+    "lat": 13.46666666,
+    "lon": -16.56666666,
+    "area": 10689
+  },
+  {
+    "code": "GW",
+    "name": "Guinea-Bissau",
+    "official": "Republic of Guinea-Bissau",
+    "chinese": "几内亚比绍",
+    "lat": 12,
+    "lon": -15,
+    "area": 36125
+  },
+  {
+    "code": "GQ",
+    "name": "Equatorial Guinea",
+    "official": "Republic of Equatorial Guinea",
+    "chinese": "赤道几内亚",
+    "lat": 2,
+    "lon": 10,
+    "area": 28051
+  },
+  {
+    "code": "GR",
+    "name": "Greece",
+    "official": "Hellenic Republic",
+    "chinese": "希腊",
+    "lat": 39,
+    "lon": 22,
+    "area": 131990
+  },
+  {
+    "code": "GD",
+    "name": "Grenada",
+    "official": "Grenada",
+    "chinese": "格林纳达",
+    "lat": 12.11666666,
+    "lon": -61.66666666,
+    "area": 344
+  },
+  {
+    "code": "GL",
+    "name": "Greenland",
+    "official": "Greenland",
+    "chinese": "格陵兰",
+    "lat": 72,
+    "lon": -40,
+    "area": 2166086
+  },
+  {
+    "code": "GT",
+    "name": "Guatemala",
+    "official": "Republic of Guatemala",
+    "chinese": "危地马拉",
+    "lat": 15.5,
+    "lon": -90.25,
+    "area": 108889
+  },
+  {
+    "code": "GF",
+    "name": "French Guiana",
+    "official": "Guiana",
+    "chinese": "法属圭亚那",
+    "lat": 4,
+    "lon": -53,
+    "area": 83534
+  },
+  {
+    "code": "GU",
+    "name": "Guam",
+    "official": "Guam",
+    "chinese": "关岛",
+    "lat": 13.46666666,
+    "lon": 144.78333333,
+    "area": 549
+  },
+  {
+    "code": "GY",
+    "name": "Guyana",
+    "official": "Co-operative Republic of Guyana",
+    "chinese": "圭亚那",
+    "lat": 5,
+    "lon": -59,
+    "area": 214969
+  },
+  {
+    "code": "HK",
+    "name": "Hong Kong",
+    "official": "Hong Kong Special Administrative Region of the People's Republic of China",
+    "chinese": "香港",
+    "lat": 22.267,
+    "lon": 114.188,
+    "area": 1104
+  },
+  {
+    "code": "HM",
+    "name": "Heard Island and McDonald Islands",
+    "official": "Heard Island and McDonald Islands",
+    "chinese": "赫德岛和麦当劳群岛",
+    "lat": -53.1,
+    "lon": 72.51666666,
+    "area": 412
+  },
+  {
+    "code": "HN",
+    "name": "Honduras",
+    "official": "Republic of Honduras",
+    "chinese": "洪都拉斯",
+    "lat": 15,
+    "lon": -86.5,
+    "area": 112492
+  },
+  {
+    "code": "HR",
+    "name": "Croatia",
+    "official": "Republic of Croatia",
+    "chinese": "克罗地亚",
+    "lat": 45.16666666,
+    "lon": 15.5,
+    "area": 56594
+  },
+  {
+    "code": "HT",
+    "name": "Haiti",
+    "official": "Republic of Haiti",
+    "chinese": "海地",
+    "lat": 19,
+    "lon": -72.41666666,
+    "area": 27750
+  },
+  {
+    "code": "HU",
+    "name": "Hungary",
+    "official": "Hungary",
+    "chinese": "匈牙利",
+    "lat": 47,
+    "lon": 20,
+    "area": 93028
+  },
+  {
+    "code": "ID",
+    "name": "Indonesia",
+    "official": "Republic of Indonesia",
+    "chinese": "印度尼西亚",
+    "lat": -5,
+    "lon": 120,
+    "area": 1904569
+  },
+  {
+    "code": "IM",
+    "name": "Isle of Man",
+    "official": "Isle of Man",
+    "chinese": "马恩岛",
+    "lat": 54.25,
+    "lon": -4.5,
+    "area": 572
+  },
+  {
+    "code": "IN",
+    "name": "India",
+    "official": "Republic of India",
+    "chinese": "印度",
+    "lat": 20,
+    "lon": 77,
+    "area": 3287590
+  },
+  {
+    "code": "IO",
+    "name": "British Indian Ocean Territory",
+    "official": "British Indian Ocean Territory",
+    "chinese": "英属印度洋领地",
+    "lat": -6,
+    "lon": 71.5,
+    "area": 60
+  },
+  {
+    "code": "IE",
+    "name": "Ireland",
+    "official": "Republic of Ireland",
+    "chinese": "爱尔兰",
+    "lat": 53,
+    "lon": -8,
+    "area": 70273
+  },
+  {
+    "code": "IR",
+    "name": "Iran",
+    "official": "Islamic Republic of Iran",
+    "chinese": "伊朗",
+    "lat": 32,
+    "lon": 53,
+    "area": 1648195
+  },
+  {
+    "code": "IQ",
+    "name": "Iraq",
+    "official": "Republic of Iraq",
+    "chinese": "伊拉克",
+    "lat": 33,
+    "lon": 44,
+    "area": 438317
+  },
+  {
+    "code": "IS",
+    "name": "Iceland",
+    "official": "Iceland",
+    "chinese": "冰岛",
+    "lat": 65,
+    "lon": -18,
+    "area": 103000
+  },
+  {
+    "code": "IL",
+    "name": "Israel",
+    "official": "State of Israel",
+    "chinese": "以色列",
+    "lat": 31.47,
+    "lon": 35.13,
+    "area": 20770
+  },
+  {
+    "code": "IT",
+    "name": "Italy",
+    "official": "Italian Republic",
+    "chinese": "意大利",
+    "lat": 42.83333333,
+    "lon": 12.83333333,
+    "area": 301336
+  },
+  {
+    "code": "JM",
+    "name": "Jamaica",
+    "official": "Jamaica",
+    "chinese": "牙买加",
+    "lat": 18.25,
+    "lon": -77.5,
+    "area": 10991
+  },
+  {
+    "code": "JE",
+    "name": "Jersey",
+    "official": "Bailiwick of Jersey",
+    "chinese": "泽西岛",
+    "lat": 49.25,
+    "lon": -2.16666666,
+    "area": 116
+  },
+  {
+    "code": "JO",
+    "name": "Jordan",
+    "official": "Hashemite Kingdom of Jordan",
+    "chinese": "约旦",
+    "lat": 31,
+    "lon": 36,
+    "area": 89342
+  },
+  {
+    "code": "JP",
+    "name": "Japan",
+    "official": "Japan",
+    "chinese": "日本",
+    "lat": 36,
+    "lon": 138,
+    "area": 377930
+  },
+  {
+    "code": "KZ",
+    "name": "Kazakhstan",
+    "official": "Republic of Kazakhstan",
+    "chinese": "哈萨克斯坦",
+    "lat": 48,
+    "lon": 68,
+    "area": 2724900
+  },
+  {
+    "code": "KE",
+    "name": "Kenya",
+    "official": "Republic of Kenya",
+    "chinese": "肯尼亚",
+    "lat": 1,
+    "lon": 38,
+    "area": 580367
+  },
+  {
+    "code": "KG",
+    "name": "Kyrgyzstan",
+    "official": "Kyrgyz Republic",
+    "chinese": "吉尔吉斯斯坦",
+    "lat": 41,
+    "lon": 75,
+    "area": 199951
+  },
+  {
+    "code": "KH",
+    "name": "Cambodia",
+    "official": "Kingdom of Cambodia",
+    "chinese": "柬埔寨",
+    "lat": 13,
+    "lon": 105,
+    "area": 181035
+  },
+  {
+    "code": "KI",
+    "name": "Kiribati",
+    "official": "Independent and Sovereign Republic of Kiribati",
+    "chinese": "基里巴斯",
+    "lat": 1.41666666,
+    "lon": 173,
+    "area": 811
+  },
+  {
+    "code": "KN",
+    "name": "Saint Kitts and Nevis",
+    "official": "Federation of Saint Christopher and Nevis",
+    "chinese": "圣基茨和尼维斯",
+    "lat": 17.33333333,
+    "lon": -62.75,
+    "area": 261
+  },
+  {
+    "code": "KR",
+    "name": "South Korea",
+    "official": "Republic of Korea",
+    "chinese": "韩国",
+    "lat": 37,
+    "lon": 127.5,
+    "area": 100210
+  },
+  {
+    "code": "XK",
+    "name": "Kosovo",
+    "official": "Republic of Kosovo",
+    "chinese": "科索沃",
+    "lat": 42.666667,
+    "lon": 21.166667,
+    "area": 10908
+  },
+  {
+    "code": "KW",
+    "name": "Kuwait",
+    "official": "State of Kuwait",
+    "chinese": "科威特",
+    "lat": 29.5,
+    "lon": 45.75,
+    "area": 17818
+  },
+  {
+    "code": "LA",
+    "name": "Laos",
+    "official": "Lao People's Democratic Republic",
+    "chinese": "老挝",
+    "lat": 18,
+    "lon": 105,
+    "area": 236800
+  },
+  {
+    "code": "LB",
+    "name": "Lebanon",
+    "official": "Lebanese Republic",
+    "chinese": "黎巴嫩",
+    "lat": 33.83333333,
+    "lon": 35.83333333,
+    "area": 10452
+  },
+  {
+    "code": "LR",
+    "name": "Liberia",
+    "official": "Republic of Liberia",
+    "chinese": "利比里亚",
+    "lat": 6.5,
+    "lon": -9.5,
+    "area": 111369
+  },
+  {
+    "code": "LY",
+    "name": "Libya",
+    "official": "State of Libya",
+    "chinese": "利比亚",
+    "lat": 25,
+    "lon": 17,
+    "area": 1759540
+  },
+  {
+    "code": "LC",
+    "name": "Saint Lucia",
+    "official": "Saint Lucia",
+    "chinese": "圣卢西亚",
+    "lat": 13.88333333,
+    "lon": -60.96666666,
+    "area": 616
+  },
+  {
+    "code": "LI",
+    "name": "Liechtenstein",
+    "official": "Principality of Liechtenstein",
+    "chinese": "列支敦士登",
+    "lat": 47.26666666,
+    "lon": 9.53333333,
+    "area": 160
+  },
+  {
+    "code": "LK",
+    "name": "Sri Lanka",
+    "official": "Democratic Socialist Republic of Sri Lanka",
+    "chinese": "斯里兰卡",
+    "lat": 7,
+    "lon": 81,
+    "area": 65610
+  },
+  {
+    "code": "LS",
+    "name": "Lesotho",
+    "official": "Kingdom of Lesotho",
+    "chinese": "莱索托",
+    "lat": -29.5,
+    "lon": 28.5,
+    "area": 30355
+  },
+  {
+    "code": "LT",
+    "name": "Lithuania",
+    "official": "Republic of Lithuania",
+    "chinese": "立陶宛",
+    "lat": 56,
+    "lon": 24,
+    "area": 65300
+  },
+  {
+    "code": "LU",
+    "name": "Luxembourg",
+    "official": "Grand Duchy of Luxembourg",
+    "chinese": "卢森堡",
+    "lat": 49.75,
+    "lon": 6.16666666,
+    "area": 2586
+  },
+  {
+    "code": "LV",
+    "name": "Latvia",
+    "official": "Republic of Latvia",
+    "chinese": "拉脱维亚",
+    "lat": 57,
+    "lon": 25,
+    "area": 64559
+  },
+  {
+    "code": "MO",
+    "name": "Macau",
+    "official": "Macao Special Administrative Region of the People's Republic of China",
+    "chinese": "澳门",
+    "lat": 22.16666666,
+    "lon": 113.55,
+    "area": 30
+  },
+  {
+    "code": "MF",
+    "name": "Saint Martin",
+    "official": "Saint Martin",
+    "chinese": "圣马丁",
+    "lat": 18.08333333,
+    "lon": -63.95,
+    "area": 53
+  },
+  {
+    "code": "MA",
+    "name": "Morocco",
+    "official": "Kingdom of Morocco",
+    "chinese": "摩洛哥",
+    "lat": 32,
+    "lon": -5,
+    "area": 446550
+  },
+  {
+    "code": "MC",
+    "name": "Monaco",
+    "official": "Principality of Monaco",
+    "chinese": "摩纳哥",
+    "lat": 43.73333333,
+    "lon": 7.4,
+    "area": 2.02
+  },
+  {
+    "code": "MD",
+    "name": "Moldova",
+    "official": "Republic of Moldova",
+    "chinese": "摩尔多瓦",
+    "lat": 47,
+    "lon": 29,
+    "area": 33846
+  },
+  {
+    "code": "MG",
+    "name": "Madagascar",
+    "official": "Republic of Madagascar",
+    "chinese": "马达加斯加",
+    "lat": -20,
+    "lon": 47,
+    "area": 587041
+  },
+  {
+    "code": "MV",
+    "name": "Maldives",
+    "official": "Republic of the Maldives",
+    "chinese": "马尔代夫",
+    "lat": 3.25,
+    "lon": 73,
+    "area": 300
+  },
+  {
+    "code": "MX",
+    "name": "Mexico",
+    "official": "United Mexican States",
+    "chinese": "墨西哥",
+    "lat": 23,
+    "lon": -102,
+    "area": 1964375
+  },
+  {
+    "code": "MH",
+    "name": "Marshall Islands",
+    "official": "Republic of the Marshall Islands",
+    "chinese": "马绍尔群岛",
+    "lat": 9,
+    "lon": 168,
+    "area": 181
+  },
+  {
+    "code": "MK",
+    "name": "North Macedonia",
+    "official": "Republic of North Macedonia",
+    "chinese": "北馬其頓",
+    "lat": 41.83333333,
+    "lon": 22,
+    "area": 25713
+  },
+  {
+    "code": "ML",
+    "name": "Mali",
+    "official": "Republic of Mali",
+    "chinese": "马里",
+    "lat": 17,
+    "lon": -4,
+    "area": 1240192
+  },
+  {
+    "code": "MT",
+    "name": "Malta",
+    "official": "Republic of Malta",
+    "chinese": "马耳他",
+    "lat": 35.83333333,
+    "lon": 14.58333333,
+    "area": 316
+  },
+  {
+    "code": "MM",
+    "name": "Myanmar",
+    "official": "Republic of the Union of Myanmar",
+    "chinese": "缅甸",
+    "lat": 22,
+    "lon": 98,
+    "area": 676578
+  },
+  {
+    "code": "ME",
+    "name": "Montenegro",
+    "official": "Montenegro",
+    "chinese": "黑山",
+    "lat": 42.5,
+    "lon": 19.3,
+    "area": 13812
+  },
+  {
+    "code": "MN",
+    "name": "Mongolia",
+    "official": "Mongolia",
+    "chinese": "蒙古",
+    "lat": 46,
+    "lon": 105,
+    "area": 1564110
+  },
+  {
+    "code": "MP",
+    "name": "Northern Mariana Islands",
+    "official": "Commonwealth of the Northern Mariana Islands",
+    "chinese": "北马里亚纳群岛",
+    "lat": 15.2,
+    "lon": 145.75,
+    "area": 464
+  },
+  {
+    "code": "MZ",
+    "name": "Mozambique",
+    "official": "Republic of Mozambique",
+    "chinese": "莫桑比克",
+    "lat": -18.25,
+    "lon": 35,
+    "area": 801590
+  },
+  {
+    "code": "MR",
+    "name": "Mauritania",
+    "official": "Islamic Republic of Mauritania",
+    "chinese": "毛里塔尼亚",
+    "lat": 20,
+    "lon": -12,
+    "area": 1030700
+  },
+  {
+    "code": "MS",
+    "name": "Montserrat",
+    "official": "Montserrat",
+    "chinese": "蒙特塞拉特",
+    "lat": 16.75,
+    "lon": -62.2,
+    "area": 102
+  },
+  {
+    "code": "MQ",
+    "name": "Martinique",
+    "official": "Martinique",
+    "chinese": "马提尼克",
+    "lat": 14.666667,
+    "lon": -61,
+    "area": 1128
+  },
+  {
+    "code": "MU",
+    "name": "Mauritius",
+    "official": "Republic of Mauritius",
+    "chinese": "毛里求斯",
+    "lat": -20.28333333,
+    "lon": 57.55,
+    "area": 2040
+  },
+  {
+    "code": "MW",
+    "name": "Malawi",
+    "official": "Republic of Malawi",
+    "chinese": "马拉维",
+    "lat": -13.5,
+    "lon": 34,
+    "area": 118484
+  },
+  {
+    "code": "MY",
+    "name": "Malaysia",
+    "official": "Malaysia",
+    "chinese": "马来西亚",
+    "lat": 2.5,
+    "lon": 112.5,
+    "area": 330803
+  },
+  {
+    "code": "YT",
+    "name": "Mayotte",
+    "official": "Department of Mayotte",
+    "chinese": "马约特",
+    "lat": -12.83333333,
+    "lon": 45.16666666,
+    "area": 374
+  },
+  {
+    "code": "NA",
+    "name": "Namibia",
+    "official": "Republic of Namibia",
+    "chinese": "纳米比亚",
+    "lat": -22,
+    "lon": 17,
+    "area": 825615
+  },
+  {
+    "code": "NC",
+    "name": "New Caledonia",
+    "official": "New Caledonia",
+    "chinese": "新喀里多尼亚",
+    "lat": -21.5,
+    "lon": 165.5,
+    "area": 18575
+  },
+  {
+    "code": "NE",
+    "name": "Niger",
+    "official": "Republic of Niger",
+    "chinese": "尼日尔",
+    "lat": 16,
+    "lon": 8,
+    "area": 1267000
+  },
+  {
+    "code": "NF",
+    "name": "Norfolk Island",
+    "official": "Territory of Norfolk Island",
+    "chinese": "诺福克岛",
+    "lat": -29.03333333,
+    "lon": 167.95,
+    "area": 36
+  },
+  {
+    "code": "NG",
+    "name": "Nigeria",
+    "official": "Federal Republic of Nigeria",
+    "chinese": "尼日利亚",
+    "lat": 10,
+    "lon": 8,
+    "area": 923768
+  },
+  {
+    "code": "NI",
+    "name": "Nicaragua",
+    "official": "Republic of Nicaragua",
+    "chinese": "尼加拉瓜",
+    "lat": 13,
+    "lon": -85,
+    "area": 130373
+  },
+  {
+    "code": "NU",
+    "name": "Niue",
+    "official": "Niue",
+    "chinese": "纽埃",
+    "lat": -19.03333333,
+    "lon": -169.86666666,
+    "area": 260
+  },
+  {
+    "code": "NL",
+    "name": "Netherlands",
+    "official": "Kingdom of the Netherlands",
+    "chinese": "荷兰",
+    "lat": 52.5,
+    "lon": 5.75,
+    "area": 41850
+  },
+  {
+    "code": "NO",
+    "name": "Norway",
+    "official": "Kingdom of Norway",
+    "chinese": "挪威",
+    "lat": 62,
+    "lon": 10,
+    "area": 323802
+  },
+  {
+    "code": "NP",
+    "name": "Nepal",
+    "official": "Federal Democratic Republic of Nepal",
+    "chinese": "尼泊尔",
+    "lat": 28,
+    "lon": 84,
+    "area": 147181
+  },
+  {
+    "code": "NR",
+    "name": "Nauru",
+    "official": "Republic of Nauru",
+    "chinese": "瑙鲁",
+    "lat": -0.53333333,
+    "lon": 166.91666666,
+    "area": 21
+  },
+  {
+    "code": "NZ",
+    "name": "New Zealand",
+    "official": "New Zealand",
+    "chinese": "新西兰",
+    "lat": -41,
+    "lon": 174,
+    "area": 270467
+  },
+  {
+    "code": "OM",
+    "name": "Oman",
+    "official": "Sultanate of Oman",
+    "chinese": "阿曼",
+    "lat": 21,
+    "lon": 57,
+    "area": 309500
+  },
+  {
+    "code": "PK",
+    "name": "Pakistan",
+    "official": "Islamic Republic of Pakistan",
+    "chinese": "巴基斯坦",
+    "lat": 30,
+    "lon": 70,
+    "area": 881912
+  },
+  {
+    "code": "PA",
+    "name": "Panama",
+    "official": "Republic of Panama",
+    "chinese": "巴拿马",
+    "lat": 9,
+    "lon": -80,
+    "area": 75417
+  },
+  {
+    "code": "PN",
+    "name": "Pitcairn Islands",
+    "official": "Pitcairn Group of Islands",
+    "chinese": "皮特凯恩群岛",
+    "lat": -25.06666666,
+    "lon": -130.1,
+    "area": 47
+  },
+  {
+    "code": "PE",
+    "name": "Peru",
+    "official": "Republic of Peru",
+    "chinese": "秘鲁",
+    "lat": -10,
+    "lon": -76,
+    "area": 1285216
+  },
+  {
+    "code": "PH",
+    "name": "Philippines",
+    "official": "Republic of the Philippines",
+    "chinese": "菲律宾",
+    "lat": 13,
+    "lon": 122,
+    "area": 342353
+  },
+  {
+    "code": "PW",
+    "name": "Palau",
+    "official": "Republic of Palau",
+    "chinese": "帕劳",
+    "lat": 7.5,
+    "lon": 134.5,
+    "area": 459
+  },
+  {
+    "code": "PG",
+    "name": "Papua New Guinea",
+    "official": "Independent State of Papua New Guinea",
+    "chinese": "巴布亚新几内亚",
+    "lat": -6,
+    "lon": 147,
+    "area": 462840
+  },
+  {
+    "code": "PL",
+    "name": "Poland",
+    "official": "Republic of Poland",
+    "chinese": "波兰",
+    "lat": 52,
+    "lon": 20,
+    "area": 312679
+  },
+  {
+    "code": "PR",
+    "name": "Puerto Rico",
+    "official": "Commonwealth of Puerto Rico",
+    "chinese": "波多黎各",
+    "lat": 18.25,
+    "lon": -66.5,
+    "area": 8870
+  },
+  {
+    "code": "KP",
+    "name": "North Korea",
+    "official": "Democratic People's Republic of Korea",
+    "chinese": "朝鲜",
+    "lat": 40,
+    "lon": 127,
+    "area": 120538
+  },
+  {
+    "code": "PT",
+    "name": "Portugal",
+    "official": "Portuguese Republic",
+    "chinese": "葡萄牙",
+    "lat": 39.5,
+    "lon": -8,
+    "area": 92090
+  },
+  {
+    "code": "PY",
+    "name": "Paraguay",
+    "official": "Republic of Paraguay",
+    "chinese": "巴拉圭",
+    "lat": -23,
+    "lon": -58,
+    "area": 406752
+  },
+  {
+    "code": "PS",
+    "name": "Palestine",
+    "official": "State of Palestine",
+    "chinese": "巴勒斯坦",
+    "lat": 31.9,
+    "lon": 35.2,
+    "area": 6220
+  },
+  {
+    "code": "PF",
+    "name": "French Polynesia",
+    "official": "French Polynesia",
+    "chinese": "法属波利尼西亚",
+    "lat": -15,
+    "lon": -140,
+    "area": 4167
+  },
+  {
+    "code": "QA",
+    "name": "Qatar",
+    "official": "State of Qatar",
+    "chinese": "卡塔尔",
+    "lat": 25.5,
+    "lon": 51.25,
+    "area": 11586
+  },
+  {
+    "code": "RE",
+    "name": "Réunion",
+    "official": "Réunion Island",
+    "chinese": "留尼旺岛",
+    "lat": -21.15,
+    "lon": 55.5,
+    "area": 2511
+  },
+  {
+    "code": "RO",
+    "name": "Romania",
+    "official": "Romania",
+    "chinese": "罗马尼亚",
+    "lat": 46,
+    "lon": 25,
+    "area": 238391
+  },
+  {
+    "code": "RU",
+    "name": "Russia",
+    "official": "Russian Federation",
+    "chinese": "俄罗斯",
+    "lat": 60,
+    "lon": 100,
+    "area": 17098242
+  },
+  {
+    "code": "RW",
+    "name": "Rwanda",
+    "official": "Republic of Rwanda",
+    "chinese": "卢旺达",
+    "lat": -2,
+    "lon": 30,
+    "area": 26338
+  },
+  {
+    "code": "SA",
+    "name": "Saudi Arabia",
+    "official": "Kingdom of Saudi Arabia",
+    "chinese": "沙特阿拉伯",
+    "lat": 25,
+    "lon": 45,
+    "area": 2149690
+  },
+  {
+    "code": "SD",
+    "name": "Sudan",
+    "official": "Republic of the Sudan",
+    "chinese": "苏丹",
+    "lat": 15,
+    "lon": 30,
+    "area": 1886068
+  },
+  {
+    "code": "SN",
+    "name": "Senegal",
+    "official": "Republic of Senegal",
+    "chinese": "塞内加尔",
+    "lat": 14,
+    "lon": -14,
+    "area": 196722
+  },
+  {
+    "code": "SG",
+    "name": "Singapore",
+    "official": "Republic of Singapore",
+    "chinese": "新加坡",
+    "lat": 1.36666666,
+    "lon": 103.8,
+    "area": 710
+  },
+  {
+    "code": "GS",
+    "name": "South Georgia",
+    "official": "South Georgia and the South Sandwich Islands",
+    "chinese": "南乔治亚",
+    "lat": -54.5,
+    "lon": -37,
+    "area": 3903
+  },
+  {
+    "code": "SJ",
+    "name": "Svalbard and Jan Mayen",
+    "official": "Svalbard og Jan Mayen",
+    "chinese": "斯瓦尔巴特",
+    "lat": 78,
+    "lon": 20,
+    "area": -1
+  },
+  {
+    "code": "SB",
+    "name": "Solomon Islands",
+    "official": "Solomon Islands",
+    "chinese": "所罗门群岛",
+    "lat": -8,
+    "lon": 159,
+    "area": 28896
+  },
+  {
+    "code": "SL",
+    "name": "Sierra Leone",
+    "official": "Republic of Sierra Leone",
+    "chinese": "塞拉利昂",
+    "lat": 8.5,
+    "lon": -11.5,
+    "area": 71740
+  },
+  {
+    "code": "SV",
+    "name": "El Salvador",
+    "official": "Republic of El Salvador",
+    "chinese": "萨尔瓦多",
+    "lat": 13.83333333,
+    "lon": -88.91666666,
+    "area": 21041
+  },
+  {
+    "code": "SM",
+    "name": "San Marino",
+    "official": "Most Serene Republic of San Marino",
+    "chinese": "圣马力诺",
+    "lat": 43.76666666,
+    "lon": 12.41666666,
+    "area": 61
+  },
+  {
+    "code": "SO",
+    "name": "Somalia",
+    "official": "Federal Republic of Somalia",
+    "chinese": "索马里",
+    "lat": 10,
+    "lon": 49,
+    "area": 637657
+  },
+  {
+    "code": "PM",
+    "name": "Saint Pierre and Miquelon",
+    "official": "Saint Pierre and Miquelon",
+    "chinese": "圣皮埃尔和密克隆",
+    "lat": 46.83333333,
+    "lon": -56.33333333,
+    "area": 242
+  },
+  {
+    "code": "RS",
+    "name": "Serbia",
+    "official": "Republic of Serbia",
+    "chinese": "塞尔维亚",
+    "lat": 44,
+    "lon": 21,
+    "area": 88361
+  },
+  {
+    "code": "SS",
+    "name": "South Sudan",
+    "official": "Republic of South Sudan",
+    "chinese": "南苏丹",
+    "lat": 7,
+    "lon": 30,
+    "area": 619745
+  },
+  {
+    "code": "ST",
+    "name": "São Tomé and Príncipe",
+    "official": "Democratic Republic of São Tomé and Príncipe",
+    "chinese": "圣多美和普林西比",
+    "lat": 1,
+    "lon": 7,
+    "area": 964
+  },
+  {
+    "code": "SR",
+    "name": "Suriname",
+    "official": "Republic of Suriname",
+    "chinese": "苏里南",
+    "lat": 4,
+    "lon": -56,
+    "area": 163820
+  },
+  {
+    "code": "SK",
+    "name": "Slovakia",
+    "official": "Slovak Republic",
+    "chinese": "斯洛伐克",
+    "lat": 48.66666666,
+    "lon": 19.5,
+    "area": 49037
+  },
+  {
+    "code": "SI",
+    "name": "Slovenia",
+    "official": "Republic of Slovenia",
+    "chinese": "斯洛文尼亚",
+    "lat": 46.11666666,
+    "lon": 14.81666666,
+    "area": 20273
+  },
+  {
+    "code": "SE",
+    "name": "Sweden",
+    "official": "Kingdom of Sweden",
+    "chinese": "瑞典",
+    "lat": 62,
+    "lon": 15,
+    "area": 450295
+  },
+  {
+    "code": "SZ",
+    "name": "Eswatini",
+    "official": "Kingdom of Eswatini",
+    "chinese": "斯威士兰",
+    "lat": -26.5,
+    "lon": 31.5,
+    "area": 17364
+  },
+  {
+    "code": "SX",
+    "name": "Sint Maarten",
+    "official": "Sint Maarten",
+    "chinese": "圣马丁岛",
+    "lat": 18.033333,
+    "lon": -63.05,
+    "area": 34
+  },
+  {
+    "code": "SC",
+    "name": "Seychelles",
+    "official": "Republic of Seychelles",
+    "chinese": "塞舌尔",
+    "lat": -4.58333333,
+    "lon": 55.66666666,
+    "area": 452
+  },
+  {
+    "code": "SY",
+    "name": "Syria",
+    "official": "Syrian Arab Republic",
+    "chinese": "叙利亚",
+    "lat": 35,
+    "lon": 38,
+    "area": 185180
+  },
+  {
+    "code": "TC",
+    "name": "Turks and Caicos Islands",
+    "official": "Turks and Caicos Islands",
+    "chinese": "特克斯和凯科斯群岛",
+    "lat": 21.75,
+    "lon": -71.58333333,
+    "area": 948
+  },
+  {
+    "code": "TD",
+    "name": "Chad",
+    "official": "Republic of Chad",
+    "chinese": "乍得",
+    "lat": 15,
+    "lon": 19,
+    "area": 1284000
+  },
+  {
+    "code": "TG",
+    "name": "Togo",
+    "official": "Togolese Republic",
+    "chinese": "多哥",
+    "lat": 8,
+    "lon": 1.16666666,
+    "area": 56785
+  },
+  {
+    "code": "TH",
+    "name": "Thailand",
+    "official": "Kingdom of Thailand",
+    "chinese": "泰国",
+    "lat": 15,
+    "lon": 100,
+    "area": 513120
+  },
+  {
+    "code": "TJ",
+    "name": "Tajikistan",
+    "official": "Republic of Tajikistan",
+    "chinese": "塔吉克斯坦",
+    "lat": 39,
+    "lon": 71,
+    "area": 143100
+  },
+  {
+    "code": "TK",
+    "name": "Tokelau",
+    "official": "Tokelau",
+    "chinese": "托克劳",
+    "lat": -9,
+    "lon": -172,
+    "area": 12
+  },
+  {
+    "code": "TM",
+    "name": "Turkmenistan",
+    "official": "Turkmenistan",
+    "chinese": "土库曼斯坦",
+    "lat": 40,
+    "lon": 60,
+    "area": 488100
+  },
+  {
+    "code": "TL",
+    "name": "Timor-Leste",
+    "official": "Democratic Republic of Timor-Leste",
+    "chinese": "东帝汶",
+    "lat": -8.83333333,
+    "lon": 125.91666666,
+    "area": 14874
+  },
+  {
+    "code": "TO",
+    "name": "Tonga",
+    "official": "Kingdom of Tonga",
+    "chinese": "汤加",
+    "lat": -20,
+    "lon": -175,
+    "area": 747
+  },
+  {
+    "code": "TT",
+    "name": "Trinidad and Tobago",
+    "official": "Republic of Trinidad and Tobago",
+    "chinese": "特立尼达和多巴哥",
+    "lat": 11,
+    "lon": -61,
+    "area": 5130
+  },
+  {
+    "code": "TN",
+    "name": "Tunisia",
+    "official": "Tunisian Republic",
+    "chinese": "突尼斯",
+    "lat": 34,
+    "lon": 9,
+    "area": 163610
+  },
+  {
+    "code": "TR",
+    "name": "Türkiye",
+    "official": "Republic of Türkiye",
+    "chinese": "土耳其",
+    "lat": 39,
+    "lon": 35,
+    "area": 783562
+  },
+  {
+    "code": "TV",
+    "name": "Tuvalu",
+    "official": "Tuvalu",
+    "chinese": "图瓦卢",
+    "lat": -8,
+    "lon": 178,
+    "area": 26
+  },
+  {
+    "code": "TW",
+    "name": "Taiwan",
+    "official": "Republic of China (Taiwan)",
+    "chinese": "台灣",
+    "lat": 23.5,
+    "lon": 121,
+    "area": 36193
+  },
+  {
+    "code": "TZ",
+    "name": "Tanzania",
+    "official": "United Republic of Tanzania",
+    "chinese": "坦桑尼亚",
+    "lat": -6,
+    "lon": 35,
+    "area": 945087
+  },
+  {
+    "code": "UG",
+    "name": "Uganda",
+    "official": "Republic of Uganda",
+    "chinese": "乌干达",
+    "lat": 1,
+    "lon": 32,
+    "area": 241550
+  },
+  {
+    "code": "UA",
+    "name": "Ukraine",
+    "official": "Ukraine",
+    "chinese": "乌克兰",
+    "lat": 49,
+    "lon": 32,
+    "area": 603500
+  },
+  {
+    "code": "UM",
+    "name": "United States Minor Outlying Islands",
+    "official": "United States Minor Outlying Islands",
+    "chinese": "美国本土外小岛屿",
+    "lat": 19.3,
+    "lon": 166.633333,
+    "area": 34.2
+  },
+  {
+    "code": "UY",
+    "name": "Uruguay",
+    "official": "Oriental Republic of Uruguay",
+    "chinese": "乌拉圭",
+    "lat": -33,
+    "lon": -56,
+    "area": 181034
+  },
+  {
+    "code": "US",
+    "name": "United States",
+    "official": "United States of America",
+    "chinese": "美国",
+    "lat": 38,
+    "lon": -97,
+    "area": 9372610
+  },
+  {
+    "code": "UZ",
+    "name": "Uzbekistan",
+    "official": "Republic of Uzbekistan",
+    "chinese": "乌兹别克斯坦",
+    "lat": 41,
+    "lon": 64,
+    "area": 447400
+  },
+  {
+    "code": "VA",
+    "name": "Vatican City",
+    "official": "Vatican City State",
+    "chinese": "梵蒂冈",
+    "lat": 41.9,
+    "lon": 12.45,
+    "area": 0.44
+  },
+  {
+    "code": "VC",
+    "name": "Saint Vincent and the Grenadines",
+    "official": "Saint Vincent and the Grenadines",
+    "chinese": "圣文森特和格林纳丁斯",
+    "lat": 13.25,
+    "lon": -61.2,
+    "area": 389
+  },
+  {
+    "code": "VE",
+    "name": "Venezuela",
+    "official": "Bolivarian Republic of Venezuela",
+    "chinese": "委内瑞拉",
+    "lat": 8,
+    "lon": -66,
+    "area": 916445
+  },
+  {
+    "code": "VG",
+    "name": "British Virgin Islands",
+    "official": "Virgin Islands",
+    "chinese": "英属维尔京群岛",
+    "lat": 18.431383,
+    "lon": -64.62305,
+    "area": 151
+  },
+  {
+    "code": "VI",
+    "name": "United States Virgin Islands",
+    "official": "Virgin Islands of the United States",
+    "chinese": "美属维尔京群岛",
+    "lat": 18.35,
+    "lon": -64.933333,
+    "area": 347
+  },
+  {
+    "code": "VN",
+    "name": "Vietnam",
+    "official": "Socialist Republic of Vietnam",
+    "chinese": "越南",
+    "lat": 16.16666666,
+    "lon": 107.83333333,
+    "area": 331212
+  },
+  {
+    "code": "VU",
+    "name": "Vanuatu",
+    "official": "Republic of Vanuatu",
+    "chinese": "瓦努阿图",
+    "lat": -16,
+    "lon": 167,
+    "area": 12189
+  },
+  {
+    "code": "WF",
+    "name": "Wallis and Futuna",
+    "official": "Territory of the Wallis and Futuna Islands",
+    "chinese": "瓦利斯和富图纳群岛",
+    "lat": -13.3,
+    "lon": -176.2,
+    "area": 142
+  },
+  {
+    "code": "WS",
+    "name": "Samoa",
+    "official": "Independent State of Samoa",
+    "chinese": "萨摩亚",
+    "lat": -13.58333333,
+    "lon": -172.33333333,
+    "area": 2842
+  },
+  {
+    "code": "YE",
+    "name": "Yemen",
+    "official": "Republic of Yemen",
+    "chinese": "也门",
+    "lat": 15,
+    "lon": 48,
+    "area": 527968
+  },
+  {
+    "code": "ZA",
+    "name": "South Africa",
+    "official": "Republic of South Africa",
+    "chinese": "南非",
+    "lat": -29,
+    "lon": 24,
+    "area": 1221037
+  },
+  {
+    "code": "ZM",
+    "name": "Zambia",
+    "official": "Republic of Zambia",
+    "chinese": "赞比亚",
+    "lat": -15,
+    "lon": 30,
+    "area": 752612
+  },
+  {
+    "code": "ZW",
+    "name": "Zimbabwe",
+    "official": "Republic of Zimbabwe",
+    "chinese": "津巴布韦",
+    "lat": -20,
+    "lon": 30,
+    "area": 390757
+  }
+]
