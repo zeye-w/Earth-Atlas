@@ -40,10 +40,10 @@ function toCartesian(pos: OrbitalPosition, result?: Cartesian3): Cartesian3 {
   return Cartesian3.fromRadians(pos.longitudeRad, pos.latitudeRad, pos.altitudeKm * 1000, undefined, result);
 }
 
-// One neutral style for every orbit: thin, clearly visible lines; the
+// One neutral style for every orbit: thin, faint lines; the
 // selected satellite's orbit is drawn a little brighter.
-const ORBIT_COLOR = Color.fromCssColorString("#e6edf8").withAlpha(0.55);
-const ORBIT_SELECTED_COLOR = Color.fromCssColorString("#ffffff").withAlpha(0.95);
+const ORBIT_COLOR = Color.fromCssColorString("#e6edf8").withAlpha(0.3);
+const ORBIT_SELECTED_COLOR = Color.fromCssColorString("#ffffff").withAlpha(0.8);
 const ORBIT_WIDTH = 1.1;
 const ORBIT_SELECTED_WIDTH = 1.8;
 const LABEL_COLOR = Color.fromCssColorString("#eef2f8");

@@ -25,7 +25,7 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import {
   ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
-  Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, SunMoon, X,
+  Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, X,
 } from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
@@ -33,6 +33,7 @@ import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
 import { RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, renderSettings, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
+import { AuroraOverlay } from "./aurora";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "./satelliteOverlay";
@@ -102,6 +103,7 @@ function App() {
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
   const cityMarkersRef = useRef<Entity[]>([]);
+  const auroraRef = useRef<AuroraOverlay | null>(null);
   const satelliteOverlayRef = useRef<SatelliteOverlay | null>(null);
   const vectorLayerRef = useRef<MVTDataProvider | null>(null);
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
@@ -115,6 +117,7 @@ function App() {
   const [dayNightEnabled, setDayNightEnabled] = useState(true);
   const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
   const [atmosphereVisible, setAtmosphereVisible] = useState(true);
+  const [auroraVisible, setAuroraVisible] = useState(true);
   const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
   const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
   const [satelliteStatus, setSatelliteStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -305,6 +308,7 @@ function App() {
       // Defer Macrostrat raster provider creation until the user enables it;
       // the default Earth view downloads no global geology imagery.
       cityMarkersRef.current = addWorldCityMarkers(viewer);
+      auroraRef.current = new AuroraOverlay(viewer);
       viewer.scene.requestRender();
 
       viewer.screenSpaceEventHandler.setInputAction((event: { position: Cartesian2 }) => {
@@ -357,6 +361,8 @@ function App() {
       controllerRef.current = null;
       geologicalLayerRef.current = null;
       cityMarkersRef.current = [];
+      auroraRef.current?.dispose();
+      auroraRef.current = null;
       satelliteOverlayRef.current?.dispose();
       satelliteOverlayRef.current = null;
       vectorLayerRef.current = null;
@@ -409,6 +415,10 @@ function App() {
     viewer.scene.globe.dynamicAtmosphereLighting = dayNightEnabled;
     viewer.scene.requestRender();
   }, [dayNightEnabled]);
+
+  useEffect(() => {
+    auroraRef.current?.setVisible(auroraVisible);
+  }, [auroraVisible]);
 
   // Native sky and ground scattering without a decorative mesh.
   useEffect(() => {
@@ -594,6 +604,7 @@ function App() {
               <summary><span>EARTH VIEW<small>地球视图</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={dayNightEnabled} onChange={setDayNightEnabled} />
               <ToggleRow icon={<Globe {...ICON} />} title="大气散射" caption="地球边缘的蓝色大气辉光" checked={atmosphereVisible} onChange={setAtmosphereVisible} />
+              <ToggleRow icon={<Sparkles {...ICON} />} title="北极极光（示意）" caption="地磁北极周围的极光带 · 仅夜侧可见" checked={auroraVisible} onChange={setAuroraVisible} />
               <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={cityLabelsVisible} onChange={setCityLabelsVisible} />
             </details>
 
