@@ -12,7 +12,7 @@ import {
   type Entity,
   type Viewer,
 } from "cesium";
-import { orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits";
+import { orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
 
 export const SATELLITE_UPDATE_MS = 5_000; // Positions every 5 s; not each WebGL frame.
 export const SATELLITE_PATH_UPDATE_MS = 120_000; // Ground-fixed forecast path recomputed rarely.
