@@ -45,6 +45,16 @@ The experimental global MVT overlay is built on demand only when the age or lith
 
 To evaluate actual improvement, open DevTools → Performance / Performance monitor and compare CPU utilization, GPU activity, dropped frames and memory on the same computer at the same map coordinates. GitHub CI validates code and build, **not real-device frame rates**.
 
+## Atmosphere and live-predicted satellite orbits
+
+The globe uses Cesium's native `SkyAtmosphere` and `Globe.showGroundAtmosphere` with tuned Rayleigh/Mie scattering parameters. The atmospheric limb and ground haze remain illuminated by the real SunLight/UTC clock and can be toggled independently, without using a separate animated atmosphere mesh or expensive video shaders. This is an atmospheric **visualization**, not a numerical weather or radiative-transfer model.
+
+The Satellite layer (on by default for desktop; off for small/mobile viewports) uses **CelesTrak public GP orbital elements in CCSDS OMM JSON**, retrieved on demand over HTTPS from `/NORAD/elements/gp.php` (stations group, plus four selected individual catalog numbers). Elements are cached in browser localStorage for **at least two hours**, respecting CelesTrak's update policy. Missing, invalid or more-than-10-day-old elements are not shown as current satellite positions.
+
+Positions at the current UTC instant are computed in the browser using `satellite.js` and **SGP4**. ECI coordinates are converted to Earth-fixed geodetic longitude/latitude/altitude before feeding Cesium. Selected trajectories are a **90-minute forecast window, ±45 minutes around now**, updated every two minutes; moving markers update every five seconds while the tab is visible. Orbit paths are rendered at true space altitude and have no ground clamp. Only a small fixed catalogue (ISS, Tiangong, Hubble, Terra, NOAA-20, Landsat 9) is queried; an unavailable satellite is silently omitted and the UI shows a source error if none can be used.
+
+**Scientific boundaries:** orbital positions are SGP4 predictions derived from periodically updated public elements, **not real-time onboard GPS telemetry**; uncertainty can increase with element age and manoeuvres. Displayed satellite icons and orbit paths are symbolic and not drawn to the physical scale of the spacecraft. Satellite catalog numbers or group membership may change, so each unavailable/decayed object is dropped instead of drawing artificial circular animation. Browser time should be synchronized. CelesTrak metadata and data attribution are visible in the layer UI, and all satellite controls are optional for battery performance.
+
 ## Getting started
 
 Requires Node.js 22+ and npm.
