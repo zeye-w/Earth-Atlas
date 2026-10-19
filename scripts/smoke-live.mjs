@@ -106,6 +106,23 @@ try {
   console.error("LIVE_NOAA_OVATION_FAILURE:", error);
 }
 
+for (const [label, url] of [
+  ["NASA Blue Marble tile", "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/GoogleMapsCompatible_Level8/2/1/1.jpeg"],
+  ["NASA Black Marble tile", "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/2/1/1.png"],
+]) {
+  try {
+    const response = await get(label, url);
+    const type = response.headers.get("content-type") || "";
+    const bytes = (await response.arrayBuffer()).byteLength;
+    console.log("  bytes:", bytes);
+    assert.match(type, /image\//i, label + " is not an image");
+    assert.ok(bytes > 1000, label + " unexpectedly small");
+  } catch (error) {
+    failed = true;
+    console.error("LIVE_GIBS_FAILURE:", label, error);
+  }
+}
+
 const site = "https://earth-atlas.edwardlab.workers.dev";
 for (const path of [
   "/",

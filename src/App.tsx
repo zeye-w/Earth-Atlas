@@ -25,7 +25,7 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import {
   ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
-  Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, X,
+  Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, X,
 } from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
@@ -43,6 +43,9 @@ import "./styles.css";
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
 type Coordinates = { latitude: number; longitude: number };
 type Region = { label: string; subtitle: string; lat: number; lon: number };
+
+// NASA Black Marble 2016 (VIIRS night lights composite, public domain).
+const BLACK_MARBLE_URL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png";
 
 const HOME_VIEW = Cartesian3.fromDegrees(58, 19, 17000000);
 
@@ -103,6 +106,7 @@ function App() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
+  const cityLightsLayerRef = useRef<ImageryLayer | null>(null);
   const cityMarkersRef = useRef<Entity[]>([]);
   const auroraRef = useRef<AuroraOverlay | null>(null);
   const satelliteOverlayRef = useRef<SatelliteOverlay | null>(null);
@@ -119,6 +123,7 @@ function App() {
   const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
   const [atmosphereVisible, setAtmosphereVisible] = useState(true);
   const [auroraVisible, setAuroraVisible] = useState(true);
+  const [cityLightsVisible, setCityLightsVisible] = useState(true);
   const [auroraStatus, setAuroraStatus] = useState<{ state: "idle" | "loading" | "ready" | "quiet" | "error"; forecast?: string; max?: number }>({ state: "idle" });
   const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
   const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
@@ -306,6 +311,17 @@ function App() {
         maximumLevel: 8,
         credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
       }));
+      // Real city lights on the night side only: Cesium blends a layer by
+      // dayAlpha/nightAlpha across the solar terminator when lighting is on
+      // (with lighting off everything counts as day, so it disappears).
+      const cityLights = viewer.imageryLayers.addImageryProvider(new UrlTemplateImageryProvider({
+        url: BLACK_MARBLE_URL,
+        maximumLevel: 8,
+        credit: new Credit('<a href="https://earthobservatory.nasa.gov/features/NightLights" target="_blank" rel="noopener noreferrer">Night lights: NASA Black Marble 2016 (VIIRS)</a>'),
+      }));
+      cityLights.dayAlpha = 0;
+      cityLights.nightAlpha = 1;
+      cityLightsLayerRef.current = cityLights;
 
       // Defer Macrostrat raster provider creation until the user enables it;
       // the default Earth view downloads no global geology imagery.
@@ -362,6 +378,7 @@ function App() {
       controllerRef.current?.abort();
       controllerRef.current = null;
       geologicalLayerRef.current = null;
+      cityLightsLayerRef.current = null;
       cityMarkersRef.current = [];
       auroraRef.current?.dispose();
       auroraRef.current = null;
@@ -417,6 +434,12 @@ function App() {
     viewer.scene.globe.dynamicAtmosphereLighting = dayNightEnabled;
     viewer.scene.requestRender();
   }, [dayNightEnabled]);
+
+  useEffect(() => {
+    if (!cityLightsLayerRef.current) return;
+    cityLightsLayerRef.current.show = cityLightsVisible;
+    viewerRef.current?.scene.requestRender();
+  }, [cityLightsVisible]);
 
   // NOAA OVATION nowcast; nothing is drawn when the data is unavailable.
   useEffect(() => {
@@ -630,6 +653,7 @@ function App() {
               <summary><span>EARTH VIEW<small>地球视图</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={dayNightEnabled} onChange={setDayNightEnabled} />
               <ToggleRow icon={<Globe {...ICON} />} title="大气散射" caption="地球边缘的蓝色大气辉光" checked={atmosphereVisible} onChange={setAtmosphereVisible} />
+              <ToggleRow icon={<Lightbulb {...ICON} />} title="城市夜光" caption={dayNightEnabled ? "NASA Black Marble 卫星夜光 · 仅夜侧" : "需开启实时昼夜光照"} checked={cityLightsVisible} onChange={setCityLightsVisible} />
               <ToggleRow icon={<Sparkles {...ICON} />} title="北极极光" caption="NOAA OVATION 实时预报 · 夜侧可见" checked={auroraVisible} onChange={setAuroraVisible} />
               {auroraVisible && auroraStatus.state !== "idle" && (
                 <p className="layer-status" role="status">
@@ -729,7 +753,7 @@ function App() {
 
             <div className="sidebar-note">
               <Info size={14} className="note-icon" aria-hidden="true" />
-              <p>影像来自 NASA GIBS 与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
+              <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
             </div>
           </div>
           <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.2</div>
@@ -743,7 +767,7 @@ function App() {
           </div>
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>
-          <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
