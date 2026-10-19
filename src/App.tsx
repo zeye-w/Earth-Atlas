@@ -145,13 +145,13 @@ function App() {
   const [atmosphereVisible, setAtmosphereVisible] = useState(true);
   const [auroraVisible, setAuroraVisible] = useState(true);
   const [cityLightsVisible, setCityLightsVisible] = useState(true);
-  const [quakesVisible, setQuakesVisible] = useState(true);
+  const [quakesVisible, setQuakesVisible] = useState(false);
   const [quakeRange, setQuakeRange] = useState<QuakeRange>("week");
   const [quakeStatus, setQuakeStatus] = useState<{ state: "idle" | "loading" | "ready" | "error"; count?: number; largest?: Earthquake }>({ state: "idle" });
   const [selectedQuake, setSelectedQuake] = useState<Earthquake | null>(null);
-  const [platesVisible, setPlatesVisible] = useState(true);
+  const [platesVisible, setPlatesVisible] = useState(false);
   const [plateStatus, setPlateStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [volcanoesVisible, setVolcanoesVisible] = useState(true);
+  const [volcanoesVisible, setVolcanoesVisible] = useState(false);
   const [volcanoInfo, setVolcanoInfo] = useState<{ state: "idle" | "loading" | "ready" | "error"; total?: number; recent?: number; retrieved?: string }>({ state: "idle" });
   const [selectedVolcano, setSelectedVolcano] = useState<Volcano | null>(null);
   const [geomagnetic, setGeomagnetic] = useState<{ state: "idle" | "loading" | "ready" | "error"; data?: GeomagneticState }>({ state: "idle" });
@@ -960,7 +960,7 @@ function App() {
               <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={cityLabelsVisible} onChange={setCityLabelsVisible} />
             </details>
 
-            <details className="layer-group" open>
+            <details className="layer-group" open={quakesVisible || platesVisible || volcanoesVisible || undefined}>
               <summary><span>TECTONICS<small>地震与板块</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<Activity {...ICON} />} title="实时地震" caption={"USGS · M" + QUAKE_FEEDS[quakeRange].minMagnitude + "+ · 每 5 分钟更新"} checked={quakesVisible} onChange={setQuakesVisible} />
               {quakesVisible && (
@@ -1011,7 +1011,7 @@ function App() {
               )}
             </details>
 
-            <details className="layer-group" open>
+            <details className="layer-group" open={satellitesVisible || undefined}>
               <summary><span>SATELLITES<small>在轨卫星</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <ToggleRow icon={<Satellite {...ICON} />} title="真实卫星轨道" caption="公开 GP 根数 · SGP4 轨道预测" checked={satellitesVisible} onChange={setSatellitesVisible} />
               {satellitesVisible && (
