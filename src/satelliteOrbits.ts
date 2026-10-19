@@ -106,10 +106,14 @@ export function positionAt(record: OrbitRecord, time: Date): OrbitalPosition | n
     altitudeKm: geodetic.height,
   };
 }
-export function orbitPath(record: OrbitRecord, now: Date, durationMinutes = 90, stepMinutes = 3): OrbitalPosition[] {
+// 30 s steps (~230 km chords in LEO) keep the drawn orbit visibly smooth;
+// 3-minute steps produced ~1,300 km straight segments.
+export function orbitPath(record: OrbitRecord, now: Date, durationMinutes = 90, stepMinutes = 0.5): OrbitalPosition[] {
   if (durationMinutes <= 0 || durationMinutes > 120 || stepMinutes <= 0) return [];
   const points: OrbitalPosition[] = [];
-  for (let minute = -durationMinutes / 2; minute <= durationMinutes / 2; minute += stepMinutes) {
+  const steps = Math.floor(durationMinutes / stepMinutes);
+  for (let index = 0; index <= steps; index++) {
+    const minute = -durationMinutes / 2 + index * stepMinutes;
     const next = positionAt(record, new Date(now.getTime() + minute * 60_000));
     if (!next) return []; // No broken partial trajectory drawn as a continuous path.
     points.push(next);

@@ -76,7 +76,8 @@ test("documented OMM data propagates to real geodetic positions using SGP4", () 
 test("orbit paths have bounded samples and genuine time evolution", () => {
   const rec = { choice: SATELLITE_CHOICES[0], epoch: atEpoch, satrec: json2satrec(sample) };
   const points = orbitPath(rec, atEpoch);
-  assert.equal(points.length, 31);
+  assert.equal(points.length, 181);
+  assert.equal(orbitPath(rec, atEpoch, 90, 3).length, 31);
   assert.ok(points.every((p) => p.altitudeKm > 200));
   assert.deepEqual(orbitPath(rec, atEpoch, 0), []);
   assert.deepEqual(orbitPath(rec, atEpoch, 150), []);

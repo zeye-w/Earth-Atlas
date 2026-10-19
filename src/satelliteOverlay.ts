@@ -25,10 +25,12 @@ function toCartesian(pos: OrbitalPosition): Cartesian3 {
   return Cartesian3.fromRadians(pos.longitudeRad, pos.latitudeRad, pos.altitudeKm * 1000);
 }
 
-// One neutral style for every orbit: thin, faint lines; the selected
+// One neutral style for every orbit: thin, clearly visible lines; the selected
 // satellite's orbit is drawn a little brighter.
-const ORBIT_COLOR = Color.fromCssColorString("#dfe7f5").withAlpha(0.32);
-const ORBIT_SELECTED_COLOR = Color.fromCssColorString("#ffffff").withAlpha(0.75);
+const ORBIT_COLOR = Color.fromCssColorString("#e6edf8").withAlpha(0.62);
+const ORBIT_SELECTED_COLOR = Color.fromCssColorString("#ffffff").withAlpha(0.95);
+const ORBIT_WIDTH = 1.6;
+const ORBIT_SELECTED_WIDTH = 2.4;
 const LABEL_COLOR = Color.fromCssColorString("#eef2f8");
 // Velocity is sampled this far ahead to point the icon along its track.
 const HEADING_SAMPLE_MS = 20_000;
@@ -110,7 +112,7 @@ export class SatelliteOverlay {
         polyline: {
           positions: [],
           arcType: ArcType.NONE,
-          width: 1,
+          width: ORBIT_WIDTH,
           material: ORBIT_COLOR,
           distanceDisplayCondition: new DistanceDisplayCondition(0, 55_000_000),
         },
@@ -148,7 +150,7 @@ export class SatelliteOverlay {
     for (const pair of this.pairs) {
       const selected = pair.record.choice.id === id;
       pair.path.polyline!.material = new ColorMaterialProperty(selected ? ORBIT_SELECTED_COLOR : ORBIT_COLOR);
-      pair.path.polyline!.width = new ConstantProperty(selected ? 1.6 : 1);
+      pair.path.polyline!.width = new ConstantProperty(selected ? ORBIT_SELECTED_WIDTH : ORBIT_WIDTH);
     }
     this.viewer.scene.requestRender();
   }
