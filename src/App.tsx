@@ -51,10 +51,12 @@ const BLACK_MARBLE_URL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VII
 const HOME_VIEW = Cartesian3.fromDegrees(58, 19, 17000000);
 
 const REGIONS: Region[] = [
-  { label: "日本列岛", subtitle: "Japan", lat: 36.2, lon: 138.3 },
-  { label: "青藏高原", subtitle: "Tibetan Plateau", lat: 31.8, lon: 88.8 },
-  { label: "阿尔卑斯", subtitle: "Alps", lat: 46.6, lon: 10.1 },
-  { label: "北美西部", subtitle: "Western US", lat: 39.5, lon: -113.6 },
+  { label: "北京", subtitle: "Beijing · 中国", lat: 39.9042, lon: 116.4074 },
+  { label: "华盛顿", subtitle: "Washington, D.C. · 美国", lat: 38.9072, lon: -77.0369 },
+  { label: "伦敦", subtitle: "London · 英国", lat: 51.5074, lon: -0.1278 },
+  { label: "巴黎", subtitle: "Paris · 法国", lat: 48.8566, lon: 2.3522 },
+  { label: "东京", subtitle: "Tokyo · 日本", lat: 35.6762, lon: 139.6503 },
+  { label: "新德里", subtitle: "New Delhi · 印度", lat: 28.6139, lon: 77.2090 },
 ];
 
 // Fade out the static splash from index.html once the first globe tiles are in.
@@ -817,7 +819,7 @@ function App() {
             </details>
 
             <details className="layer-group" open>
-              <summary><span>EXPLORE<small>快速定位</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
+              <summary><span>CAPITALS<small>首都快速定位</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
               <div className="regions">
                 {REGIONS.map((region) => (
                   <button key={region.label} className="region-btn" onClick={() => flyTo(region)}>
