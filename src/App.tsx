@@ -29,6 +29,8 @@ import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
 import { RENDER_PROFILES, RENDER_QUALITY_LABELS, initialRenderQuality, initialSpaceMotion, nextRenderQuality, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
+import { SATELLITE_CHOICES, fetchSatelliteCatalog, formatEpoch, type SatelliteChoice } from "./satelliteOrbits";
+import { SatelliteOverlay, SATELLITE_UPDATE_MS } from "./satelliteOverlay";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -53,6 +55,7 @@ function App() {
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
   const cityMarkersRef = useRef<Entity[]>([]);
+  const satelliteOverlayRef = useRef<SatelliteOverlay | null>(null);
   const vectorLayerRef = useRef<MVTDataProvider | null>(null);
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
@@ -65,6 +68,12 @@ function App() {
   const [geologyVisible, setGeologyVisible] = useState(false);
   const [dayNightEnabled, setDayNightEnabled] = useState(true);
   const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
+  const [atmosphereVisible, setAtmosphereVisible] = useState(true);
+  const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
+  const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
+  const [satelliteStatus, setSatelliteStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [satelliteCatalog, setSatelliteCatalog] = useState<Array<{ choice: SatelliteChoice; epoch: Date }>>([]);
+  const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
   const [utcTime, setUtcTime] = useState(() => new Date().toISOString().slice(11, 16));
   const [opacity, setOpacity] = useState(90);
   const [mapMode, setMapMode] = useState<ThematicMode>("raster");
@@ -90,6 +99,7 @@ function App() {
       if (visible && viewerRef.current && !viewerRef.current.isDestroyed()) {
         viewerRef.current.clock.currentTime = JulianDate.fromDate(new Date());
         setUtcTime(new Date().toISOString().slice(11, 16));
+        satelliteOverlayRef.current?.update(new Date());
         viewerRef.current.scene.requestRender();
       }
     };
@@ -189,12 +199,15 @@ function App() {
       // when zooming into a region. Keep solar lighting at all zoom levels.
       scene.globe.lightingFadeOutDistance = 0;
       scene.globe.lightingFadeInDistance = 0;
-      scene.globe.atmosphereLightIntensity = 12;
+      scene.globe.atmosphereLightIntensity = 14;
+      scene.globe.atmosphereMieAnisotropy = 0.88;
+      scene.globe.atmosphereRayleighScaleHeight = 10_000;
+      scene.globe.atmosphereMieScaleHeight = 3_200;
       if (scene.skyAtmosphere) {
         scene.skyAtmosphere.hueShift = -0.02;
         scene.skyAtmosphere.saturationShift = 0.1;
         scene.skyAtmosphere.brightnessShift = 0;
-        scene.skyAtmosphere.atmosphereLightIntensity = 12;
+        scene.skyAtmosphere.atmosphereLightIntensity = 14;
       }
       solarClockTimer = window.setInterval(() => {
         if (!viewer || viewer.isDestroyed() || document.visibilityState !== "visible") return;
@@ -223,6 +236,16 @@ function App() {
 
       viewer.screenSpaceEventHandler.setInputAction((event: { position: Cartesian2 }) => {
         if (!viewer || viewer.isDestroyed()) return;
+        const picked = viewer.scene.pick(event.position);
+        const maybeEntity = picked && typeof picked === "object" && "id" in picked
+          ? (picked as { id?: Entity }).id
+          : undefined;
+        if (typeof maybeEntity?.id === "string" && maybeEntity.id.startsWith("satellite:")) {
+          setSelectedSatelliteId(maybeEntity.id.slice("satellite:".length));
+          setControlsOpen(true);
+          if (window.innerWidth < 760) setDetailsOpen(false);
+          return;
+        }
         const position = viewer.camera.pickEllipsoid(event.position, Ellipsoid.WGS84);
         if (!position) return;
         const cartographic = Cartographic.fromCartesian(position);
@@ -259,6 +282,8 @@ function App() {
       controllerRef.current = null;
       geologicalLayerRef.current = null;
       cityMarkersRef.current = [];
+      satelliteOverlayRef.current?.dispose();
+      satelliteOverlayRef.current = null;
       vectorLayerRef.current = null;
       vectorLoadingRef.current = null;
       viewerRef.current = null;
