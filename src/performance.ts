@@ -27,9 +27,6 @@ export function initialRenderQuality(viewportWidth: number, reducedMotion: boole
     ? "eco"
     : "balanced";
 }
-export function initialSpaceMotion(viewportWidth: number, reducedMotion: boolean): boolean {
-  return !reducedMotion && viewportWidth >= 900;
-}
 export function nextRenderQuality(current: RenderQuality): RenderQuality {
   const index = RENDER_QUALITY_ORDER.indexOf(current);
   return RENDER_QUALITY_ORDER[(index + 1) % RENDER_QUALITY_ORDER.length];

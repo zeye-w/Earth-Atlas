@@ -1,4 +1,4 @@
-# Earth Atlas · 地球科学图集
+# TerraScope · 数字地球
 
 Interactive 3D geological globe for exploring **mapped surface rock units**, geological ages, and lithologies.
 
@@ -99,7 +99,7 @@ If you use the Cloudflare console's default Git integration build flow, ensure i
 Browser smoke test after deployment:
 
 1. Open `https://earth-atlas.edwardlab.workers.dev/cesium/Workers/transferTypedArrayTest.js`
-2. The response must be **200 JavaScript**, not the Earth Atlas HTML page.
+2. The response must be **200 JavaScript**, not the TerraScope HTML page.
 3. Open `https://earth-atlas.edwardlab.workers.dev/cesium/Workers/createVerticesFromHeightmap.js` and confirm the same.
 4. Open DevTools > Network, reload the page, and verify Worker files are status 200 and type `javascript`.
 
