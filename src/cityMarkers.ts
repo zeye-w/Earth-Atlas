@@ -11,6 +11,7 @@ import {
   type Viewer,
 } from "cesium";
 import { WORLD_CITIES } from "./worldCities";
+import { LABEL_FONT } from "./labelFont";
 
 /**
  * A single static, bounded Cesium entity set. City labels follow the globe
@@ -38,7 +39,7 @@ export function addWorldCityMarkers(viewer: Viewer): Entity[] {
       },
       label: {
         text: city.chinese,
-        font: isMajor ? "12px 'Noto Sans SC', sans-serif" : "11px 'Noto Sans SC', sans-serif",
+        font: isMajor ? "500 12px " + LABEL_FONT : "11px " + LABEL_FONT,
         style: LabelStyle.FILL_AND_OUTLINE,
         fillColor: isMajor ? major : minor,
         outlineColor: outline,

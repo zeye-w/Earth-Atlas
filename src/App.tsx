@@ -27,7 +27,7 @@ import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
 import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
-import { RENDER_PROFILES, RENDER_QUALITY_LABELS, initialRenderQuality, initialSpaceMotion, nextRenderQuality, type RenderQuality } from "./performance";
+import { RENDER_PROFILES, RENDER_QUALITY_LABELS, initialRenderQuality, nextRenderQuality, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
 import { SATELLITE_CHOICES, fetchSatelliteCatalog, formatEpoch, type SatelliteChoice } from "./satelliteOrbits";
 import { SatelliteOverlay, SATELLITE_UPDATE_MS } from "./satelliteOverlay";
@@ -51,6 +51,7 @@ function coordinateLabel(value: number, positive: string, negative: string): str
 }
 
 function App() {
+  const shellRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
@@ -60,10 +61,8 @@ function App() {
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
   const [renderQuality, setRenderQuality] = useState<RenderQuality>(() => typeof window === "undefined" ? "balanced" : initialRenderQuality(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches, navigator.hardwareConcurrency));
-  const [pageVisible, setPageVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
   const [controlsOpen, setControlsOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 760);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [motionEnabled, setMotionEnabled] = useState(() => typeof window !== "undefined" && initialSpaceMotion(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches));
   const [fullscreenActive, setFullscreenActive] = useState(false);
   const [geologyVisible, setGeologyVisible] = useState(false);
   const [dayNightEnabled, setDayNightEnabled] = useState(true);
@@ -91,12 +90,10 @@ function App() {
   const rockInfo = classifyLithologies(geologicalUnit?.lithIds ?? [], lithologyDictionary);
   const eraInfo = classifyGeologicEra(geologicalUnit?.youngAgeMa ?? null, geologicalUnit?.oldAgeMa ?? null);
 
-  // Pause decorative animation when the browser tab is hidden.
+  // Resynchronize the solar clock and satellites when the tab becomes visible.
   useEffect(() => {
     const onVisibilityChange = () => {
-      const visible = document.visibilityState === "visible";
-      setPageVisible(visible);
-      if (visible && viewerRef.current && !viewerRef.current.isDestroyed()) {
+      if (document.visibilityState === "visible" && viewerRef.current && !viewerRef.current.isDestroyed()) {
         viewerRef.current.clock.currentTime = JulianDate.fromDate(new Date());
         setUtcTime(new Date().toISOString().slice(11, 16));
         satelliteOverlayRef.current?.update(new Date());
@@ -217,6 +214,11 @@ function App() {
         viewer.scene.requestRender();
       }, 60_000);
       viewer.camera.setView({ destination: HOME_VIEW });
+
+      // Re-blurring the glass panels every frame while the globe moves is the
+      // main source of drag jank; a class swaps them to a solid tint meanwhile.
+      viewer.camera.moveStart.addEventListener(() => shellRef.current?.classList.add("is-moving"));
+      viewer.camera.moveEnd.addEventListener(() => shellRef.current?.classList.remove("is-moving"));
 
       // Bundled Natural Earth II keeps a recognizable globe even offline; NASA
       // Blue Marble (public domain) adds shaded relief and ocean bathymetry.
@@ -453,13 +455,13 @@ function App() {
   };
 
   return (
-    <div className={"app-shell quality-" + renderQuality + (motionEnabled && pageVisible ? " motion-on" : " motion-off")}>
+    <div ref={shellRef} className={"app-shell quality-" + renderQuality}>
       <header className="topbar">
-        <a className="brand" href="/" aria-label="Earth Atlas home">
+        <a className="brand" href="/" aria-label="TerraScope 首页">
           <span className="brand-symbol" aria-hidden="true">◎</span>
-          <span className="brand-name">EARTH <strong>ATLAS</strong></span>
+          <span className="brand-name">TERRA<strong>SCOPE</strong></span>
           <span className="brand-divider" />
-          <span className="brand-caption">地球科学图集</span>
+          <span className="brand-caption">数字地球</span>
         </a>
         <div className="header-right">
           <span className="online-indicator"><span /> GLOBAL GEOLOGY EXPLORER</span>
@@ -469,9 +471,6 @@ function App() {
             </button>
             <button type="button" className={"header-action" + (detailsOpen ? " active" : "")} onClick={toggleDetails} aria-expanded={detailsOpen} aria-controls="earth-inspector-panel">
               <span aria-hidden="true">⌖</span><span className="action-caption">信息</span>
-            </button>
-            <button type="button" className={"header-action" + (motionEnabled ? " active" : "")} onClick={() => setMotionEnabled((enabled) => !enabled)} aria-pressed={motionEnabled} title="开启或暂停宇宙背景星光动效（地球不会自动旋转）">
-              <span aria-hidden="true">✦</span><span className="action-caption">{motionEnabled ? "动效开" : "动效关"}</span>
             </button>
             <button type="button" className="header-action" onClick={() => setRenderQuality(nextRenderQuality)} aria-label={"切换画质，当前：" + RENDER_QUALITY_LABELS[renderQuality]} title={"渲染画质：" + RENDER_QUALITY_LABELS[renderQuality] + "，点击切换"}>
               <span aria-hidden="true">◇</span><span className="action-caption">{RENDER_QUALITY_LABELS[renderQuality]}</span>
@@ -593,17 +592,11 @@ function App() {
               <p>地质图反映地表地质单元，不代表地下岩层。年代与岩性取自原始地质图编绘数据。</p>
             </div>
           </div>
-          <div className="sidebar-bottom">EARTH ATLAS <span>—</span> MVP 0.1</div>
+          <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.1</div>
         </aside>
 
         <section className="globe-panel" aria-label="可交互三维地质地球">
           <div className="globe-mount" ref={mountRef} />
-          <div className="space-effects" aria-hidden="true">
-            <div className="nebula-field" />
-            <div className="stars-far" />
-            <div className="stars-near" />
-            <div className="orbital-glow" />
-          </div>
           <div className="globe-top-left">
             <span className="map-tag"><span className="tag-dot" /> 3D GLOBAL VIEW</span>
             <span className="map-subtitle">{dayNightEnabled ? "REAL-TIME SUNLIGHT" : "EARTH OBSERVATION"} · {utcTime} UTC</span>

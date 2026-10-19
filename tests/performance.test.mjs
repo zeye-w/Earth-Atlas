@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   RENDER_PROFILES, RENDER_QUALITY_ORDER, GLOBAL_VECTOR_MAX_ZOOM,
-  GLOBAL_VECTOR_TILE_NODES, initialRenderQuality, initialSpaceMotion,
+  GLOBAL_VECTOR_TILE_NODES, initialRenderQuality,
   nextRenderQuality,
 } from "../src/performance.ts";
 import { THEMATIC_MAX_ZOOM } from "../src/mapThematic.ts";
@@ -18,9 +18,6 @@ test("mobile/reduced motion/low-core devices start in eco mode", () => {
   assert.equal(initialRenderQuality(390, false, 8), "eco");
   assert.equal(initialRenderQuality(1920, true, 8), "eco");
   assert.equal(initialRenderQuality(1920, false, 4), "eco");
-  assert.equal(initialSpaceMotion(390, false), false);
-  assert.equal(initialSpaceMotion(1920, true), false);
-  assert.equal(initialSpaceMotion(1920, false), true);
 });
 
 test("render settings explicitly trade frame budget, resolution and terrain detail", () => {

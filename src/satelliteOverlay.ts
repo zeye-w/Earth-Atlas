@@ -12,6 +12,7 @@ import {
   type Entity,
   type Viewer,
 } from "cesium";
+import { LABEL_FONT } from "./labelFont.ts";
 import { orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
 
 export const SATELLITE_UPDATE_MS = 5_000; // Positions every 5 s; not each WebGL frame.
@@ -56,7 +57,7 @@ export class SatelliteOverlay {
         },
         label: {
           text: record.choice.title.split(" · ")[0].split("（")[0],
-          font: "11px 'DM Sans', 'Noto Sans SC', sans-serif",
+          font: "11px " + LABEL_FONT,
           style: LabelStyle.FILL_AND_OUTLINE,
           fillColor: mainColor,
           outlineColor: Color.fromCssColorString("#051222"),
