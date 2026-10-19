@@ -1,6 +1,8 @@
 # TerraScope · 数字地球
 
-Interactive 3D geological globe for exploring **mapped surface rock units**, geological ages, and lithologies.
+Interactive 3D digital Earth: real-time day/night lighting, satellites predicted from public orbital elements, world cities, and on-demand global surface geology (**mapped surface rock units**, geological ages, and lithologies).
+
+The page shows a static splash until the first globe tiles load. Cesium is emitted as its own long-lived chunk, and the satellite modules (including `satellite.js`) load only when the satellite layer is enabled.
 
 ## Default Earth view: real sunlight and cities
 
