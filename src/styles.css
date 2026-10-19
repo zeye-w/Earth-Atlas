@@ -185,6 +185,10 @@ h1 em { font-style:normal; color:var(--text-2); }
 .satellite-controls { margin:3px 0 13px 52px; padding:10px 11px 13px; border-radius:12px; background:var(--fill); border:1px solid var(--line); }
 .satellite-path-toggle { display:flex; align-items:center; gap:7px; font-size:10px; color:var(--text-2); cursor:pointer; }
 .satellite-path-toggle input { accent-color:#f4f5f7; }
+.satellite-speed { display:flex; align-items:center; gap:10px; margin-top:10px; font-size:10px; color:var(--text-2); }
+.satellite-speed .segmented { flex:1; }
+.satellite-speed .segmented button { padding:5px 0; font-size:10px; }
+.satellite-preview-note { margin:8px 0 0; padding:7px 9px; border-radius:8px; font-size:10px; line-height:1.6; color:var(--text); background:rgba(255,200,120,.10); border:1px solid rgba(255,200,120,.25); }
 .satellite-status { margin:10px 0 7px; font-size:10px; line-height:1.65; color:var(--text-2); }
 .satellite-catalog { display:flex; flex-direction:column; gap:5px; max-height:190px; overflow-y:auto; scrollbar-width:thin; }
 .satellite-entry { display:flex; align-items:flex-start; gap:8px; padding:6px 7px; border-radius:8px; border:1px solid transparent; background:rgba(255,255,255,.04); }

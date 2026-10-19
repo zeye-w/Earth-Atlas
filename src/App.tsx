@@ -35,7 +35,7 @@ import { RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, rend
 import { addWorldCityMarkers } from "./cityMarkers";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";
-import type { SatelliteOverlay } from "./satelliteOverlay";
+import type { SatelliteOverlay, SatelliteSpeed } from "./satelliteOverlay";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -73,6 +73,8 @@ function coordinateLabel(value: number, positive: string, negative: string): str
 }
 
 const ICON = { size: 17, strokeWidth: 1.7 } as const;
+// Mirrors SATELLITE_SPEEDS; kept here so the overlay module stays lazy-loaded.
+const SATELLITE_SPEED_OPTIONS: readonly SatelliteSpeed[] = [1, 60, 300];
 
 interface ToggleRowProps {
   icon: ReactNode;
@@ -119,6 +121,8 @@ function App() {
   const [satelliteCatalog, setSatelliteCatalog] = useState<Array<{ choice: SatelliteChoice; epochLabel: string }>>([]);
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
   const selectedSatelliteIdRef = useRef<string | null>(null);
+  const [satelliteSpeed, setSatelliteSpeed] = useState<SatelliteSpeed>(1);
+  const satelliteSpeedRef = useRef<SatelliteSpeed>(1);
   const [utcTime, setUtcTime] = useState(() => new Date().toISOString().slice(11, 16));
   const [opacity, setOpacity] = useState(90);
   const [mapMode, setMapMode] = useState<ThematicMode>("raster");
@@ -142,7 +146,7 @@ function App() {
       if (document.visibilityState === "visible" && viewerRef.current && !viewerRef.current.isDestroyed()) {
         viewerRef.current.clock.currentTime = JulianDate.fromDate(new Date());
         setUtcTime(new Date().toISOString().slice(11, 16));
-        satelliteOverlayRef.current?.update(new Date());
+        satelliteOverlayRef.current?.update(true);
         viewerRef.current.scene.requestRender();
       }
     };
@@ -427,7 +431,6 @@ function App() {
       return;
     }
     let active = true;
-    let interval: number | null = null;
     setSatelliteStatus("loading");
     void Promise.all([import("./satelliteOrbits"), import("./satelliteOverlay")]).then(async ([orbits, overlayModule]) => {
       const { satellites } = await orbits.fetchSatelliteCatalog();
@@ -436,11 +439,9 @@ function App() {
       const overlay = new overlayModule.SatelliteOverlay(viewer, satellites, satellitePathsVisible);
       satelliteOverlayRef.current = overlay;
       overlay.setSelected(selectedSatelliteIdRef.current);
+      overlay.setSpeed(satelliteSpeedRef.current);
       setSatelliteCatalog(satellites.map(({ choice, epoch }) => ({ choice, epochLabel: orbits.formatEpoch(epoch) })));
       setSatelliteStatus(overlay.count > 0 ? "ready" : "error");
-      interval = window.setInterval(() => {
-        if (document.visibilityState === "visible") overlay.update(new Date());
-      }, overlayModule.SATELLITE_UPDATE_MS);
     }).catch((error: unknown) => {
       if (!active) return;
       console.warn("Satellite elements unavailable; no fabricated orbit rendered.", error);
@@ -449,11 +450,15 @@ function App() {
     });
     return () => {
       active = false;
-      if (interval !== null) window.clearInterval(interval);
       satelliteOverlayRef.current?.dispose();
       satelliteOverlayRef.current = null;
     };
   }, [satellitesVisible]);
+
+  useEffect(() => {
+    satelliteSpeedRef.current = satelliteSpeed;
+    satelliteOverlayRef.current?.setSpeed(satelliteSpeed);
+  }, [satelliteSpeed]);
 
   useEffect(() => {
     selectedSatelliteIdRef.current = selectedSatelliteId;
@@ -601,10 +606,21 @@ function App() {
                     <input type="checkbox" checked={satellitePathsVisible} onChange={(event) => setSatellitePathsVisible(event.target.checked)} />
                     <span>显示前后约 45 分钟预测轨迹</span>
                   </label>
+                  <div className="satellite-speed">
+                    <span>播放速度</span>
+                    <div className="segmented" role="radiogroup" aria-label="卫星播放速度">
+                      {SATELLITE_SPEED_OPTIONS.map((speed) => (
+                        <button key={speed} type="button" role="radio" aria-checked={satelliteSpeed === speed} className={satelliteSpeed === speed ? "selected" : ""} onClick={() => setSatelliteSpeed(speed)}>
+                          {speed === 1 ? "实时" : speed + "×"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {satelliteSpeed !== 1 && <p className="satellite-preview-note" role="status">加速预览：显示的是推算的未来位置，并非当前实时位置。切回"实时"即恢复。</p>}
                   <p className="satellite-status" role="status">
                     {satelliteStatus === "loading" ? "正在读取 CelesTrak 最新公开轨道根数…" :
                      satelliteStatus === "error" ? "轨道数据暂不可用，已隐藏卫星；不会绘制虚构轨道。" :
-                     satelliteStatus === "ready" ? "已加载 " + satelliteCatalog.length + " 颗卫星 · 每 5 秒更新预测位置" :
+                     satelliteStatus === "ready" ? "已加载 " + satelliteCatalog.length + " 颗卫星 · 位置连续推算" :
                      "打开图层后读取轨道根数"}
                   </p>
                   {satelliteCatalog.length > 0 && satelliteStatus === "ready" && (

@@ -12,7 +12,7 @@ import {
   orbitPath,
   formatEpoch,
 } from "../src/satelliteOrbits.ts";
-import { SATELLITE_MAX_DISPLAY, SATELLITE_UPDATE_MS, SATELLITE_PATH_UPDATE_MS } from "../src/satelliteOverlay.ts";
+import { SATELLITE_MAX_DISPLAY, SATELLITE_PATH_UPDATE_MS, SATELLITE_MIN_FPS, SATELLITE_MAX_FPS, satelliteFrameRate } from "../src/satelliteOverlay.ts";
 
 // Public satellite.js documentation OMM HELIOS 2A record (historical test
 // fixture, NOT presented as a current position or a live CelesTrak response).
@@ -43,8 +43,16 @@ test("curated source remains bounded and cache respects CelesTrak update interva
   assert.equal(new Set(SATELLITE_CHOICES.map((x) => x.noradId)).size, SATELLITE_CHOICES.length);
   assert.ok(GP_CACHE_MS >= 2 * 60 * 60 * 1000);
   assert.ok(MAX_ELEMENT_AGE_DAYS <= 14);
-  assert.ok(SATELLITE_UPDATE_MS >= 3000);
   assert.ok(SATELLITE_PATH_UPDATE_MS >= 60_000);
+});
+
+test("satellite motion re-renders only as fast as it moves on screen", () => {
+  // Real-time LEO at a whole-globe view barely moves: minimum rate.
+  assert.equal(satelliteFrameRate(1, 17_000_000, 900), SATELLITE_MIN_FPS);
+  // Zoomed in or accelerated: capped at the maximum rate.
+  assert.equal(satelliteFrameRate(1, 300_000, 900), SATELLITE_MAX_FPS);
+  assert.equal(satelliteFrameRate(300, 17_000_000, 900), SATELLITE_MAX_FPS);
+  assert.ok(SATELLITE_MAX_FPS <= 30);
 });
 
 test("CelesTrak offset-free OMM epochs must be UTC, not local browser time", () => {

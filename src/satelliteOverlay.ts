@@ -4,33 +4,48 @@ import {
   Cartesian3,
   Color,
   ColorMaterialProperty,
-  VerticalOrigin,
   ConstantPositionProperty,
   ConstantProperty,
   DistanceDisplayCondition,
   HorizontalOrigin,
   LabelStyle,
   NearFarScalar,
+  VerticalOrigin,
   type Entity,
   type Viewer,
 } from "cesium";
 import { LABEL_FONT } from "./labelFont.ts";
 import { orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
 
-export const SATELLITE_UPDATE_MS = 5_000; // Positions every 5 s; not each WebGL frame.
-export const SATELLITE_PATH_UPDATE_MS = 120_000; // Ground-fixed forecast path recomputed rarely.
+// Ground-fixed forecast path is recomputed after this much simulated time.
+export const SATELLITE_PATH_UPDATE_MS = 120_000;
 export const SATELLITE_MAX_DISPLAY = 6;
+// Positions are re-propagated continuously, but only as often as the motion
+// is visible on screen: a few frames per second at globe scale (real-time
+// LEO motion is ~1 px/s there) and up to 30 when zoomed in or accelerated.
+export const SATELLITE_MIN_FPS = 2;
+export const SATELLITE_MAX_FPS = 30;
+export const SATELLITE_SPEEDS = [1, 60, 300] as const;
+export type SatelliteSpeed = (typeof SATELLITE_SPEEDS)[number];
+const LEO_SPEED_M_PER_S = 7_700;
 
-function toCartesian(pos: OrbitalPosition): Cartesian3 {
-  return Cartesian3.fromRadians(pos.longitudeRad, pos.latitudeRad, pos.altitudeKm * 1000);
+/** Frames per second needed for about half-pixel steps, clamped. */
+export function satelliteFrameRate(speed: number, cameraHeightM: number, viewportHeightPx: number): number {
+  const metersPerPixel = Math.max(cameraHeightM, 1) * 1.15 / Math.max(viewportHeightPx, 1);
+  const pixelsPerSecond = LEO_SPEED_M_PER_S * Math.max(speed, 1) / metersPerPixel;
+  return Math.min(SATELLITE_MAX_FPS, Math.max(SATELLITE_MIN_FPS, pixelsPerSecond * 2));
 }
 
-// One neutral style for every orbit: thin, clearly visible lines; the selected
-// satellite's orbit is drawn a little brighter.
-const ORBIT_COLOR = Color.fromCssColorString("#e6edf8").withAlpha(0.62);
+function toCartesian(pos: OrbitalPosition, result?: Cartesian3): Cartesian3 {
+  return Cartesian3.fromRadians(pos.longitudeRad, pos.latitudeRad, pos.altitudeKm * 1000, undefined, result);
+}
+
+// One neutral style for every orbit: thin, clearly visible lines; the
+// selected satellite's orbit is drawn a little brighter.
+const ORBIT_COLOR = Color.fromCssColorString("#e6edf8").withAlpha(0.55);
 const ORBIT_SELECTED_COLOR = Color.fromCssColorString("#ffffff").withAlpha(0.95);
-const ORBIT_WIDTH = 1.6;
-const ORBIT_SELECTED_WIDTH = 2.4;
+const ORBIT_WIDTH = 1.1;
+const ORBIT_SELECTED_WIDTH = 1.8;
 const LABEL_COLOR = Color.fromCssColorString("#eef2f8");
 // Velocity is sampled this far ahead to point the icon along its track.
 const HEADING_SAMPLE_MS = 20_000;
@@ -51,24 +66,28 @@ const SATELLITE_ICON = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
   '</svg>',
 );
 
-function headingAxis(record: OrbitRecord, now: Date, here: Cartesian3): Cartesian3 | undefined {
-  const ahead = positionAt(record, new Date(now.getTime() + HEADING_SAMPLE_MS));
-  if (!ahead) return undefined;
-  const direction = Cartesian3.subtract(toCartesian(ahead), here, new Cartesian3());
-  return Cartesian3.magnitude(direction) > 0 ? Cartesian3.normalize(direction, direction) : undefined;
-}
-
 interface MarkerPair {
   record: OrbitRecord;
   marker: Entity;
   path: Entity;
+  position: ConstantPositionProperty;
+  axis: ConstantProperty;
 }
+
 export class SatelliteOverlay {
   private readonly viewer: Viewer;
   private readonly pairs: MarkerPair[] = [];
   private showPaths = true;
-  private lastPathUpdate = 0;
+  private lastPathSimMs = Number.NEGATIVE_INFINITY;
   private selectedId: string | null = null;
+  private speed: SatelliteSpeed = 1;
+  // Simulated clock: simMs = anchorSimMs + (realNow - anchorRealMs) * speed.
+  private anchorRealMs = Date.now();
+  private anchorSimMs = Date.now();
+  private frameHandle: number | null = null;
+  private lastFrameMs = 0;
+  private readonly scratchHere = new Cartesian3();
+  private readonly scratchAhead = new Cartesian3();
 
   constructor(viewer: Viewer, records: readonly OrbitRecord[], pathsVisible = true) {
     this.viewer = viewer;
@@ -77,16 +96,18 @@ export class SatelliteOverlay {
     for (const record of records.slice(0, SATELLITE_MAX_DISPLAY)) {
       const pos = positionAt(record, now);
       if (!pos) continue;
-      const here = toCartesian(pos);
+      const position = new ConstantPositionProperty(toCartesian(pos));
+      const axis = new ConstantProperty(Cartesian3.ZERO);
+      const size = record.choice.category === "station" ? 22 : 18;
       const marker = viewer.entities.add({
         id: "satellite:" + record.choice.id,
         name: record.choice.title,
-        position: new ConstantPositionProperty(here),
+        position,
         billboard: {
           image: SATELLITE_ICON,
-          width: record.choice.category === "station" ? 30 : 26,
-          height: record.choice.category === "station" ? 30 : 26,
-          alignedAxis: headingAxis(record, now, here) ?? Cartesian3.ZERO,
+          width: size,
+          height: size,
+          alignedAxis: axis,
           verticalOrigin: VerticalOrigin.CENTER,
           disableDepthTestDistance: 0,
           scaleByDistance: new NearFarScalar(300_000, 1.3, 25_000_000, 0.85),
@@ -100,7 +121,7 @@ export class SatelliteOverlay {
           outlineColor: Color.fromCssColorString("#05070b"),
           outlineWidth: 3,
           horizontalOrigin: HorizontalOrigin.LEFT,
-          pixelOffset: new Cartesian2(16, -12),
+          pixelOffset: new Cartesian2(13, -10),
           scaleByDistance: new NearFarScalar(300_000, 1, 25_000_000, 0.74),
           distanceDisplayCondition: new DistanceDisplayCondition(0, 40_000_000),
           disableDepthTestDistance: 0,
@@ -117,30 +138,62 @@ export class SatelliteOverlay {
           distanceDisplayCondition: new DistanceDisplayCondition(0, 55_000_000),
         },
       });
-      this.pairs.push({ record, marker, path });
+      this.pairs.push({ record, marker, path, position, axis });
     }
-    this.update(now, true);
+    this.update(true);
+    this.frameHandle = requestAnimationFrame(this.onFrame);
   }
 
-  update(now = new Date(), forcePaths = false): void {
+  /** Current simulated instant (equals real time at 1x). */
+  simulatedTime(): Date {
+    return new Date(this.anchorSimMs + (Date.now() - this.anchorRealMs) * this.speed);
+  }
+
+  setSpeed(speed: SatelliteSpeed): void {
+    const realNow = Date.now();
+    // Returning to 1x snaps back to the true current position.
+    this.anchorSimMs = speed === 1 ? realNow : this.simulatedTime().getTime();
+    this.anchorRealMs = realNow;
+    this.speed = speed;
+    this.update(true);
+  }
+
+  private readonly onFrame = (frameMs: number): void => {
     if (this.viewer.isDestroyed()) return;
-    const updatePaths = forcePaths || (this.showPaths && now.getTime() - this.lastPathUpdate > SATELLITE_PATH_UPDATE_MS);
+    this.frameHandle = requestAnimationFrame(this.onFrame);
+    if (document.visibilityState !== "visible") return;
+    const camera = this.viewer.scene.camera;
+    const height = camera.positionCartographic.height;
+    const fps = satelliteFrameRate(this.speed, height, this.viewer.canvas.clientHeight);
+    if (frameMs - this.lastFrameMs < 1000 / fps) return;
+    this.lastFrameMs = frameMs;
+    this.update();
+  };
+
+  update(forcePaths = false): void {
+    if (this.viewer.isDestroyed()) return;
+    const now = this.simulatedTime();
+    const updatePaths = forcePaths || (this.showPaths && Math.abs(now.getTime() - this.lastPathSimMs) > SATELLITE_PATH_UPDATE_MS);
+    const ahead = new Date(now.getTime() + HEADING_SAMPLE_MS);
     for (const pair of this.pairs) {
       const pos = positionAt(pair.record, now);
-      if (pos) {
-        const here = toCartesian(pos);
-        pair.marker.position = new ConstantPositionProperty(here);
-        const axis = headingAxis(pair.record, now, here);
-        if (axis) pair.marker.billboard!.alignedAxis = new ConstantProperty(axis);
-      }
       pair.marker.show = Boolean(pos);
+      if (pos) {
+        const here = toCartesian(pos, this.scratchHere);
+        pair.position.setValue(here);
+        const next = positionAt(pair.record, ahead);
+        if (next) {
+          const direction = Cartesian3.subtract(toCartesian(next, this.scratchAhead), here, this.scratchAhead);
+          if (Cartesian3.magnitude(direction) > 0) pair.axis.setValue(Cartesian3.normalize(direction, new Cartesian3()));
+        }
+      }
       if (updatePaths && this.showPaths) {
         const points = orbitPath(pair.record, now);
-        pair.path.polyline!.positions = new ConstantProperty(points.map(toCartesian));
+        pair.path.polyline!.positions = new ConstantProperty(points.map((point) => toCartesian(point)));
         pair.path.show = points.length > 1;
       }
     }
-    if (updatePaths) this.lastPathUpdate = now.getTime();
+    if (updatePaths) this.lastPathSimMs = now.getTime();
     this.viewer.scene.requestRender();
   }
 
@@ -158,11 +211,13 @@ export class SatelliteOverlay {
   togglePaths(visible: boolean): void {
     this.showPaths = visible;
     for (const pair of this.pairs) pair.path.show = visible;
-    if (visible) this.update(new Date(), true);
+    if (visible) this.update(true);
     else if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
   }
 
   dispose(): void {
+    if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
+    this.frameHandle = null;
     if (this.viewer.isDestroyed()) return;
     for (const pair of this.pairs) {
       this.viewer.entities.remove(pair.marker);
