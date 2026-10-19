@@ -2,6 +2,14 @@
 
 Interactive 3D geological globe for exploring **mapped surface rock units**, geological ages, and lithologies.
 
+## Default Earth view: real sunlight and cities
+
+The first-load Earth experience prioritizes NASA Blue Marble / Natural Earth imagery: **global Macrostrat geology is OFF by default** and its raster imagery provider is not created until you explicitly enable the geological layer. The age/lithology thematic layers remain available on demand.
+
+**Real day and night:** Cesium's `SunLight` replaces the earlier camera-following decorative directional light. The lighting direction is calculated from the Cesium clock in real UTC, refreshed from the browser's current UTC instant every 60 seconds and when returning to a hidden tab, with explicit scene renders only at those moments. Because this is an ephemeris-driven illumination model rather than a daylight/nightlight dataset, it **does not depict artificial city light emissions or current cloud cover**. Device clock errors can shift the terminator. Toggle it on/off in the layer control.
+
+**Important cities:** A bounded hand-curated WGS84 marker set of approximately 50 prominent world cities displays approximate city-centre positions. Primary labels are visible in global views, and secondary labels appear only at regional zoom to reduce clutter. The list is an illustrative selection, **not** a definitive population ranking or authoritative municipal-boundary centroid dataset. Labels are depth-tested against the globe and can be turned off independently. No paid city map service or tracking API is used.
+
 ## Features
 
 - Drag the 3D globe to rotate; use wheel or touch to zoom.
