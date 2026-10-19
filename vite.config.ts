@@ -25,6 +25,18 @@ export default defineConfig({
     CESIUM_BASE_URL: JSON.stringify("/" + cesiumBaseUrl),
   },
   build: {
-    chunkSizeWarningLimit: 2300,
+    // Cesium alone is ~4 MB; keep it in its own long-lived chunk so app
+    // changes do not invalidate it, and split React/icons out of the entry.
+    chunkSizeWarningLimit: 4500,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: "cesium", test: /node_modules[\\/](cesium|@cesium)[\\/]/, priority: 20 },
+            { name: "vendor", test: /node_modules[\\/](react|react-dom|scheduler|lucide-react)[\\/]/, priority: 10 },
+          ],
+        },
+      },
+    },
   },
 });

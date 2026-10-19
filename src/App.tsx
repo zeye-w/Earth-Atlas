@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Cartesian2,
   Cartesian3,
@@ -23,14 +23,19 @@ import {
   buildModuleUrl,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import {
+  ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
+  Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, SunMoon, X,
+} from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
 import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
-import { RENDER_PROFILES, RENDER_QUALITY_LABELS, initialRenderQuality, nextRenderQuality, type RenderQuality } from "./performance";
+import { RENDER_PROFILES, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
-import { SATELLITE_CHOICES, fetchSatelliteCatalog, formatEpoch, type SatelliteChoice } from "./satelliteOrbits";
-import { SatelliteOverlay, SATELLITE_UPDATE_MS } from "./satelliteOverlay";
+// satellite.js and the overlay are imported on demand when the layer is enabled.
+import type { SatelliteChoice } from "./satelliteOrbits";
+import type { SatelliteOverlay } from "./satelliteOverlay";
 import "./styles.css";
 
 type QueryStatus = "idle" | "loading" | "success" | "empty" | "error";
@@ -46,13 +51,43 @@ const REGIONS: Region[] = [
   { label: "北美西部", subtitle: "Western US", lat: 39.5, lon: -113.6 },
 ];
 
+// Fade out the static splash from index.html once the first globe tiles are in.
+function dismissSplash() {
+  const splash = document.getElementById("splash");
+  if (!splash || splash.classList.contains("done")) return;
+  splash.classList.add("done");
+  window.setTimeout(() => splash.remove(), 700);
+}
+
 function coordinateLabel(value: number, positive: string, negative: string): string {
   return Math.abs(value).toFixed(4) + "° " + (value >= 0 ? positive : negative);
+}
+
+const ICON = { size: 17, strokeWidth: 1.7 } as const;
+
+interface ToggleRowProps {
+  icon: ReactNode;
+  title: string;
+  caption: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+function ToggleRow({ icon, title, caption, checked, onChange }: ToggleRowProps) {
+  return (
+    <label className="toggle-row">
+      <span className="layer-icon" aria-hidden="true">{icon}</span>
+      <span className="toggle-copy"><strong>{title}</strong><small>{caption}</small></span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={title} />
+      <span className="switch" aria-hidden="true" />
+    </label>
+  );
 }
 
 function App() {
   const shellRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const geologicalLayerRef = useRef<ImageryLayer | null>(null);
   const cityMarkersRef = useRef<Entity[]>([]);
@@ -64,6 +99,7 @@ function App() {
   const [controlsOpen, setControlsOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 760);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [fullscreenActive, setFullscreenActive] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [geologyVisible, setGeologyVisible] = useState(false);
   const [dayNightEnabled, setDayNightEnabled] = useState(true);
   const [cityLabelsVisible, setCityLabelsVisible] = useState(true);
@@ -71,7 +107,7 @@ function App() {
   const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
   const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
   const [satelliteStatus, setSatelliteStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [satelliteCatalog, setSatelliteCatalog] = useState<Array<{ choice: SatelliteChoice; epoch: Date }>>([]);
+  const [satelliteCatalog, setSatelliteCatalog] = useState<Array<{ choice: SatelliteChoice; epochLabel: string }>>([]);
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
   const [utcTime, setUtcTime] = useState(() => new Date().toISOString().slice(11, 16));
   const [opacity, setOpacity] = useState(90);
@@ -122,6 +158,23 @@ function App() {
     return () => document.removeEventListener("fullscreenchange", update);
   }, []);
 
+  // Close the settings popover on outside click or Escape.
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!settingsRef.current?.contains(event.target as Node)) setSettingsOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [settingsOpen]);
+
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     else void document.documentElement.requestFullscreen?.().catch(() => {});
@@ -142,6 +195,7 @@ function App() {
 
     let viewer: Viewer | null = null;
     let solarClockTimer: number | null = null;
+    let splashTimer: number | null = null;
     try {
       viewer = new Viewer(mountRef.current, {
         baseLayer: false,
@@ -214,6 +268,12 @@ function App() {
         viewer.scene.requestRender();
       }, 60_000);
       viewer.camera.setView({ destination: HOME_VIEW });
+      const removeSplashListener = scene.postRender.addEventListener(() => {
+        if (!scene.globe.tilesLoaded) return;
+        removeSplashListener();
+        dismissSplash();
+      });
+      splashTimer = window.setTimeout(dismissSplash, 10_000);
 
       // Re-blurring the glass panels every frame while the globe moves is the
       // main source of drag jank; a class swaps them to a solid tint meanwhile.
@@ -274,12 +334,14 @@ function App() {
       }, ScreenSpaceEventType.LEFT_CLICK);
     } catch (error) {
       setGlobeError(error instanceof Error ? error.message : "3D globe initialization failed");
+      dismissSplash();
       if (viewer && !viewer.isDestroyed()) viewer.destroy();
       viewerRef.current = null;
     }
 
     return () => {
       if (solarClockTimer !== null) window.clearInterval(solarClockTimer);
+      if (splashTimer !== null) window.clearTimeout(splashTimer);
       controllerRef.current?.abort();
       controllerRef.current = null;
       geologicalLayerRef.current = null;
@@ -360,16 +422,17 @@ function App() {
     let active = true;
     let interval: number | null = null;
     setSatelliteStatus("loading");
-    void fetchSatelliteCatalog().then(({ satellites }) => {
+    void Promise.all([import("./satelliteOrbits"), import("./satelliteOverlay")]).then(async ([orbits, overlayModule]) => {
+      const { satellites } = await orbits.fetchSatelliteCatalog();
       if (!active || viewer.isDestroyed()) return;
       satelliteOverlayRef.current?.dispose();
-      const overlay = new SatelliteOverlay(viewer, satellites, satellitePathsVisible);
+      const overlay = new overlayModule.SatelliteOverlay(viewer, satellites, satellitePathsVisible);
       satelliteOverlayRef.current = overlay;
-      setSatelliteCatalog(satellites.map(({ choice, epoch }) => ({ choice, epoch })));
+      setSatelliteCatalog(satellites.map(({ choice, epoch }) => ({ choice, epochLabel: orbits.formatEpoch(epoch) })));
       setSatelliteStatus(overlay.count > 0 ? "ready" : "error");
       interval = window.setInterval(() => {
         if (document.visibilityState === "visible") overlay.update(new Date());
-      }, SATELLITE_UPDATE_MS);
+      }, overlayModule.SATELLITE_UPDATE_MS);
     }).catch((error: unknown) => {
       if (!active) return;
       console.warn("Satellite elements unavailable; no fabricated orbit rendered.", error);
@@ -458,167 +521,170 @@ function App() {
     <div ref={shellRef} className={"app-shell quality-" + renderQuality}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="TerraScope 首页">
-          <span className="brand-symbol" aria-hidden="true">◎</span>
+          <span className="brand-symbol" aria-hidden="true"><Orbit size={18} strokeWidth={1.6} /></span>
           <span className="brand-name">TERRA<strong>SCOPE</strong></span>
           <span className="brand-divider" />
           <span className="brand-caption">数字地球</span>
         </a>
         <div className="header-right">
-          <span className="online-indicator"><span /> GLOBAL GEOLOGY EXPLORER</span>
+          <span className="online-indicator"><span /> LIVE · {utcTime} UTC</span>
           <div className="header-actions" role="group" aria-label="页面视图控制">
-            <button type="button" className={"header-action" + (controlsOpen ? " active" : "")} onClick={toggleControls} aria-expanded={controlsOpen} aria-controls="earth-layer-panel">
-              <span aria-hidden="true">▤</span><span className="action-caption">图层</span>
+            <button type="button" className={"header-action" + (controlsOpen ? " active" : "")} onClick={toggleControls} aria-label="图层" aria-expanded={controlsOpen} aria-controls="earth-layer-panel">
+              <Layers {...ICON} aria-hidden="true" /><span className="action-caption">图层</span>
             </button>
-            <button type="button" className={"header-action" + (detailsOpen ? " active" : "")} onClick={toggleDetails} aria-expanded={detailsOpen} aria-controls="earth-inspector-panel">
-              <span aria-hidden="true">⌖</span><span className="action-caption">信息</span>
+            <button type="button" className={"header-action" + (detailsOpen ? " active" : "")} onClick={toggleDetails} aria-label="地点" aria-expanded={detailsOpen} aria-controls="earth-inspector-panel">
+              <Crosshair {...ICON} aria-hidden="true" /><span className="action-caption">地点</span>
             </button>
-            <button type="button" className="header-action" onClick={() => setRenderQuality(nextRenderQuality)} aria-label={"切换画质，当前：" + RENDER_QUALITY_LABELS[renderQuality]} title={"渲染画质：" + RENDER_QUALITY_LABELS[renderQuality] + "，点击切换"}>
-              <span aria-hidden="true">◇</span><span className="action-caption">{RENDER_QUALITY_LABELS[renderQuality]}</span>
-            </button>
-            <button type="button" className="header-action" onClick={toggleFullscreen} aria-label={fullscreenActive ? "退出浏览器全屏" : "进入浏览器全屏"} title={fullscreenActive ? "退出全屏" : "浏览器全屏"}>
-              <span aria-hidden="true">{fullscreenActive ? "⊟" : "⛶"}</span><span className="action-caption">{fullscreenActive ? "退出全屏" : "全屏"}</span>
-            </button>
+            <div className="settings-anchor" ref={settingsRef}>
+              <button type="button" className={"header-action" + (settingsOpen ? " active" : "")} onClick={() => setSettingsOpen((open) => !open)} aria-expanded={settingsOpen} aria-controls="view-settings" aria-label="显示设置">
+                <SlidersHorizontal {...ICON} aria-hidden="true" /><span className="action-caption">设置</span>
+              </button>
+              {settingsOpen && (
+                <div id="view-settings" className="settings-popover" role="dialog" aria-label="显示设置">
+                  <div className="metric-label">RENDER QUALITY · 画质</div>
+                  <div className="segmented" role="radiogroup" aria-label="渲染画质">
+                    {RENDER_QUALITY_ORDER.map((quality) => (
+                      <button key={quality} type="button" role="radio" aria-checked={renderQuality === quality} className={renderQuality === quality ? "selected" : ""} onClick={() => setRenderQuality(quality)}>
+                        {RENDER_QUALITY_LABELS[quality]}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="settings-hint">省电模式降低分辨率并关闭玻璃模糊，适合笔记本和手机。</p>
+                  <button type="button" className="settings-row" onClick={toggleFullscreen}>
+                    {fullscreenActive ? <Minimize {...ICON} aria-hidden="true" /> : <Maximize {...ICON} aria-hidden="true" />}
+                    <span>{fullscreenActive ? "退出全屏" : "全屏浏览"}</span>
+                  </button>
+                  <a className="settings-row" href="https://github.com/zeye-w/Earth-Atlas" target="_blank" rel="noreferrer">
+                    <Code {...ICON} aria-hidden="true" /><span>GitHub 源代码</span><ArrowUpRight size={14} aria-hidden="true" />
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
-          <a href="https://github.com/zeye-w/Earth-Atlas" target="_blank" rel="noreferrer" className="source-link">GitHub ↗</a>
         </div>
       </header>
 
       <main className="workspace">
-        <aside id="earth-layer-panel" aria-label="地质图层控制" aria-hidden={!controlsOpen} inert={!controlsOpen} className={"sidebar glass-panel" + (!controlsOpen ? " is-collapsed" : "")}>
-          <button type="button" className="panel-dismiss" onClick={() => setControlsOpen(false)} aria-label="收起地质图层面板">×</button>
+        <aside id="earth-layer-panel" aria-label="地球图层" aria-hidden={!controlsOpen} inert={!controlsOpen} className={"sidebar glass-panel" + (!controlsOpen ? " is-collapsed" : "")}>
+          <button type="button" className="panel-dismiss" onClick={() => setControlsOpen(false)} aria-label="收起图层面板"><X size={15} aria-hidden="true" /></button>
           <div className="side-content">
-            <div className="eyebrow"><span className="serial">01</span> GLOBAL GEOLOGICAL EXPLORER</div>
-            <h1>阅读地球的<br /><em>岩石记忆。</em></h1>
-            <p className="lead">旋转地球，探索不同地区的地质年代、岩性与出露地质单元。</p>
+            <div className="eyebrow"><span className="serial">01</span> DIGITAL EARTH EXPLORER</div>
+            <h1>观察一颗<br /><em>实时运转的地球。</em></h1>
+            <p className="lead">真实的昼夜交替、在轨卫星、全球城市与地表地质，汇聚在同一颗可交互的三维地球上。</p>
 
-            <div className="section-divider" />
-            <div className="section-caption">MAP LAYERS <span>图层控制</span></div>
-            <label className="toggle-row">
-              <span className="layer-icon">▧</span>
-              <span className="toggle-copy"><strong>全球地质图</strong><small>Macrostrat · 默认关闭</small></span>
-              <input type="checkbox" checked={geologyVisible} onChange={(event) => setGeologyVisible(event.target.checked)} aria-label="显示全球地质图" />
-              <span className="switch" aria-hidden="true" />
-            </label>
-            <label className="toggle-row">
-              <span className="layer-icon" aria-hidden="true">◐</span>
-              <span className="toggle-copy"><strong>实时昼夜光照</strong><small>太阳位置 · 当前 UTC 时间</small></span>
-              <input type="checkbox" checked={dayNightEnabled} onChange={(event) => setDayNightEnabled(event.target.checked)} aria-label="启用真实昼夜光照" />
-              <span className="switch" aria-hidden="true" />
-            </label>
-            <label className="toggle-row">
-              <span className="layer-icon" aria-hidden="true">⌖</span>
-              <span className="toggle-copy"><strong>全球主要城市</strong><small>城市中心近似位置 · 自动避让远景</small></span>
-              <input type="checkbox" checked={cityLabelsVisible} onChange={(event) => setCityLabelsVisible(event.target.checked)} aria-label="显示全球主要城市" />
-              <span className="switch" aria-hidden="true" />
-            </label>
-            <label className="toggle-row">
-              <span className="layer-icon" aria-hidden="true">◌</span>
-              <span className="toggle-copy"><strong>大气散射</strong><small>蓝色边缘辉光 · 原生 Cesium</small></span>
-              <input type="checkbox" checked={atmosphereVisible} onChange={(event) => setAtmosphereVisible(event.target.checked)} aria-label="显示地球大气层" />
-              <span className="switch" aria-hidden="true" />
-            </label>
-            <label className="toggle-row">
-              <span className="layer-icon" aria-hidden="true">✧</span>
-              <span className="toggle-copy"><strong>真实卫星轨道</strong><small>公开 GP 根数 · SGP4 轨道预测</small></span>
-              <input type="checkbox" checked={satellitesVisible} onChange={(event) => setSatellitesVisible(event.target.checked)} aria-label="显示真实卫星及轨道" />
-              <span className="switch" aria-hidden="true" />
-            </label>
-            {satellitesVisible && (
-              <div className="satellite-controls">
-                <label className="satellite-path-toggle">
-                  <input type="checkbox" checked={satellitePathsVisible} onChange={(event) => setSatellitePathsVisible(event.target.checked)} />
-                  <span>显示前后约 45 分钟预测轨迹</span>
-                </label>
-                <p className="satellite-status" role="status">
-                  {satelliteStatus === "loading" ? "正在读取 CelesTrak 最新公开轨道根数…" :
-                   satelliteStatus === "error" ? "轨道数据暂不可用，已隐藏卫星；不会绘制虚构轨道。" :
-                   satelliteStatus === "ready" ? "已加载 " + satelliteCatalog.length + " 颗卫星 · 每 5 秒更新预测位置" :
-                   "打开图层后读取轨道根数"}
-                </p>
-                {satelliteCatalog.length > 0 && satelliteStatus === "ready" && (
-                  <div className="satellite-catalog">
-                    {satelliteCatalog.map(({ choice, epoch }) => (
-                      <div className={"satellite-entry" + (selectedSatelliteId === choice.id ? " selected" : "")} key={choice.id}>
-                        <span className="satellite-color" style={{backgroundColor:choice.color}} />
-                        <span><strong>{choice.title}</strong><small>轨道历元：{formatEpoch(epoch)}</small></span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <p className="satellite-disclaimer">数据：CelesTrak GP / SGP4。位置为轨道推算，并非实时遥测；轨迹表示地固坐标系下的预测路径。</p>
+            <details className="layer-group" open>
+              <summary><span>EARTH VIEW<small>地球视图</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
+              <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={dayNightEnabled} onChange={setDayNightEnabled} />
+              <ToggleRow icon={<Globe {...ICON} />} title="大气散射" caption="地球边缘的蓝色大气辉光" checked={atmosphereVisible} onChange={setAtmosphereVisible} />
+              <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={cityLabelsVisible} onChange={setCityLabelsVisible} />
+            </details>
+
+            <details className="layer-group" open>
+              <summary><span>SATELLITES<small>在轨卫星</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
+              <ToggleRow icon={<Satellite {...ICON} />} title="真实卫星轨道" caption="公开 GP 根数 · SGP4 轨道预测" checked={satellitesVisible} onChange={setSatellitesVisible} />
+              {satellitesVisible && (
+                <div className="satellite-controls">
+                  <label className="satellite-path-toggle">
+                    <input type="checkbox" checked={satellitePathsVisible} onChange={(event) => setSatellitePathsVisible(event.target.checked)} />
+                    <span>显示前后约 45 分钟预测轨迹</span>
+                  </label>
+                  <p className="satellite-status" role="status">
+                    {satelliteStatus === "loading" ? "正在读取 CelesTrak 最新公开轨道根数…" :
+                     satelliteStatus === "error" ? "轨道数据暂不可用，已隐藏卫星；不会绘制虚构轨道。" :
+                     satelliteStatus === "ready" ? "已加载 " + satelliteCatalog.length + " 颗卫星 · 每 5 秒更新预测位置" :
+                     "打开图层后读取轨道根数"}
+                  </p>
+                  {satelliteCatalog.length > 0 && satelliteStatus === "ready" && (
+                    <div className="satellite-catalog">
+                      {satelliteCatalog.map(({ choice, epochLabel }) => (
+                        <div className={"satellite-entry" + (selectedSatelliteId === choice.id ? " selected" : "")} key={choice.id}>
+                          <span className="satellite-color" style={{backgroundColor:choice.color}} />
+                          <span><strong>{choice.title}</strong><small>轨道历元：{epochLabel}</small></span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <p className="satellite-disclaimer">数据：CelesTrak GP / SGP4。位置为轨道推算，并非实时遥测；轨迹表示地固坐标系下的预测路径。</p>
+                </div>
+              )}
+            </details>
+
+            <details className="layer-group" open={geologyVisible || undefined}>
+              <summary><span>GEOLOGY<small>地表地质</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
+              <ToggleRow icon={<Mountain {...ICON} />} title="全球地质图" caption="Macrostrat 地表地质单元" checked={geologyVisible} onChange={setGeologyVisible} />
+              <div className="thematic-controls">
+                <label htmlFor="geology-style" className="metric-label">MAP STYLE · 显示方式</label>
+                <select id="geology-style" disabled={!geologyVisible} value={mapMode} onChange={(event) => setMapMode(event.target.value as ThematicMode)}>
+                  <option value="raster">原始地质图 · Raster</option>
+                  <option value="age">地质年代专题图 · Age</option>
+                  <option value="lithology">岩性专题图 · Lithology（试验）</option>
+                </select>
+                {mapMode === "age" && <label className="thematic-filter"><span>年代筛选</span><select value={ageFilter} disabled={!geologyVisible} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
+                  {AGE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+                </select></label>}
+                {mapMode === "lithology" && <label className="thematic-filter"><span>岩性筛选</span><select value={rockFilter} disabled={!geologyVisible} onChange={(event) => setRockFilter(event.target.value as RockFilter)}>
+                  {ROCK_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
+                </select></label>}
+                {mapMode !== "raster" && <p className="thematic-note" role="status">
+                  {vectorState === "loading" ? "正在初始化全球矢量专题图，暂时保留原始地图…" :
+                   vectorState === "error" ? "矢量图层加载失败，已回退到原始地质图。" :
+                   mapMode === "age" ? "依据地质图编绘的数值年龄着色；跨代或未知年代显示灰色。全球专题图使用低至中分辨率瓦片。" :
+                   "试验性岩性专题图：仅根据原始英文岩性描述中的明确术语匹配，不等同于官方标准岩性分类。"}
+                </p>}
+                {mapMode === "age" && <div className="thematic-legend">{ERA_GUIDE.map((era) => <span key={era.key}><i style={{backgroundColor:era.color}} />{era.label.split(" / ")[0]}</span>)}<span><i style={{backgroundColor:"#ADB9B2"}} />不确定</span></div>}
+                {mapMode === "lithology" && <div className="thematic-legend"><span><i style={{backgroundColor:"#C6A460"}} />沉积岩</span><span><i style={{backgroundColor:"#CF8F81"}} />火成岩</span><span><i style={{backgroundColor:"#9B8CB7"}} />变质岩</span><span><i style={{backgroundColor:"#A6B2AE"}} />未分类</span></div>}
               </div>
-            )}
-            <div className="thematic-controls">
-              <label htmlFor="geology-style" className="metric-label">MAP STYLE · 地质图显示方式</label>
-              <select id="geology-style" disabled={!geologyVisible} value={mapMode} onChange={(event) => setMapMode(event.target.value as ThematicMode)}>
-                <option value="raster">原始地质图 · Raster</option>
-                <option value="age">地质年代专题图 · Age</option>
-                <option value="lithology">岩性专题图 · Lithology</option>
-              </select>
-              {mapMode === "age" && <label className="thematic-filter"><span>年代筛选</span><select value={ageFilter} disabled={!geologyVisible} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
-                {AGE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-              </select></label>}
-              {mapMode === "lithology" && <label className="thematic-filter"><span>岩性筛选</span><select value={rockFilter} disabled={!geologyVisible} onChange={(event) => setRockFilter(event.target.value as RockFilter)}>
-                {ROCK_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}
-              </select></label>}
-              {mapMode !== "raster" && <p className="thematic-note" role="status">
-                {vectorState === "loading" ? "正在初始化全球矢量专题图，暂时保留原始地图…" :
-                 vectorState === "error" ? "矢量图层加载失败，已回退到原始地质图。" :
-                 mapMode === "age" ? "依据地质图编绘的数值年龄着色；跨代或未知年代显示灰色。全球专题图使用低至中分辨率瓦片。" :
-                 "试验性岩性专题图：仅根据原始英文岩性描述中的明确术语匹配，不等同于官方标准岩性分类。"}
-              </p>}
-              {mapMode === "age" && <div className="thematic-legend">{ERA_GUIDE.map((era) => <span key={era.key}><i style={{backgroundColor:era.color}} />{era.label.split(" / ")[0]}</span>)}<span><i style={{backgroundColor:"#ADB9B2"}} />不确定</span></div>}
-              {mapMode === "lithology" && <div className="thematic-legend"><span><i style={{backgroundColor:"#C6A460"}} />沉积岩</span><span><i style={{backgroundColor:"#CF8F81"}} />火成岩</span><span><i style={{backgroundColor:"#9B8CB7"}} />变质岩</span><span><i style={{backgroundColor:"#A6B2AE"}} />未分类</span></div>}
-            </div>
-            <div className={"opacity-control" + (!geologyVisible ? " muted" : "")}>
-              <div className="opacity-head"><span>图层不透明度</span><span>{opacity}%</span></div>
-              <input type="range" min="15" max="100" step="5" value={opacity} disabled={!geologyVisible} onChange={(event) => setOpacity(Number(event.target.value))} aria-label="地质图不透明度" />
-            </div>
+              <div className={"opacity-control" + (!geologyVisible ? " muted" : "")}>
+                <div className="opacity-head"><span>图层不透明度</span><span>{opacity}%</span></div>
+                <input type="range" min="15" max="100" step="5" value={opacity} disabled={!geologyVisible} onChange={(event) => setOpacity(Number(event.target.value))} aria-label="地质图不透明度" />
+              </div>
+            </details>
 
-            <div className="section-divider" />
-            <div className="section-caption">EXPLORE REGIONS <span>快速定位</span></div>
-            <div className="regions">
-              {REGIONS.map((region) => (
-                <button key={region.label} className="region-btn" onClick={() => flyTo(region)}>
-                  <span className="region-mark">⌖</span>
-                  <span><strong>{region.label}</strong><small>{region.subtitle}</small></span>
-                  <span className="region-arrow">↗</span>
-                </button>
-              ))}
-            </div>
+            <details className="layer-group" open>
+              <summary><span>EXPLORE<small>快速定位</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
+              <div className="regions">
+                {REGIONS.map((region) => (
+                  <button key={region.label} className="region-btn" onClick={() => flyTo(region)}>
+                    <LocateFixed size={16} strokeWidth={1.7} className="region-mark" aria-hidden="true" />
+                    <span><strong>{region.label}</strong><small>{region.subtitle}</small></span>
+                    <ArrowUpRight size={14} className="region-arrow" aria-hidden="true" />
+                  </button>
+                ))}
+              </div>
+            </details>
 
             <div className="sidebar-note">
-              <span className="note-icon">i</span>
-              <p>地质图反映地表地质单元，不代表地下岩层。年代与岩性取自原始地质图编绘数据。</p>
+              <Info size={14} className="note-icon" aria-hidden="true" />
+              <p>影像来自 NASA GIBS 与 Natural Earth，卫星轨道来自 CelesTrak，地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
             </div>
           </div>
-          <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.1</div>
+          <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.2</div>
         </aside>
 
-        <section className="globe-panel" aria-label="可交互三维地质地球">
+        <section className="globe-panel" aria-label="可交互三维数字地球">
           <div className="globe-mount" ref={mountRef} />
           <div className="globe-top-left">
-            <span className="map-tag"><span className="tag-dot" /> 3D GLOBAL VIEW</span>
+            <span className="map-tag"><span className="tag-dot" /> 3D DIGITAL EARTH</span>
             <span className="map-subtitle">{dayNightEnabled ? "REAL-TIME SUNLIGHT" : "EARTH OBSERVATION"} · {utcTime} UTC</span>
           </div>
-          <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角">◎ <span>重置视角</span></button>
-          <div className="globe-guide"><span className="guide-orbit">↔</span><span>拖动旋转 · 滚轮缩放 · 点击查询</span></div>
+          <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
+          <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>
           <div className="globe-attribution">Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
-        <aside id="earth-inspector-panel" aria-label="地质查询信息" aria-hidden={!detailsOpen} inert={!detailsOpen} className={"details-panel glass-panel" + (!detailsOpen ? " is-collapsed" : "")} aria-live="polite">
-          <button type="button" className="panel-dismiss" onClick={() => setDetailsOpen(false)} aria-label="收起地质信息面板">×</button>
+        <aside id="earth-inspector-panel" aria-label="地点信息" aria-hidden={!detailsOpen} inert={!detailsOpen} className={"details-panel glass-panel" + (!detailsOpen ? " is-collapsed" : "")} aria-live="polite">
+          <button type="button" className="panel-dismiss" onClick={() => setDetailsOpen(false)} aria-label="收起地点信息面板"><X size={15} aria-hidden="true" /></button>
           <div className="details-head">
-            <div className="section-caption">GEOLOGICAL INSPECTOR <span>地质信息</span></div>
+            <div className="section-caption">LOCATION INSPECTOR <span>地点信息</span></div>
             <span className="inspect-status">{status === "loading" ? "QUERYING" : status === "success" ? "RECORD FOUND" : "AWAITING POINT"}</span>
           </div>
 
           {status === "idle" && (
             <div className="empty-inspector">
-              <div className="empty-emblem">⌖</div>
-              <h2>选择地球上的<br />任意位置</h2>
-              <p>点击球体上的一个地点，即可查看已编绘的地质年代与岩石类型。</p>
+              <div className="empty-emblem"><MousePointerClick size={34} strokeWidth={1.4} aria-hidden="true" /></div>
+              <h2>点击地球上的<br />任意位置</h2>
+              <p>查看该点的经纬度，以及已编绘的地表地质年代与岩石类型。</p>
               <span className="empty-hint">CLICK THE GLOBE TO BEGIN</span>
             </div>
           )}

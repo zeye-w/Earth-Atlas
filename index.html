@@ -7,8 +7,29 @@
     <meta name="description" content="TerraScope 数字地球 — 在三维地球上探索实时昼夜、卫星轨道与全球地质年代、岩性和地表地质单元。" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>TerraScope | 数字地球</title>
+    <style>
+      /* Shown before the 4 MB app bundle arrives; removed once globe tiles load. */
+      html, body { margin:0; height:100%; background:#05070b; }
+      #splash { position:fixed; inset:0; z-index:100; display:grid; place-items:center; background:radial-gradient(ellipse at 50% 45%, #10141c 0%, #05070b 70%); color:#f4f5f7; font-family:-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; transition:opacity .6s ease, visibility .6s; }
+      #splash.done { opacity:0; visibility:hidden; }
+      .splash-inner { display:flex; flex-direction:column; align-items:center; gap:22px; }
+      .splash-globe { position:relative; width:84px; height:84px; border-radius:50%; background:radial-gradient(circle at 34% 30%, #fff 0%, #9aa3ad 38%, #1b1f25 78%); box-shadow:0 0 60px rgba(160,190,255,.25); }
+      .splash-globe:after { content:""; position:absolute; inset:-14px -30px; border:1.5px solid rgba(255,255,255,.55); border-radius:50%; transform:rotate(-22deg); animation:splash-orbit 2.4s linear infinite; border-top-color:transparent; }
+      .splash-name { font-size:15px; letter-spacing:.32em; padding-left:.32em; }
+      .splash-name b { font-weight:700; }
+      .splash-caption { font-size:11px; letter-spacing:.24em; color:rgba(244,245,247,.5); }
+      @keyframes splash-orbit { to { transform:rotate(338deg); } }
+      @media (prefers-reduced-motion: reduce) { .splash-globe:after { animation:none; } }
+    </style>
   </head>
   <body>
+    <div id="splash" role="status" aria-label="正在加载 TerraScope">
+      <div class="splash-inner">
+        <div class="splash-globe"></div>
+        <div class="splash-name">TERRA<b>SCOPE</b></div>
+        <div class="splash-caption">正在加载数字地球…</div>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
