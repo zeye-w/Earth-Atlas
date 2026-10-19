@@ -357,9 +357,8 @@ function App() {
     }
     let active = true;
     let interval: number | null = null;
-    const controller = new AbortController();
     setSatelliteStatus("loading");
-    void fetchSatelliteCatalog(controller.signal).then(({ satellites }) => {
+    void fetchSatelliteCatalog().then(({ satellites }) => {
       if (!active || viewer.isDestroyed()) return;
       satelliteOverlayRef.current?.dispose();
       const overlay = new SatelliteOverlay(viewer, satellites, satellitePathsVisible);
@@ -370,14 +369,13 @@ function App() {
         if (document.visibilityState === "visible") overlay.update(new Date());
       }, SATELLITE_UPDATE_MS);
     }).catch((error: unknown) => {
-      if (!active || controller.signal.aborted) return;
+      if (!active) return;
       console.warn("Satellite elements unavailable; no fabricated orbit rendered.", error);
       setSatelliteStatus("error");
       setSatelliteCatalog([]);
     });
     return () => {
       active = false;
-      controller.abort();
       if (interval !== null) window.clearInterval(interval);
       satelliteOverlayRef.current?.dispose();
       satelliteOverlayRef.current = null;
