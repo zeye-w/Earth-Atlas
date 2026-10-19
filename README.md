@@ -16,6 +16,12 @@ The first-load Earth experience prioritizes NASA Blue Marble / Natural Earth ima
 
 **Earthquakes and plate boundaries:** real-time earthquakes come from the USGS GeoJSON summary feeds (M2.5+ for the past day or week, M4.5+ for the past month), refreshed every 5 minutes while the layer is on. Marker size grows with magnitude, colour shows depth class (shallow <70 km, intermediate 70–300 km, deep >300 km), and events from the last 24 hours have a white outline; click one for time, magnitude, depth and a link to the USGS event page. If the feed fails nothing is drawn. Plate boundaries are Bird (2003) PB2002 (*An updated digital model of plate boundaries*, G³ 4(3), doi:10.1029/2001GC000252), using the GeoJSON conversion by Hugo Ahlenius / Nordpil (github.com/fraxen/tectonicplates, ODC-BY 1.0), bundled as a lazily loaded chunk; subduction zones are highlighted.
 
+**Volcanoes:** the Smithsonian Global Volcanism Program *Volcanoes of the World* Holocene list (≈1,200 volcanoes) is bundled as a lazily loaded chunk (`src/data/volcanoes.json`). Volcanoes whose catalogued last eruption is within 5 years are drawn as red triangles; others appear as small muted triangles once zoomed in. This reflects catalogue eruption years, **not** real-time alert levels. Refresh the data with the manual **Refresh Volcano Data** workflow (`scripts/fetch-volcanoes.mjs`), which downloads the list from the GVP GeoServer and commits it if it changed. Cite: Global Volcanism Program, Smithsonian Institution, *Volcanoes of the World*.
+
+**Geomagnetic activity (Kp):** next to the aurora layer the panel shows NOAA SWPC's current estimated planetary K-index (1-minute product) with the NOAA G-scale storm level, plus a bar chart of the last 24 hours of 3-hourly Kp.
+
+**Automatic render quality:** while the camera moves (when Cesium renders continuously), the app measures the frame rate over 2-second windows; if it stays below 24 fps it steps quality down one level (high → balanced → eco) at most every 6 s and shows a notice. Choosing a quality manually in Settings turns this off; it can be re-enabled there.
+
 ## Features
 
 - Drag the 3D globe to rotate; use wheel or touch to zoom.

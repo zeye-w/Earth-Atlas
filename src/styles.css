@@ -189,6 +189,24 @@ h1 em { font-style:normal; color:var(--text-2); }
 .satellite-path-toggle { display:flex; align-items:center; gap:7px; font-size:10px; color:var(--text-2); cursor:pointer; }
 .satellite-path-toggle input { accent-color:#f4f5f7; }
 .layer-extra { margin:-4px 0 12px 52px; display:flex; flex-direction:column; gap:8px; }
+.kp-head { display:flex; align-items:baseline; gap:10px; }
+.kp-value { font-size:15px; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; }
+.kp-level { font-size:11px; color:var(--text-2); }
+.kp-level.storm { color:#ffb36b; font-weight:600; }
+.kp-time { margin-left:auto; font-size:10px; color:var(--text-3); }
+.kp-bars { display:flex; align-items:flex-end; gap:4px; height:30px; padding-bottom:2px; border-bottom:1px solid var(--line); }
+.kp-bars span { flex:1; border-radius:2px 2px 0 0; background:rgba(255,255,255,.35); }
+.kp-bars span.active { background:#ffd166; }
+.kp-bars span.storm { background:#ff7a45; }
+.volcano-swatch { display:inline-block; width:0!important; height:0!important; border:none!important; border-left:5px solid transparent!important; border-right:5px solid transparent!important; border-bottom:9px solid #d9c7b8!important; border-radius:0!important; background:none!important; }
+.volcano-swatch.recent { border-bottom-color:#ff5a3c!important; }
+.settings-toggle { display:flex; align-items:flex-start; gap:10px; padding:10px 11px; border-radius:11px; border:1px solid var(--line); background:var(--fill); cursor:pointer; }
+.settings-toggle input { margin-top:3px; accent-color:#f4f5f7; }
+.settings-toggle span { display:flex; flex-direction:column; gap:2px; }
+.settings-toggle strong { font-size:12px; font-weight:500; }
+.settings-toggle small { font-size:10px; color:var(--text-3); line-height:1.5; }
+.toast { position:absolute; left:50%; top:136px; transform:translateX(-50%); display:flex; align-items:center; gap:10px; max-width:min(520px, calc(100% - 32px)); padding:9px 10px 9px 16px; border-radius:999px; font-size:12px; color:var(--text); background:var(--glass-sheen), var(--glass-tint-solid); border:1px solid var(--line); box-shadow:var(--glass-shadow); }
+.toast button { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; border:0; background:var(--fill); color:var(--text-2); }
 .layer-extra .layer-status { margin:0; }
 .layer-extra .segmented button { padding:5px 0; font-size:10px; }
 .layer-note { margin:0; font-size:10px; line-height:1.6; color:var(--text-3); }

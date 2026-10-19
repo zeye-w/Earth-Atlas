@@ -8,6 +8,7 @@ import { parseGeologicalUnits } from "../src/geology.ts";
 import { parseLithologyDictionary } from "../src/lithology.ts";
 import { OVATION_URL, northernProfile, parseOvation } from "../src/auroraData.ts";
 import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
+import { KP_HISTORY_URL, KP_NOW_URL, kpLevel, parseKpHistory, parseKpNow } from "../src/geomagnetic.ts";
 
 async function get(label, url, timeout = 20000) {
   const res = await fetch(url, {
@@ -105,6 +106,23 @@ try {
 } catch (error) {
   failed = true;
   console.error("LIVE_NOAA_OVATION_FAILURE:", error);
+}
+
+try {
+  const headers = { Accept: "application/json", Origin: "https://earth-atlas.edwardlab.workers.dev" };
+  const nowResponse = await fetch(KP_NOW_URL, { signal: AbortSignal.timeout(20000), headers });
+  const cors = nowResponse.headers.get("access-control-allow-origin") ?? "(missing)";
+  console.log("NOAA Kp (1m) HTTP", nowResponse.status, "Access-Control-Allow-Origin", cors);
+  assert.ok(nowResponse.ok && (cors === "*" || cors === "https://earth-atlas.edwardlab.workers.dev"), "NOAA Kp unavailable or CORS blocked");
+  const now = parseKpNow(await nowResponse.json());
+  console.log("  current Kp:", now.kp, kpLevel(now.kp).label, now.time.toISOString());
+  const historyResponse = await fetch(KP_HISTORY_URL, { signal: AbortSignal.timeout(20000), headers });
+  console.log("NOAA Kp (3h) HTTP", historyResponse.status, "Access-Control-Allow-Origin", historyResponse.headers.get("access-control-allow-origin") ?? "(missing)");
+  const history = parseKpHistory(await historyResponse.json());
+  console.log("  history samples:", history.length, "latest:", JSON.stringify(history.at(-1)));
+} catch (error) {
+  failed = true;
+  console.error("LIVE_NOAA_KP_FAILURE:", error);
 }
 
 for (const [range, feed] of Object.entries(QUAKE_FEEDS)) {

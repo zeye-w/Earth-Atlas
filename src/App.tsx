@@ -25,13 +25,13 @@ import {
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import {
   Activity, ArrowUpRight, ChevronDown, Code, Crosshair, Globe, Info, Layers, LocateFixed, MapPin, Maximize, Minimize,
-  Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, Waypoints, X,
+  Cloud, Lightbulb, Mountain, MousePointerClick, Move3d, Orbit, RotateCcw, Satellite, SlidersHorizontal, Sparkles, SunMoon, Triangle, Waypoints, X,
 } from "lucide-react";
 import { queryGeology, type GeologicalUnit } from "./geology";
 import { fetchLithologyDictionary, classifyLithologies, type LithologyDictionary } from "./lithology";
 import { classifyGeologicEra, ERA_GUIDE } from "./geologicTime";
 import { makeThematicStyle, AGE_OPTIONS, ROCK_OPTIONS, THEMATIC_MAX_ZOOM, type ThematicMode, type AgeFilter, type RockFilter } from "./mapThematic";
-import { RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, renderSettings, type RenderQuality } from "./performance";
+import { AUTO_QUALITY_MIN_FPS, FrameRateMonitor, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, initialRenderQuality, lowerRenderQuality, renderSettings, type RenderQuality } from "./performance";
 import { addWorldCityMarkers } from "./cityMarkers";
 import { CLOUD_REFRESH_MS, CLOUD_MAX_AGE_MS, cloudTileUrl, fetchCloudObservation } from "./cloudData";
 import { AuroraOverlay } from "./aurora";
@@ -39,6 +39,9 @@ import { OVATION_REFRESH_MS, fetchOvation, northernProfile } from "./auroraData"
 import { DEPTH_CLASSES, QUAKE_FEEDS, QUAKE_ID_PREFIX, QUAKE_RANGES, QUAKE_REFRESH_MS, fetchQuakes, type Earthquake, type QuakeRange } from "./earthquakeData";
 import { EarthquakeOverlay } from "./earthquakes";
 import type { PlateBoundaryOverlay } from "./plateBoundaries";
+import { VOLCANO_ID_PREFIX, formatEruptionYear, gvpUrl, isRecentlyActive, loadVolcanoCatalog, type Volcano } from "./volcanoData";
+import type { VolcanoOverlay } from "./volcanoes";
+import { KP_REFRESH_MS, fetchGeomagnetic, kpLevel, type GeomagneticState } from "./geomagnetic";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { SatelliteChoice } from "./satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "./satelliteOverlay";
@@ -125,6 +128,8 @@ function App() {
   const quakeOverlayRef = useRef<EarthquakeOverlay | null>(null);
   const quakesByIdRef = useRef(new Map<string, Earthquake>());
   const plateOverlayRef = useRef<PlateBoundaryOverlay | null>(null);
+  const volcanoOverlayRef = useRef<VolcanoOverlay | null>(null);
+  const volcanoesByIdRef = useRef(new Map<string, Volcano>());
   const satelliteOverlayRef = useRef<SatelliteOverlay | null>(null);
   const vectorLayerRef = useRef<MVTDataProvider | null>(null);
   const vectorLoadingRef = useRef<Promise<MVTDataProvider> | null>(null);
@@ -146,6 +151,16 @@ function App() {
   const [selectedQuake, setSelectedQuake] = useState<Earthquake | null>(null);
   const [platesVisible, setPlatesVisible] = useState(true);
   const [plateStatus, setPlateStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [volcanoesVisible, setVolcanoesVisible] = useState(true);
+  const [volcanoInfo, setVolcanoInfo] = useState<{ state: "idle" | "loading" | "ready" | "error"; total?: number; recent?: number; retrieved?: string }>({ state: "idle" });
+  const [selectedVolcano, setSelectedVolcano] = useState<Volcano | null>(null);
+  const [geomagnetic, setGeomagnetic] = useState<{ state: "idle" | "loading" | "ready" | "error"; data?: GeomagneticState }>({ state: "idle" });
+  const [autoQuality, setAutoQuality] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  const renderQualityRef = useRef(renderQuality);
+  const autoQualityRef = useRef(autoQuality);
+  renderQualityRef.current = renderQuality;
+  autoQualityRef.current = autoQuality;
   const [auroraStatus, setAuroraStatus] = useState<{ state: "idle" | "loading" | "ready" | "quiet" | "error"; forecast?: string; max?: number }>({ state: "idle" });
   const [satellitesVisible, setSatellitesVisible] = useState(() => typeof window !== "undefined" && window.innerWidth >= 760);
   const [satellitePathsVisible, setSatellitePathsVisible] = useState(true);
@@ -321,6 +336,27 @@ function App() {
       // main source of drag jank; a class swaps them to a solid tint meanwhile.
       viewer.camera.moveStart.addEventListener(() => shellRef.current?.classList.add("is-moving"));
       viewer.camera.moveEnd.addEventListener(() => shellRef.current?.classList.remove("is-moving"));
+
+      // Auto quality: while the camera moves Cesium renders every frame (up
+      // to its target rate), so a sustained low rate there means the device
+      // is struggling; step down one quality level, at most every 6 s.
+      const frameMonitor = new FrameRateMonitor();
+      let cameraMoving = false;
+      let lastAutoChange = 0;
+      viewer.camera.moveStart.addEventListener(() => { cameraMoving = true; frameMonitor.reset(); });
+      viewer.camera.moveEnd.addEventListener(() => { cameraMoving = false; });
+      scene.postRender.addEventListener(() => {
+        if (!cameraMoving || !autoQualityRef.current) return;
+        const now = performance.now();
+        const fps = frameMonitor.addFrame(now);
+        if (fps === null || fps >= AUTO_QUALITY_MIN_FPS || now - lastAutoChange < 6_000) return;
+        const lower = lowerRenderQuality(renderQualityRef.current);
+        if (!lower) return;
+        lastAutoChange = now;
+        frameMonitor.reset();
+        setRenderQuality(lower);
+        setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[lower] + "」画质");
+      });
       // Same while imagery tiles stream in (e.g. right after enabling geology).
       scene.globe.tileLoadProgressEvent.addEventListener((queued: number) => {
         shellRef.current?.classList.toggle("is-loading", queued > 0);
@@ -364,9 +400,20 @@ function App() {
           : undefined;
         // Point primitives carry a plain string id.
         const pickedId: unknown = picked && typeof picked === "object" && "id" in picked ? (picked as { id?: unknown }).id : undefined;
+        if (typeof pickedId === "string" && pickedId.startsWith(VOLCANO_ID_PREFIX)) {
+          const volcano = volcanoesByIdRef.current.get(pickedId.slice(VOLCANO_ID_PREFIX.length));
+          if (volcano) {
+            setSelectedQuake(null);
+            setSelectedVolcano(volcano);
+            setDetailsOpen(true);
+            if (window.innerWidth < 760) setControlsOpen(false);
+            return;
+          }
+        }
         if (typeof pickedId === "string" && pickedId.startsWith(QUAKE_ID_PREFIX)) {
           const quake = quakesByIdRef.current.get(pickedId.slice(QUAKE_ID_PREFIX.length));
           if (quake) {
+            setSelectedVolcano(null);
             setSelectedQuake(quake);
             setDetailsOpen(true);
             if (window.innerWidth < 760) setControlsOpen(false);
@@ -385,6 +432,7 @@ function App() {
         const latitude = CesiumMath.toDegrees(cartographic.latitude);
         const longitude = CesiumMath.toDegrees(cartographic.longitude);
         setSelectedQuake(null);
+        setSelectedVolcano(null);
         setCoordinates({ latitude, longitude });
         setDetailsOpen(true);
         if (window.innerWidth < 760) setControlsOpen(false);
@@ -424,6 +472,8 @@ function App() {
       quakeOverlayRef.current = null;
       plateOverlayRef.current?.dispose();
       plateOverlayRef.current = null;
+      volcanoOverlayRef.current?.dispose();
+      volcanoOverlayRef.current = null;
       auroraRef.current = null;
       satelliteOverlayRef.current?.dispose();
       satelliteOverlayRef.current = null;
@@ -596,6 +646,56 @@ function App() {
     });
     return () => { active = false; };
   }, [platesVisible]);
+
+  // Bundled Smithsonian GVP Holocene volcano list, loaded on first use.
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (volcanoOverlayRef.current) {
+      volcanoOverlayRef.current.setVisible(volcanoesVisible);
+      return;
+    }
+    if (!volcanoesVisible || !viewer || viewer.isDestroyed()) return;
+    let active = true;
+    setVolcanoInfo({ state: "loading" });
+    void Promise.all([loadVolcanoCatalog(), import("./volcanoes")]).then(([catalog, module]) => {
+      if (!active || viewer.isDestroyed() || volcanoOverlayRef.current) return;
+      volcanoesByIdRef.current = new Map(catalog.volcanoes.map((volcano) => [String(volcano.id ?? volcano.name), volcano]));
+      volcanoOverlayRef.current = new module.VolcanoOverlay(viewer, catalog.volcanoes);
+      setVolcanoInfo({ state: "ready", total: catalog.volcanoes.length, recent: catalog.volcanoes.filter((v) => isRecentlyActive(v)).length, retrieved: catalog.retrieved });
+    }).catch((error: unknown) => {
+      console.warn("Volcano catalogue failed to load.", error);
+      if (active) setVolcanoInfo({ state: "error" });
+    });
+    return () => { active = false; };
+  }, [volcanoesVisible]);
+
+  // NOAA planetary K-index alongside the aurora layer.
+  useEffect(() => {
+    if (!auroraVisible) return;
+    const controller = new AbortController();
+    const load = () => {
+      setGeomagnetic((current) => current.state === "ready" ? current : { state: "loading" });
+      fetchGeomagnetic(controller.signal).then((data) => {
+        if (!controller.signal.aborted) setGeomagnetic({ state: "ready", data });
+      }).catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        console.warn("NOAA Kp index unavailable.", error);
+        setGeomagnetic({ state: "error" });
+      });
+    };
+    load();
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") load(); }, KP_REFRESH_MS);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [auroraVisible]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 6_000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   // NOAA OVATION nowcast; nothing is drawn when the data is unavailable.
   useEffect(() => {
@@ -777,12 +877,16 @@ function App() {
                   <div className="metric-label">RENDER QUALITY · 画质</div>
                   <div className="segmented" role="radiogroup" aria-label="渲染画质">
                     {RENDER_QUALITY_ORDER.map((quality) => (
-                      <button key={quality} type="button" role="radio" aria-checked={renderQuality === quality} className={renderQuality === quality ? "selected" : ""} onClick={() => setRenderQuality(quality)}>
+                      <button key={quality} type="button" role="radio" aria-checked={renderQuality === quality} className={renderQuality === quality ? "selected" : ""} onClick={() => { setRenderQuality(quality); setAutoQuality(false); }}>
                         {RENDER_QUALITY_LABELS[quality]}
                       </button>
                     ))}
                   </div>
                   <p className="settings-hint">省电模式降低分辨率并关闭玻璃模糊，适合笔记本和手机。</p>
+                  <label className="settings-toggle">
+                    <input type="checkbox" checked={autoQuality} onChange={(event) => setAutoQuality(event.target.checked)} />
+                    <span><strong>自动调整画质</strong><small>{autoQuality ? "拖动时帧率持续低于 " + AUTO_QUALITY_MIN_FPS + " fps 会自动降低一档" : "已改为手动选择画质"}</small></span>
+                  </label>
                   <button type="button" className="settings-row" onClick={toggleFullscreen}>
                     {fullscreenActive ? <Minimize {...ICON} aria-hidden="true" /> : <Maximize {...ICON} aria-hidden="true" />}
                     <span>{fullscreenActive ? "退出全屏" : "全屏浏览"}</span>
@@ -827,6 +931,32 @@ function App() {
                    "预报时间 " + (auroraStatus.forecast ?? "—") + " · 最高可见概率 " + auroraStatus.max + "% · 亮度按概率显示"}
                 </p>
               )}
+              {auroraVisible && geomagnetic.state !== "idle" && (
+                <div className="layer-extra kp-panel" role="status">
+                  {geomagnetic.state === "ready" && geomagnetic.data ? (() => {
+                    const { now, history } = geomagnetic.data;
+                    const level = kpLevel(now.kp);
+                    return (
+                      <>
+                        <div className="kp-head">
+                          <span className="kp-value">Kp {now.kp.toFixed(1)}</span>
+                          <span className={"kp-level" + (level.storm ? " storm" : "")}>{level.storm ? level.storm + " " : ""}{level.label}</span>
+                          <span className="kp-time">{now.time.toISOString().slice(11, 16)} UTC</span>
+                        </div>
+                        {history.length > 0 && (
+                          <div className="kp-bars" aria-label="过去 24 小时 Kp（每 3 小时）">
+                            {history.map((sample) => (
+                              <span key={sample.time.getTime()} title={sample.time.toISOString().slice(5, 16).replace("T", " ") + " UTC · Kp " + sample.kp.toFixed(1)}
+                                className={sample.kp >= 5 ? "storm" : sample.kp >= 4 ? "active" : ""} style={{ height: Math.max(3, (sample.kp / 9) * 28) + "px" }} />
+                            ))}
+                          </div>
+                        )}
+                        <p className="layer-note">NOAA 行星 K 指数（0–9）：数值越高地磁活动越强、极光越亮越偏南；Kp ≥ 5 即为磁暴。柱状图为过去 24 小时每 3 小时数值。</p>
+                      </>
+                    );
+                  })() : <p className="layer-status">{geomagnetic.state === "loading" ? "正在读取 NOAA 地磁指数…" : "NOAA 地磁指数暂不可用。"}</p>}
+                </div>
+              )}
               <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={cityLabelsVisible} onChange={setCityLabelsVisible} />
             </details>
 
@@ -851,6 +981,21 @@ function App() {
                     {DEPTH_CLASSES.map((item) => <span key={item.label}><i style={{ backgroundColor: item.color, borderRadius: "50%" }} />{item.label}</span>)}
                   </div>
                   <p className="layer-note">圆点越大震级越高，白色描边为 24 小时内发生；点击圆点查看详情。</p>
+                </div>
+              )}
+              <ToggleRow icon={<Triangle {...ICON} />} title="火山" caption="Smithsonian GVP 全新世火山名录" checked={volcanoesVisible} onChange={setVolcanoesVisible} />
+              {volcanoesVisible && volcanoInfo.state !== "idle" && (
+                <div className="layer-extra">
+                  <p className="layer-status" role="status">
+                    {volcanoInfo.state === "loading" ? "正在加载火山名录…" :
+                     volcanoInfo.state === "error" ? "火山名录加载失败。" :
+                     volcanoInfo.total + " 座火山 · 近 5 年有喷发记录 " + volcanoInfo.recent + " 座 · 名录更新于 " + volcanoInfo.retrieved}
+                  </p>
+                  <div className="thematic-legend">
+                    <span><i className="volcano-swatch recent" />近 5 年有喷发</span>
+                    <span><i className="volcano-swatch" />其他全新世火山（拉近显示）</span>
+                  </div>
+                  <p className="layer-note">依据 GVP 名录中的最近喷发年份，并非实时火山警报。点击三角查看详情。</p>
                 </div>
               )}
               <ToggleRow icon={<Waypoints {...ICON} />} title="板块边界" caption="Bird (2003) PB2002 全球板块模型" checked={platesVisible} onChange={setPlatesVisible} />
@@ -953,7 +1098,7 @@ function App() {
 
             <div className="sidebar-note">
               <Info size={14} className="note-icon" aria-hidden="true" />
-              <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地震来自 USGS，板块边界来自 Bird (2003) PB2002（Nordpil 整理，ODC-BY），地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
+              <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地震来自 USGS，火山来自 Smithsonian GVP，板块边界来自 Bird (2003) PB2002（Nordpil 整理，ODC-BY），地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
             </div>
           </div>
           <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.2</div>
@@ -965,9 +1110,10 @@ function App() {
             <span className="map-tag"><span className="tag-dot" /> 3D DIGITAL EARTH</span>
             <span className="map-subtitle">{dayNightEnabled ? "REAL-TIME SUNLIGHT" : "EARTH OBSERVATION"} · {utcTime} UTC</span>
           </div>
+          {toast && <div className="toast" role="status">{toast}<button type="button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={13} aria-hidden="true" /></button></div>}
           <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
           <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>
-          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
@@ -975,10 +1121,10 @@ function App() {
           <button type="button" className="panel-dismiss" onClick={() => setDetailsOpen(false)} aria-label="收起地点信息面板"><X size={15} aria-hidden="true" /></button>
           <div className="details-head">
             <div className="section-caption">LOCATION INSPECTOR <span>地点信息</span></div>
-            <span className="inspect-status">{selectedQuake ? "EARTHQUAKE" : status === "loading" ? "QUERYING" : status === "success" ? "RECORD FOUND" : "AWAITING POINT"}</span>
+            <span className="inspect-status">{selectedVolcano ? "VOLCANO" : selectedQuake ? "EARTHQUAKE" : status === "loading" ? "QUERYING" : status === "success" ? "RECORD FOUND" : "AWAITING POINT"}</span>
           </div>
 
-          {selectedQuake && (
+          {!selectedVolcano && selectedQuake && (
             <div className="inspector-body">
               <div className="unit-heading">
                 <div className="metric-label">EARTHQUAKE · 地震</div>
@@ -993,7 +1139,22 @@ function App() {
             </div>
           )}
 
-          {!selectedQuake && status === "idle" && (
+          {selectedVolcano && (
+            <div className="inspector-body">
+              <div className="unit-heading">
+                <div className="metric-label">VOLCANO · 火山</div>
+                <h2>{selectedVolcano.name}</h2>
+              </div>
+              <div className="info-field"><span className="metric-label">COUNTRY · 国家/地区</span><strong>{selectedVolcano.country || "未提供"}</strong></div>
+              <div className="info-field"><span className="metric-label">TYPE · 火山类型</span><strong>{selectedVolcano.type || "未提供"}</strong></div>
+              <div className="info-field"><span className="metric-label">LAST ERUPTION · 最近喷发</span><strong>{formatEruptionYear(selectedVolcano.lastEruption)}</strong><p>{isRecentlyActive(selectedVolcano) ? "近 5 年内有喷发记录。" : "取自 GVP 名录；不代表当前活动状态。"}</p></div>
+              <div className="info-field"><span className="metric-label">ELEVATION · 海拔</span><strong>{selectedVolcano.elevation !== null ? selectedVolcano.elevation + " m" : "未提供"}</strong></div>
+              <div className="info-field"><span className="metric-label">LOCATION · 位置</span><strong>{coordinateLabel(selectedVolcano.lat, "N", "S")} · {coordinateLabel(selectedVolcano.lon, "E", "W")}</strong></div>
+              <div className="source-card"><div className="metric-label">SOURCE / 数据来源</div><strong>Smithsonian Global Volcanism Program</strong>{selectedVolcano.id !== null && <span>Volcano Number: {selectedVolcano.id}</span>}<a href={gvpUrl(selectedVolcano)} target="_blank" rel="noreferrer">在 GVP 查看火山档案 ↗</a><p>Volcanoes of the World 全新世火山名录。当前喷发与警戒级别请以各国火山观测机构为准。</p></div>
+            </div>
+          )}
+
+          {!selectedVolcano && !selectedQuake && status === "idle" && (
             <div className="empty-inspector">
               <div className="empty-emblem"><MousePointerClick size={34} strokeWidth={1.4} aria-hidden="true" /></div>
               <h2>点击地球上的<br />任意位置</h2>
@@ -1002,7 +1163,7 @@ function App() {
             </div>
           )}
 
-          {!selectedQuake && coordinates && status !== "idle" && (
+          {!selectedVolcano && !selectedQuake && coordinates && status !== "idle" && (
             <div className="inspector-body">
               <div className="coordinates-block">
                 <div className="metric-label">SELECTED COORDINATES</div>
@@ -1059,7 +1220,7 @@ function App() {
           )}
           <div className="details-footer">
             <span className="details-footer-dot" />
-            <span>{selectedQuake ? "地震数据来自 USGS 实时目录，震级、深度与位置可能在复核后修订。" : "科学数据来自 Macrostrat。岩性与地质年代取自地表地质图，并非直接地下测量；不同地区的比例尺和数据完整性不同。"}</span>
+            <span>{selectedVolcano ? "火山数据来自 Smithsonian GVP《Volcanoes of the World》全新世火山名录。" : selectedQuake ? "地震数据来自 USGS 实时目录，震级、深度与位置可能在复核后修订。" : "科学数据来自 Macrostrat。岩性与地质年代取自地表地质图，并非直接地下测量；不同地区的比例尺和数据完整性不同。"}</span>
           </div>
         </aside>
       </main>

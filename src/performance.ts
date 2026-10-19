@@ -53,6 +53,51 @@ export function nextRenderQuality(current: RenderQuality): RenderQuality {
   return RENDER_QUALITY_ORDER[(index + 1) % RENDER_QUALITY_ORDER.length];
 }
 
+/** Below this sustained frame rate while the globe moves, step quality down. */
+export const AUTO_QUALITY_MIN_FPS = 24;
+// Evaluate after this much continuous rendering (time-based, so very slow
+// devices are measured as quickly as fast ones).
+const AUTO_QUALITY_WINDOW_MS = 2_000;
+const AUTO_QUALITY_MIN_FRAMES = 15;
+// Frames further apart than this are not part of one continuous run.
+const AUTO_QUALITY_MAX_GAP_MS = 1_000;
+
+export function lowerRenderQuality(current: RenderQuality): RenderQuality | null {
+  const index = RENDER_QUALITY_ORDER.indexOf(current);
+  return index > 0 ? RENDER_QUALITY_ORDER[index - 1] : null;
+}
+
+/**
+ * Measures frame rate over continuous runs of rendered frames (the app only
+ * renders on demand, so idle gaps are ignored). Feed it frames only while the
+ * camera is moving, when Cesium renders every frame up to its target rate.
+ */
+export class FrameRateMonitor {
+  private frames = 0;
+  private elapsedMs = 0;
+  private lastFrameMs = 0;
+
+  /** Returns the average fps once a full window has been collected. */
+  addFrame(timeMs: number): number | null {
+    const gap = timeMs - this.lastFrameMs;
+    this.lastFrameMs = timeMs;
+    if (gap <= 0 || gap > AUTO_QUALITY_MAX_GAP_MS) return null;
+    this.frames++;
+    this.elapsedMs += gap;
+    if (this.elapsedMs < AUTO_QUALITY_WINDOW_MS || this.frames < AUTO_QUALITY_MIN_FRAMES) return null;
+    const fps = (this.frames * 1000) / this.elapsedMs;
+    this.frames = 0;
+    this.elapsedMs = 0;
+    return fps;
+  }
+
+  reset(): void {
+    this.frames = 0;
+    this.elapsedMs = 0;
+    this.lastFrameMs = 0;
+  }
+}
+
 /**
  * Keep global MVT hierarchy small. Levels 0..5 allocate 1,365 nodes,
  * versus 5,461 nodes at levels 0..6 (75% fewer nodes).
