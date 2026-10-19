@@ -346,7 +346,7 @@ function App() {
   };
 
   return (
-    <div className={"app-shell" + (motionEnabled && pageVisible ? " motion-on" : " motion-off")}>
+    <div className={"app-shell quality-" + renderQuality + (motionEnabled && pageVisible ? " motion-on" : " motion-off")}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="Earth Atlas home">
           <span className="brand-symbol" aria-hidden="true">◎</span>
