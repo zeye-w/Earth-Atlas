@@ -6,6 +6,7 @@ import {
   MAX_ELEMENT_AGE_DAYS,
   SATELLITE_CHOICES,
   parseGPRecords,
+  parseGPEpoch,
   convertGPRecords,
   positionAt,
   orbitPath,
@@ -44,6 +45,12 @@ test("curated source remains bounded and cache respects CelesTrak update interva
   assert.ok(MAX_ELEMENT_AGE_DAYS <= 14);
   assert.ok(SATELLITE_UPDATE_MS >= 3000);
   assert.ok(SATELLITE_PATH_UPDATE_MS >= 60_000);
+});
+
+test("CelesTrak offset-free OMM epochs must be UTC, not local browser time", () => {
+  assert.equal(parseGPEpoch("2026-10-19T01:00:00").toISOString(), "2026-10-19T01:00:00.000Z");
+  assert.equal(parseGPEpoch("2026-10-19T01:00:00Z").toISOString(), "2026-10-19T01:00:00.000Z");
+  assert.equal(parseGPEpoch("2026-10-19T09:00:00+08:00").toISOString(), "2026-10-19T01:00:00.000Z");
 });
 
 test("CelesTrak JSON structure validation rejects non-JSON, wrappers, and missing epoch", () => {
