@@ -22,7 +22,7 @@ One page per shot, bounded concurrent shots, timestamped manifests and resumable
 
 The cloud shot captures exactly31 hourly images. All other shots use their full30fps frame count. The optional alternate aurora is never added as an extra timeline segment. Reuse the same anchor and output directory to resume. Completed live aurora is only reusable on its capture day.
 
-To resume clouds separately, add `--shot s7-clouds --cloud-workers 3 --concurrency 3` to the same command. This assigns disjoint hours to at most three browser pages and keeps already captured frames. Clouds have a 300-second tile wait because the upstream service may respond slowly; failures remain incomplete. The source service's own watermark is preserved.
+To resume clouds separately, add `--shot s7-clouds --cloud-workers 3 --concurrency 3` to the same command. Each missing hour starts its own page directly at the required scene time/camera, with at most three pages active, and keeps already captured frames. Isolated pages prevent pending cloud layers from carrying over across hour changes. Clouds have a 300-second tile wait because the upstream service may respond slowly; failures remain incomplete. The source service's own watermark is preserved.
 
 ## Render and review
 

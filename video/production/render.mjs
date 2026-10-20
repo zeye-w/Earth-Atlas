@@ -1,4 +1,4 @@
-import {readFileSync,writeFileSync,mkdirSync,cpSync} from 'node:fs';
+import {readFileSync,writeFileSync,mkdirSync,cpSync,readdirSync,unlinkSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
@@ -37,6 +37,7 @@ const actual=JSON.parse(loudness.stderr.slice(loudness.stderr.lastIndexOf('{')))
 writeFileSync(resolve(delivery,mode+'-qa.json'),JSON.stringify({metadata,loudness:actual},null,2));
 if(Number(actual.input_tp)>-1||Math.abs(Number(actual.input_i)+14)>0.5)throw Error('Audio QA failed: '+JSON.stringify(actual));
 const qa=resolve(delivery,mode+'-review');mkdirSync(qa,{recursive:true});
+for(const name of readdirSync(qa))if(/^\d{4}\.png$/.test(name))unlinkSync(resolve(qa,name));
 const reviewFrames=spec.shots.filter(s=>(s.id==='s4-aurora'||s.id==='s4b-atmosphere')?s.id===props.auroraShot:!s.optional).map(s=>Math.floor((s.start+s.end)/2*spec.output.fps));
 for(const frame of reviewFrames)await renderStill({composition,serveUrl,inputProps:props,browserExecutable,frame,output:resolve(qa,String(frame).padStart(4,'0')+'.png')});
 if(mode==='final')cpSync(resolve(root,'video/production/review-notes.md'),resolve(delivery,'REVIEW.md'));

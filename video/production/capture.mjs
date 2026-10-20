@@ -121,6 +121,7 @@ async function captureShot(browser, shot) {
   page.setDefaultTimeout(600000);
   const errors=[];
   let cloudCatalog;
+  let expectedCloudTime=null;let frameIndex=null;
   page.on('pageerror',e=>errors.push(e.message));
   page.on('requestfailed',r=>{if(!/ERR_ABORTED/.test(r.failure()?.errorText??'')&&!/favicon|planetary_k_index/.test(r.url()))errors.push(r.failure()?.errorText+' '+r.url());});
   page.on('response',r=>{entry.sources.push({url:r.url(),status:r.status(),at:new Date().toISOString()});if(r.status()>=400&&!/favicon|planetary_k_index/.test(r.url()))errors.push('HTTP '+r.status()+' '+r.url());});
@@ -159,11 +160,12 @@ async function captureShot(browser, shot) {
     const existing=entry.frames.find(f=>f.index===i);if(existing&&existsSync(OUT+'/'+existing.path))continue;
     if(shot.time.mode==='live'&&new Date().toISOString().slice(0,10)!==captureDate)throw Error('Aurora crossed UTC midnight');
     const t = count === 1 ? 0 : i / (count - 1);
+    frameIndex=i;
     const started = Date.now();
     const loaded = await applyFrame(page, shot, t, t * duration);
     if(shot.layers?.clouds){
       const expected=cloudFrameAt(cloudCatalog,sceneTime(shot,t)+HOUR-1);if(!expected)throw Error('No cloud observation for requested hour');
-      const label=expected.toISOString().slice(0,16).replace('T',' ')+' UTC';
+      const label=expected.toISOString().slice(0,16).replace('T',' ')+' UTC';expectedCloudTime=label;console.log(shot.id,'hour',i,'expected',label);
       await page.waitForFunction(label=>Array.from(document.querySelectorAll('.thematic-note')).some(e=>(e.textContent??'').includes(label)),label,{timeout:120000});
     }
     if(!loaded)throw Error('Tile load timeout frame '+i);
@@ -180,13 +182,21 @@ async function captureShot(browser, shot) {
   console.log("captured", shot.id, entry.frames.length, "frame(s)");
   entry.finishedAt=new Date().toISOString();delete entry.error;
   entry.frames.sort((a,b)=>a.index-b.index);entry.status=entry.frames.length===count?'complete':'partial';save();
-  }catch(error){entry.status='failed';entry.error=String(error);save();throw error;}finally{await page.close();}
+   }catch(error){
+    entry.status='failed';entry.error=String(error);save();
+    try{const diagnostic=await page.evaluate(()=>({statuses:Array.from(document.querySelectorAll('[role=status],.thematic-note')).map(e=>e.textContent),resources:performance.getEntriesByType('resource').slice(-80).map(r=>({name:r.name,duration:r.duration,responseEnd:r.responseEnd}))}));
+    const filename=OUT+'/'+shot.id+'-failure-'+(shot._indices?.[0]??0);
+    writeFileSync(filename+'.json',JSON.stringify({error:String(error),frameIndex,expectedCloudTime,diagnostic,errors,sources:entry.sources.slice(-100)},null,2));await page.screenshot({path:filename+'.png',timeout:180000});}catch(diagnosticError){console.error('Diagnostic failed',String(diagnosticError));}
+    throw error;
+  }finally{await page.close();}
+
 }
 
 const wanted=args.shot?args.shot.split(','):null;
 let shots=spec.shots.filter(s=>s.type!=='remotion-only'&&(wanted?wanted.includes(s.id):!s.optional));
 if(wanted?.some(id=>!shots.some(s=>s.id===id)))throw Error('Unknown shot');
 if(args['dry-run']){console.log(JSON.stringify({anchor:new Date(anchor).toISOString(),shots:shots.map(s=>({id:s.id,frames:s.time.mode==='hourly-stills'?31:MODE==='frames'?Math.round((s.end-s.start)*fps):3}))},null,2));process.exit(0);}
+if(args['frame-indices']){const indices=args['frame-indices'].split(',').map(Number);if(indices.some(i=>!Number.isInteger(i)||i<0))throw Error('Invalid frame indices');shots=shots.map(s=>({...s,_indices:indices}));}
 let auroraPayload;
 if(shots.some(s=>s.id==='s4-aurora')){
  const path=OUT+'/noaa-ovation.json';
@@ -202,9 +212,10 @@ if(shots.some(s=>s.id==='s4-aurora')){
 }
 const browser=await chromium.launch({executablePath:process.env.PW_CHROMIUM_PATH||undefined,args:args.hardware?['--use-angle=d3d11']:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});
 let cursor=0;const failed=[];
-const cloudWorkers=Number(args['cloud-workers']??1);
+const cloudWorkers=Number(args['cloud-workers']??2);
 if(!Number.isInteger(cloudWorkers)||cloudWorkers<1||cloudWorkers>3)throw Error('cloud-workers must be1..3');
-if(cloudWorkers>1)shots=shots.flatMap(shot=>shot.time.mode!=='hourly-stills'?[shot]:Array.from({length:cloudWorkers},(_,worker)=>({...shot,_indices:Array.from({length:Math.round(shot.time.toHours-shot.time.fromHours)+1},(_,i)=>i).filter(i=>i%cloudWorkers===worker)})));
-const concurrency=Number(args.concurrency??2);if(!Number.isInteger(concurrency)||concurrency<1||concurrency>4)throw Error('concurrency must be 1..4');
+// Every cloud observation owns a fresh page: no old/pending cloud layer can leak across hours.
+shots=shots.flatMap(shot=>shot.time.mode!=='hourly-stills'?[shot]:(shot._indices??Array.from({length:Math.round(shot.time.toHours-shot.time.fromHours)+1},(_,i)=>i)).filter(i=>!manifest.shots.find(s=>s.id===shot.id)?.frames.some(f=>f.index===i&&existsSync(OUT+'/'+f.path))).map(i=>({...shot,_indices:[i]})));
+const concurrency=Number(args.concurrency??(shots.every(s=>s.time.mode==='hourly-stills')?cloudWorkers:2));if(!Number.isInteger(concurrency)||concurrency<1||concurrency>4)throw Error('concurrency must be 1..4');
 try{await Promise.all(Array.from({length:concurrency},async()=>{while(cursor<shots.length){const s=shots[cursor++];try{await captureShot(browser,s);}catch(e){failed.push(s.id);console.error(s.id,e);}}}));}finally{await browser.close();}
 if(failed.length){for(const id of new Set(failed)){const entry=manifest.shots.find(s=>s.id===id);if(entry&&entry.frames.length<entry.expectedFrames)entry.status='failed';}save();process.exitCode=1;}

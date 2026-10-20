@@ -14,6 +14,7 @@ if(existsSync(resolve(root,'video/audio/fonts')))cpSync(resolve(root,'video/audi
 if(existsSync(resolve(root,'video/audio/terrascope-original.wav')))cpSync(resolve(root,'video/audio/terrascope-original.wav'),resolve(pub,'score.wav'));
 let auroraShot=args.aurora??'s4b-atmosphere';
 const props={mode,auroraShot,manifest:{shots:{}}};
+const integrity=[];
 if(mode==='final'){
   const source=resolve(root,args.captures??'video/production/public/captures');
   const manifest=JSON.parse(readFileSync(resolve(source,'manifest.json'),'utf8'));
@@ -31,6 +32,9 @@ if(mode==='final'){
       if(frame.index!==index)throw Error('Missing or duplicate frame index: '+shot.id);
       const path=resolve(source,frame.path);
       if(!relative(source,path)||relative(source,path).startsWith('..')||!existsSync(path))throw Error('Unsafe/missing frame '+frame.path);
+      const png=readFileSync(path);
+      if(png.subarray(0,8).toString('hex')!=='89504e470d0a1a0a'||png.readUInt32BE(16)!==spec.output.width||png.readUInt32BE(20)!==spec.output.height)throw Error('Invalid capture dimensions: '+frame.path);
+      integrity.push({path:frame.path,bytes:png.length,sha256:createHash('sha256').update(png).digest('hex')});
       const output=resolve(pub,'frames',shot.id,String(frame.index).padStart(4,'0')+'.png');
       mkdirSync(dirname(output),{recursive:true});cpSync(path,output);
       files.push('frames/'+shot.id+'/'+String(frame.index).padStart(4,'0')+'.png');
@@ -39,6 +43,7 @@ if(mode==='final'){
   }
   mkdirSync(resolve(root,'video/delivery'),{recursive:true});
   cpSync(resolve(source,'manifest.json'),resolve(root,'video/delivery/capture-manifest.json'));
+  writeFileSync(resolve(root,'video/delivery/capture-integrity.json'),JSON.stringify({specSha256:specHash,frames:integrity},null,2));
   cpSync(resolve(root,'video/CREDITS.md'),resolve(root,'video/delivery/CREDITS.md'));
 }
 const delivery=resolve(root,'video/delivery');mkdirSync(delivery,{recursive:true});
