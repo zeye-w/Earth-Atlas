@@ -22,7 +22,7 @@ English · [简体中文](README.zh-CN.md)
 
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
-- **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude.
+- **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, and pass predictions for your location.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
 - **Travel in time** — a timeline replays the past 24 hours, 7 or 30 days (and looks a day ahead): sunlight, earthquakes, satellite positions and daily satellite imagery all follow it.
 - **Honest by design** — no fabricated data. When a feed is down the layer says so and draws nothing; illustrative elements are labelled.
@@ -33,11 +33,11 @@ English · [简体中文](README.zh-CN.md)
 <table>
 <tr>
 <td width="50%"><img src="docs/screenshots/night-lights.jpg" alt="City lights on the night side"><br><b>City lights</b><br>NASA Black Marble (VIIRS) lights on the night side across the real terminator, with only the lights kept and a soft glow over a darkened copy of the day imagery.</td>
-<td width="50%"><img src="docs/screenshots/aurora.jpg" alt="Aurora oval and Kp panel"><br><b>Aurora and geomagnetic activity</b><br>Aurora curtains placed from the NOAA SWPC OVATION nowcast, with the current planetary K-index, NOAA G-scale level and 24-hour history.</td>
+<td width="50%"><img src="docs/screenshots/aurora.jpg" alt="Aurora oval and Kp panel"><br><b>Aurora and geomagnetic activity</b><br>Aurora curtains around both poles, placed from the NOAA SWPC OVATION nowcast, with the current planetary K-index, NOAA G-scale level and 24-hour history.</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/tectonics.jpg" alt="Earthquakes, plate boundaries and volcanoes"><br><b>Earthquakes, plates and volcanoes</b><br>USGS real-time earthquakes (size = magnitude, colour = depth), Bird (2003) plate boundaries with subduction zones, and ~1,200 Holocene volcanoes. Click for details.</td>
-<td><img src="docs/screenshots/satellites.jpg" alt="Satellites and orbit paths"><br><b>Satellites</b><br>ISS, Tiangong, Hubble and Earth-observation satellites moving along SGP4-predicted orbits, with optional 60× / 300× time preview.</td>
+<td><img src="docs/screenshots/satellites.jpg" alt="Satellites and orbit paths"><br><b>Satellites</b><br>ISS, Tiangong, Hubble and Earth-observation satellites moving along SGP4-predicted orbits, with optional 60× / 300× time preview. <i>Passes over me</i> lists the next 24 hours of passes over your location (or any picked point) — time, peak elevation, direction and whether it is visible to the naked eye — and jumps the timeline to one.</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/geology.jpg" alt="Geologic map and inspector"><br><b>Global geology</b><br>Macrostrat geologic map (raster, or experimental age / lithology vector views). Click the ground to list the mapped units, ages and rock types there.</td>

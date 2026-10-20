@@ -1,17 +1,20 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Cartesian3 } from "cesium";
-import { AURORA_THRESHOLD, northernProfile, parseOvation } from "../src/auroraData.ts";
+import { AURORA_THRESHOLD, hemisphereMax, northernProfile, parseOvation, southernProfile } from "../src/auroraData.ts";
 import { intensityAlongRing, profileRing } from "../src/aurora.ts";
 
 // Synthetic OVATION-shaped payload for parser/geometry tests only (NOT NOAA
-// data): an oval peaking at 67 deg N, strong on the night side (lon 180-359).
-function syntheticPayload({ quiet = false } = {}) {
+// data): an oval peaking at 67 deg N, strong on the night side (lon 180-359),
+// and optionally a weaker one at 64 deg S.
+function syntheticPayload({ quiet = false, south = false } = {}) {
   const coordinates = [];
   for (let lon = 0; lon < 360; lon++) {
     for (let lat = -90; lat <= 90; lat++) {
       const peak = quiet ? 1 : (lon >= 180 ? 40 : 8);
-      coordinates.push([lon, lat, Math.max(0, peak - 12 * Math.abs(lat - 67))]);
+      const north = Math.max(0, peak - 12 * Math.abs(lat - 67));
+      const southern = south ? Math.max(0, 20 - 10 * Math.abs(lat + 64)) : 0;
+      coordinates.push([lon, lat, Math.max(north, southern)]);
     }
   }
   return { "Observation Time": "2026-10-19T04:00:00Z", "Forecast Time": "2026-10-19T04:35:00Z", "Data Format": "[Longitude, Latitude, Aurora]", coordinates };
@@ -48,4 +51,18 @@ test("ring is closed and brightness texture follows the ring", () => {
   const positions = Cartesian3.fromDegreesArray(coords);
   const texture = intensityAlongRing(positions, profile, 360);
   assert.ok(texture[270] > texture[90]);
+});
+
+test("southern oval is found separately and its ring stays in the south", () => {
+  const grid = parseOvation(syntheticPayload({ south: true }));
+  const south = southernProfile(grid);
+  assert.ok(south);
+  assert.equal(south.hemisphere, "south");
+  assert.ok(south.latitudes.every((lat) => Math.abs(lat + 64) < 0.5));
+  assert.equal(hemisphereMax(grid, "south"), 20);
+  assert.equal(hemisphereMax(grid, "north"), 40);
+  assert.equal(northernProfile(grid).maxProbability, 40);
+  const coords = profileRing(south, 1.8);
+  for (let i = 1; i < coords.length; i += 2) assert.ok(coords[i] < -65 && coords[i] > -66.5, "poleward offset goes further south");
+  assert.equal(southernProfile(parseOvation(syntheticPayload())), null, "no southern aurora drawn without southern data");
 });

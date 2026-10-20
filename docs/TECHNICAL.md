@@ -195,3 +195,11 @@ Shared scene links carry the moment as optional `time` (ms since epoch); a momen
 
 NASA GIBS `VIIRS_NOAA20_CorrectedReflectance_TrueColor` (EPSG:3857, `GoogleMapsCompatible_Level9`, JPEG, CORS `*`), one mosaic per UTC day assembled from the satellite's daytime passes. Black no-data areas (gaps between swaths, polar night) are made transparent so the Blue Marble base shows through; the layer is hidden on the night side. Clouds are as seen at each place's overpass time, not a single instant. The live smoke test checks yesterday's and a month-old tile.
 
+## Southern aurora
+
+The OVATION grid covers both hemispheres. `ovalProfile(grid, "north" | "south")` reduces each hemisphere (40°–89°) to a probability-weighted oval latitude and brightness per longitude, and curtains are drawn for each hemisphere that has any probability above the threshold. The panel reports the peak probability per hemisphere.
+
+## Satellite pass predictions
+
+`src/satellitePasses.ts` samples each loaded satellite every 30 s for the next 24 hours with SGP4 (the same CelesTrak elements as the globe), computing elevation and azimuth from the observer with `satellite.js` `ecfToLookAngles`. A pass runs from horizon to horizon (rise and set interpolated between samples) and is listed when it climbs at least 10°. "Visible to the naked eye" means that at some point above 10° the observer's Sun is below −6° (civil twilight) while the satellite is outside Earth's shadow (cylindrical shadow model). Satellites whose elements are more than 10 days from the window are skipped. The observer is the browser's geolocation (asked only when the button is pressed) or the point picked on the globe; it is used only in the browser. Selecting a pass highlights the satellite, moves the timeline to the pass's highest point and looks down on the observer. Predictions ignore refraction, terrain and brightness (magnitude), and can be off by a minute or so as elements age.
+

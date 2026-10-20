@@ -252,6 +252,20 @@ h1 em { font-style:normal; color:var(--text-2); }
 .satellite-status { margin:10px 0 7px; font-size:10px; line-height:1.65; color:var(--text-2); }
 .satellite-catalog { display:flex; flex-direction:column; gap:5px; max-height:190px; overflow-y:auto; scrollbar-width:thin; }
 .satellite-entry { display:flex; align-items:flex-start; gap:8px; padding:6px 7px; border-radius:8px; border:1px solid transparent; background:rgba(255,255,255,.04); }
+.pass-predictions { display:flex; flex-direction:column; gap:7px; padding-top:9px; border-top:1px solid var(--line); }
+.pass-predictions .layer-status { margin:0; }
+.pass-head { font-size:10px; font-weight:600; letter-spacing:.06em; color:var(--text-2); }
+.pass-sources { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.pass-sources button { display:flex; align-items:center; justify-content:center; gap:5px; padding:6px 4px; border-radius:9px; border:1px solid var(--line); background:var(--fill); color:var(--text); font-size:10px; }
+.pass-sources button:hover:not(:disabled) { background:var(--fill-hover); }
+.pass-sources button:disabled { opacity:.45; cursor:not-allowed; }
+.pass-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; max-height:210px; overflow-y:auto; scrollbar-width:thin; }
+.pass-list button { width:100%; display:grid; grid-template-columns:1fr auto; gap:2px 8px; padding:6px 8px; border-radius:8px; border:1px solid transparent; background:rgba(255,255,255,.04); color:var(--text); text-align:left; }
+.pass-list button:hover { background:var(--fill-strong); border-color:rgba(255,255,255,.16); }
+.pass-name { font-size:10px; font-weight:600; }
+.pass-visible { justify-self:end; padding:1px 6px; border-radius:999px; font-size:9px; color:#0b0c0f; background:#ffc56b; }
+.pass-time { grid-column:1 / -1; font-size:10px; font-variant-numeric:tabular-nums; color:var(--text-2); }
+.pass-detail { grid-column:1 / -1; font-size:9px; color:var(--text-3); }
 .satellite-entry.selected { background:var(--fill-strong); border-color:rgba(255,255,255,.2); }
 .satellite-entry > span:last-child { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .satellite-entry strong { font-size:10px; font-weight:600; }

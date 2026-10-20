@@ -1,5 +1,7 @@
 import { Satellite } from "lucide-react";
-import type { SatelliteChoice } from "../satelliteOrbits";
+import type { OrbitRecord, SatelliteChoice } from "../satelliteOrbits";
+import type { Observer, SatellitePass } from "../satellitePasses";
+import { PassPredictions } from "./PassPredictions";
 import type { SatelliteSpeed } from "../satelliteOverlay";
 import type { LayerOptions, LayerToggles } from "../hooks/useLayerSettings";
 import type { SatelliteStatus } from "../layers/useSatellites";
@@ -19,9 +21,12 @@ interface Props {
   catalog: Array<{ choice: SatelliteChoice; epochLabel: string }>;
   selectedId: string | null;
   timeline: TimeController;
+  records: readonly OrbitRecord[];
+  selectedPoint: { latitude: number; longitude: number } | null;
+  onSelectPass: (pass: SatellitePass, observer: Observer) => void;
 }
 
-export function SatellitesGroup({ layers, setLayer, options, setOption, status, catalog, selectedId, timeline }: Props) {
+export function SatellitesGroup({ layers, setLayer, options, setOption, status, catalog, selectedId, timeline, records, selectedPoint, onSelectPass }: Props) {
   const live = useTimeSelector(timeline, (state) => state.live);
   return (
     <LayerGroup title="SATELLITES" subtitle="在轨卫星" open={layers.satellites}>
@@ -53,6 +58,7 @@ export function SatellitesGroup({ layers, setLayer, options, setOption, status, 
               ))}
             </div>
           )}
+          {status === "ready" && records.length > 0 && <PassPredictions records={records} selectedPoint={selectedPoint} onSelectPass={onSelectPass} />}
           <p className="satellite-disclaimer">数据：CelesTrak GP / SGP4。位置为轨道推算，并非实时遥测；轨迹表示地固坐标系下的预测路径。</p>
         </div>
       )}

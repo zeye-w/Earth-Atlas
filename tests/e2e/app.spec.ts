@@ -90,6 +90,23 @@ test("satellites load from the orbital catalogue", async ({ page }) => {
   await expect(layerPanel(page).locator(".satellite-preview-note")).toBeVisible();
 });
 
+test("predicts satellite passes over my location and jumps the timeline to one", async ({ page }) => {
+  await page.context().grantPermissions(["geolocation"]);
+  await page.context().setGeolocation({ latitude: 39.9, longitude: 116.4 });
+  await page.goto(sceneUrl(116.4, 39.9, 17_000_000, { satellites: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "SATELLITES");
+  await expect(layerPanel(page).locator(".satellite-status")).toContainText("已加载");
+  await page.getByRole("button", { name: "使用我的位置" }).click();
+  const predictions = layerPanel(page).locator(".pass-predictions");
+  await expect(predictions.locator(".layer-status")).toContainText("我的位置（39.9°N 116.4°E）");
+  // Synthetic low-Earth orbits pass over any mid-latitude site within a day.
+  const first = predictions.locator(".pass-list button").first();
+  await expect(first).toContainText("最高");
+  await first.click();
+  await expect(page.locator(".online-indicator")).toContainText("回看");
+});
+
 test("clouds show the observation time", async ({ page }) => {
   await page.goto(sceneUrl(0, 0, 17_000_000, { clouds: true }));
   await waitForGlobe(page);

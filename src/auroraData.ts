@@ -53,11 +53,15 @@ export function parseOvation(json: unknown): OvationGrid {
   };
 }
 
+export type Hemisphere = "north" | "south";
+
 export interface AuroraProfile {
+  hemisphere: Hemisphere;
   /** Per longitude 0..359: probability-weighted latitude of the oval. */
   latitudes: number[];
   /** Per longitude 0..359: brightness 0..1 from the peak probability. */
   intensities: number[];
+  /** Peak probability (%) in this hemisphere. */
   maxProbability: number;
 }
 
@@ -70,15 +74,30 @@ function circularSmooth(values: number[], radius: number): number[] {
   });
 }
 
-/** Northern auroral oval, or null when no longitude exceeds the threshold. */
-export function northernProfile(grid: OvationGrid, threshold = AURORA_THRESHOLD): AuroraProfile | null {
+/** Highest probability (%) between 40° and 89° in one hemisphere. */
+export function hemisphereMax(grid: OvationGrid, hemisphere: Hemisphere): number {
+  const sign = hemisphere === "north" ? 1 : -1;
+  let max = 0;
+  for (let lon = 0; lon < 360; lon++) {
+    for (let abs = 40; abs <= 89; abs++) max = Math.max(max, grid.values[lon * LATITUDES + sign * abs + 90]);
+  }
+  return max;
+}
+
+/**
+ * Auroral oval of one hemisphere (40°–89° north or south), or null when no
+ * longitude exceeds the threshold there.
+ */
+export function ovalProfile(grid: OvationGrid, hemisphere: Hemisphere, threshold = AURORA_THRESHOLD): AuroraProfile | null {
+  const sign = hemisphere === "north" ? 1 : -1;
   const latitudes: number[] = new Array(360).fill(Number.NaN);
   const peaks: number[] = new Array(360).fill(0);
   for (let lon = 0; lon < 360; lon++) {
     let weight = 0;
     let weightedLat = 0;
     let peak = 0;
-    for (let lat = 40; lat <= 89; lat++) {
+    for (let abs = 40; abs <= 89; abs++) {
+      const lat = sign * abs;
       const value = grid.values[lon * LATITUDES + lat + 90];
       if (value > peak) peak = value;
       const w = value - threshold;
@@ -101,10 +120,19 @@ export function northernProfile(grid: OvationGrid, threshold = AURORA_THRESHOLD)
   }
   const smoothedPeaks = circularSmooth(peaks, 2);
   return {
+    hemisphere,
     latitudes: circularSmooth(latitudes, 4),
     intensities: smoothedPeaks.map((p) => Math.min(1, Math.sqrt(Math.max(0, p) / FULL_BRIGHTNESS_PROBABILITY))),
-    maxProbability: grid.maxProbability,
+    maxProbability: hemisphereMax(grid, hemisphere),
   };
+}
+
+export function northernProfile(grid: OvationGrid, threshold = AURORA_THRESHOLD): AuroraProfile | null {
+  return ovalProfile(grid, "north", threshold);
+}
+
+export function southernProfile(grid: OvationGrid, threshold = AURORA_THRESHOLD): AuroraProfile | null {
+  return ovalProfile(grid, "south", threshold);
 }
 
 let cache: { at: number; grid: OvationGrid } | null = null;

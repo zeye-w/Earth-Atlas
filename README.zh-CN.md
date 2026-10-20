@@ -22,7 +22,7 @@
 
 - **此刻真实的地球**：按当前 UTC 时间计算太阳位置，白天是 NASA Blue Marble 卫星影像，夜半球是 NASA Black Marble 城市灯光。
 - **实时地球物理数据**：USGS 地震、NOAA 极光预报与 Kp 地磁指数、史密森尼火山名录、PB2002 板块边界。
-- **在轨卫星**：根据 CelesTrak 轨道根数用 SGP4 预测位置，轨道线画在真实高度上。
+- **在轨卫星**：根据 CelesTrak 轨道根数用 SGP4 预测位置，轨道线画在真实高度上，还能预测卫星何时从你头顶飞过。
 - **按需加载的地质图**：Macrostrat 全球地质图，点击任意位置查看岩石单元、地质年代和岩性。
 - **时间回溯**：时间轴可回看过去 24 小时、7 天或 30 天（也能看未来一天），日照、地震、卫星位置和每日卫星影像都随之变化。
 - **不编造数据**：数据源不可用时，图层会明确提示并且不绘制；示意性的内容都有标注。
@@ -33,11 +33,11 @@
 <table>
 <tr>
 <td width="50%"><img src="docs/screenshots/night-lights.jpg" alt="夜半球城市灯光"><br><b>城市夜光</b><br>NASA Black Marble（VIIRS）夜光沿真实晨昏线显示在夜半球。只保留灯光并加上柔和光晕，底下是压暗的白天影像，看起来是同一个地球。</td>
-<td width="50%"><img src="docs/screenshots/aurora.jpg" alt="极光与 Kp 面板"><br><b>极光与地磁活动</b><br>极光帘幕的位置和亮度来自 NOAA SWPC OVATION 实时预报；面板显示当前 Kp 指数、NOAA 磁暴等级和过去 24 小时变化。</td>
+<td width="50%"><img src="docs/screenshots/aurora.jpg" alt="极光与 Kp 面板"><br><b>极光与地磁活动</b><br>南北两极的极光帘幕，位置和亮度来自 NOAA SWPC OVATION 实时预报；面板显示当前 Kp 指数、NOAA 磁暴等级和过去 24 小时变化。</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/tectonics.jpg" alt="地震、板块边界与火山"><br><b>地震、板块与火山</b><br>USGS 实时地震（大小表示震级，颜色表示震源深度）、Bird (2003) 板块边界（突出俯冲带）以及约 1,200 座全新世火山，点击可查看详情。</td>
-<td><img src="docs/screenshots/satellites.jpg" alt="卫星与轨道"><br><b>卫星</b><br>国际空间站、天宫、哈勃和对地观测卫星沿 SGP4 预测轨道运行，可切换 60× / 300× 加速预览。</td>
+<td><img src="docs/screenshots/satellites.jpg" alt="卫星与轨道"><br><b>卫星</b><br>国际空间站、天宫、哈勃和对地观测卫星沿 SGP4 预测轨道运行，可切换 60× / 300× 加速预览。<i>过境预测</i>列出未来 24 小时卫星飞过你所在位置（或任意选定地点）的时间、最高仰角、方向以及能否肉眼看到，点击即可在时间轴上查看。</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/geology.jpg" alt="地质图与查询面板"><br><b>全球地质</b><br>Macrostrat 地质图（栅格，或实验性的年代 / 岩性矢量视图）。点击地面即可列出该处的地质单元、年代和岩石类型。</td>

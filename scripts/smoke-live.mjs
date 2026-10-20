@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { parseGeologicalUnits } from "../src/geology.ts";
 import { parseLithologyDictionary } from "../src/lithology.ts";
-import { OVATION_URL, northernProfile, parseOvation } from "../src/auroraData.ts";
+import { OVATION_URL, northernProfile, parseOvation, southernProfile } from "../src/auroraData.ts";
 import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { KP_HISTORY_URL, KP_NOW_URL, kpLevel, parseKpHistory, parseKpNow } from "../src/geomagnetic.ts";
@@ -101,9 +101,9 @@ try {
   assert.ok(response.ok, "NOAA OVATION HTTP " + response.status);
   assert.ok(cors === "*" || cors === "https://earth-atlas.edwardlab.workers.dev", "NOAA OVATION CORS disallows deployed origin");
   const grid = parseOvation(await response.json());
-  const profile = northernProfile(grid);
+  const oval = (profile) => profile ? "lat range " + Math.min(...profile.latitudes).toFixed(1) + "-" + Math.max(...profile.latitudes).toFixed(1) + ", max " + profile.maxProbability + "%" : "none above threshold";
   console.log("NOAA OVATION forecast:", grid.forecastTime?.toISOString(), "max probability:", grid.maxProbability,
-    "northern oval:", profile ? "lat range " + Math.min(...profile.latitudes).toFixed(1) + "-" + Math.max(...profile.latitudes).toFixed(1) : "none above threshold");
+    "northern oval:", oval(northernProfile(grid)), "southern oval:", oval(southernProfile(grid)));
 } catch (error) {
   failed = true;
   console.error("LIVE_NOAA_OVATION_FAILURE:", error);

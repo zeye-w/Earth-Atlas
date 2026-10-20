@@ -4,6 +4,7 @@ import "cesium/Build/Cesium/Widgets/widgets.css";
 import { Move3d, X } from "lucide-react";
 import { QUAKE_ID_PREFIX, type Earthquake } from "./earthquakeData";
 import { VOLCANO_ID_PREFIX, type Volcano } from "./volcanoData";
+import type { Observer, SatellitePass } from "./satellitePasses";
 import { RENDER_QUALITY_LABELS } from "./performance";
 import { readScene, sceneHash, type SceneState } from "./sceneState";
 import { HOME_VIEW, useViewer } from "./hooks/useViewer";
@@ -170,6 +171,15 @@ function App() {
     catch { setToast("请在分享框中手动复制链接"); }
   };
 
+  // A predicted pass: highlight that satellite, move the timeline to its
+  // highest point and look down on the observer.
+  const showPass = (pass: SatellitePass, observer: Observer) => {
+    setSelectedSatelliteId(pass.id);
+    timeline.setTime(pass.peak.getTime());
+    setTimebarOpen(true);
+    viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(observer.longitude, observer.latitude, 4_000_000), duration: 1.6 });
+  };
+
   const flyTo = (region: Region) => {
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000), duration: 1.8 });
   };
@@ -208,7 +218,8 @@ function App() {
         <LayerPanel open={controlsOpen} onClose={() => setControlsOpen(false)} onFlyTo={flyTo}>
           <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} />
           <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
-          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline} />
+          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
+            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
         </LayerPanel>
 

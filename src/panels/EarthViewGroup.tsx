@@ -54,14 +54,14 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
         <a href="https://www.ssec.wisc.edu/realearth/" target="_blank" rel="noreferrer">数据：SSEC / UW–Madison</a>
       </div>}
       <ToggleRow icon={<Lightbulb {...ICON} />} title="城市夜光" caption={layers.dayNight ? "NASA Black Marble 卫星夜光 · 仅夜侧" : "需开启实时昼夜光照"} checked={layers.lights} onChange={(v) => setLayer("lights", v)} />
-      <ToggleRow icon={<Sparkles {...ICON} />} title="北极极光" caption="NOAA OVATION 实时预报 · 夜侧可见" checked={layers.aurora} onChange={(v) => setLayer("aurora", v)} />
+      <ToggleRow icon={<Sparkles {...ICON} />} title="极光" caption="NOAA OVATION 实时预报 · 南北半球 · 夜侧可见" checked={layers.aurora} onChange={(v) => setLayer("aurora", v)} />
       {layers.aurora && !live && <p className="layer-status" role="status">极光预报与 Kp 指数只有实时数据，回看其他时刻时暂不显示。</p>}
       {layers.aurora && live && aurora.state !== "idle" && (
         <p className="layer-status" role="status">
           {aurora.state === "loading" ? "正在读取 NOAA 极光预报…" :
            aurora.state === "error" ? "NOAA 极光数据暂不可用，未显示极光；不会绘制虚构极光。" :
            aurora.state === "quiet" ? "当前预报无明显极光（最高可见概率 " + aurora.max + "%）" :
-           "预报时间 " + (aurora.forecast ?? "—") + " · 最高可见概率 " + aurora.max + "% · 亮度按概率显示"}
+           "预报时间 " + (aurora.forecast ?? "—") + " · 最高可见概率 " + aurora.max + "%（北半球 " + aurora.north + "% · 南半球 " + aurora.south + "%）· 亮度按概率显示"}
         </p>
       )}
       {layers.aurora && live && geomagnetic.status !== "idle" && <KpPanel geomagnetic={geomagnetic} />}

@@ -11,9 +11,10 @@ import {
 import type { AuroraProfile } from "./auroraData.ts";
 
 /**
- * Northern aurora drawn from NOAA OVATION nowcast data: translucent animated
- * curtains follow the probability-weighted latitude of the auroral oval at
- * each longitude, with brightness from the forecast probability there.
+ * Aurora drawn from NOAA OVATION nowcast data, around both poles:
+ * translucent animated curtains follow the probability-weighted latitude of
+ * each auroral oval at each longitude, with brightness from the forecast
+ * probability there.
  */
 
 // Main curtain at the oval centre and a fainter one slightly poleward.
@@ -27,9 +28,10 @@ export const AURORA_FPS = 6;
 
 /** Closed [lon, lat, ...] ring (361 points) from a 360-longitude profile. */
 export function profileRing(profile: AuroraProfile, polewardDeg = 0): number[] {
+  const sign = profile.hemisphere === "south" ? -1 : 1;
   const coords: number[] = [];
   for (let lon = 0; lon <= 360; lon++) {
-    const lat = Math.min(89, profile.latitudes[lon % 360] + polewardDeg);
+    const lat = sign * Math.min(89, sign * profile.latitudes[lon % 360] + polewardDeg);
     coords.push(lon > 180 ? lon - 360 : lon, lat);
   }
   return coords;
@@ -121,6 +123,7 @@ export class AuroraOverlay {
   private readonly viewer: Viewer;
   private primitives: Primitive[] = [];
   private materials: Material[] = [];
+  private hemispheres: (1 | -1)[] = [];
   private frameHandle: number | null = null;
   private lastFrameMs = 0;
   private readonly cameraScratch = new Cartesian3();
@@ -131,10 +134,16 @@ export class AuroraOverlay {
     this.frameHandle = requestAnimationFrame(this.onFrame);
   }
 
-  /** Replace the curtains with a new NOAA profile, or clear them with null. */
-  setProfile(profile: AuroraProfile | null): void {
+  /** Replace the curtains with new NOAA profiles (one per hemisphere with aurora). */
+  setProfiles(profiles: readonly AuroraProfile[]): void {
     this.clear();
-    if (!profile || this.viewer.isDestroyed()) return;
+    if (this.viewer.isDestroyed()) return;
+    for (const profile of profiles) this.addCurtains(profile);
+    this.hemispheres = profiles.map((profile) => (profile.hemisphere === "south" ? -1 : 1));
+    this.viewer.scene.requestRender();
+  }
+
+  private addCurtains(profile: AuroraProfile): void {
     for (const layer of LAYERS) {
       const positions = Cartesian3.fromDegreesArray(profileRing(profile, layer.poleward));
       const material = new Material({
@@ -178,7 +187,6 @@ export class AuroraOverlay {
       this.primitives.push(primitive);
       this.materials.push(material);
     }
-    this.viewer.scene.requestRender();
   }
 
   private readonly onFrame = (frameMs: number): void => {
@@ -186,9 +194,10 @@ export class AuroraOverlay {
     this.frameHandle = requestAnimationFrame(this.onFrame);
     if (!this.visible || this.materials.length === 0 || document.visibilityState !== "visible") return;
     if (frameMs - this.lastFrameMs < 1000 / AURORA_FPS) return;
-    // Skip work while the northern polar region faces away from the camera.
+    // Skip work while every polar region with aurora faces away from the camera.
     const cameraDirection = Cartesian3.normalize(this.viewer.camera.positionWC, this.cameraScratch);
-    if (Cartesian3.dot(cameraDirection, Cartesian3.UNIT_Z) < -0.35) return;
+    const towardPole = Cartesian3.dot(cameraDirection, Cartesian3.UNIT_Z);
+    if (this.hemispheres.every((sign) => sign * towardPole < -0.35)) return;
     this.lastFrameMs = frameMs;
     for (const material of this.materials) material.uniforms.time = frameMs / 1000;
     this.viewer.scene.requestRender();

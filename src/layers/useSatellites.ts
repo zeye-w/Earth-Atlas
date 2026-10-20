@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Viewer } from "cesium";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
-import type { SatelliteChoice } from "../satelliteOrbits";
+import type { OrbitRecord, SatelliteChoice } from "../satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "../satelliteOverlay";
 import type { TimeController } from "../timeline";
 
@@ -25,6 +25,7 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
   latest.current = options;
   const [status, setStatus] = useState<SatelliteStatus>("idle");
   const [catalog, setCatalog] = useState<Array<{ choice: SatelliteChoice; epochLabel: string }>>([]);
+  const [records, setRecords] = useState<OrbitRecord[]>([]);
 
   useEffect(() => {
     if (!viewer) return;
@@ -44,12 +45,14 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
       overlay.setSpeed(latest.current.speed);
       followTimeline(overlay, timeline);
       setCatalog(satellites.map(({ choice, epoch }) => ({ choice, epochLabel: orbits.formatEpoch(epoch) })));
+      setRecords(satellites);
       setStatus(overlay.count > 0 ? "ready" : "error");
     }).catch((error: unknown) => {
       if (!active) return;
       console.warn("Satellite elements unavailable; no fabricated orbit rendered.", error);
       setStatus("error");
       setCatalog([]);
+      setRecords([]);
     });
     return () => {
       active = false;
@@ -70,5 +73,5 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  return { status, catalog };
+  return { status, catalog, records };
 }
