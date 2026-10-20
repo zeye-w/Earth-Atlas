@@ -55,7 +55,8 @@ function App() {
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const [controlsOpen, setControlsOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 760);
+  // Match desktop: the layer panel starts open on mobile too.
+  const [controlsOpen, setControlsOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedQuake, setSelectedQuake] = useState<Earthquake | null>(null);
