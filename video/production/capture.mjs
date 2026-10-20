@@ -120,11 +120,12 @@ async function captureShot(browser, shot) {
   const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
   page.setDefaultTimeout(600000);
   const errors=[];
+  const tileSignatures=[];const responseReads=[];
   let cloudCatalog;
   let expectedCloudTime=null;let frameIndex=null;
   page.on('pageerror',e=>errors.push(e.message));
   page.on('requestfailed',r=>{if(!/ERR_ABORTED/.test(r.failure()?.errorText??'')&&!/favicon|planetary_k_index/.test(r.url()))errors.push(r.failure()?.errorText+' '+r.url());});
-  page.on('response',r=>{entry.sources.push({url:r.url(),status:r.status(),at:new Date().toISOString()});if(r.status()>=400&&!/favicon|planetary_k_index/.test(r.url()))errors.push('HTTP '+r.status()+' '+r.url());});
+  page.on('response',r=>{if(r.url().includes('realearth.ssec.wisc.edu/api/image')){const record={url:r.url(),status:r.status(),contentType:r.headers()['content-type']??null,at:new Date().toISOString()};tileSignatures.push(record);const read=r.body().then(body=>Object.assign(record,{bytes:body.length,signatureHex:body.subarray(0,32).toString('hex'),...(!(record.contentType??'').startsWith('image/')?{text:body.subarray(0,300).toString('utf8')}:{})})).catch(e=>{record.bodyError=String(e);});responseReads.push(read);}entry.sources.push({url:r.url(),status:r.status(),at:new Date().toISOString()});if(r.status()>=400&&!/favicon|planetary_k_index/.test(r.url()))errors.push('HTTP '+r.status()+' '+r.url());});
   if(shot.id==='s4-aurora')await page.route(OVATION_URL,route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(auroraPayload)}));
   try {
   await page.goto("about:blank");
@@ -166,12 +167,13 @@ async function captureShot(browser, shot) {
     if(shot.layers?.clouds){
       const expected=cloudFrameAt(cloudCatalog,sceneTime(shot,t)+HOUR-1);if(!expected)throw Error('No cloud observation for requested hour');
       const label=expected.toISOString().slice(0,16).replace('T',' ')+' UTC';expectedCloudTime=label;console.log(shot.id,'hour',i,'expected',label);
-      await page.waitForFunction(label=>Array.from(document.querySelectorAll('.thematic-note')).some(e=>(e.textContent??'').includes(label)),label,{timeout:120000});
+      await page.waitForFunction(label=>Array.from(document.querySelectorAll('.thematic-note')).some(e=>(e.textContent??'').includes(label)||/加载失败|这一时刻没有|暂无.*云图/.test(e.textContent??'')),label,{timeout:120000});
     }
     if(!loaded)throw Error('Tile load timeout frame '+i);
     await page.waitForFunction(()=>!Array.from(document.querySelectorAll('.layer-status,.thematic-note,.satellite-status')).some(e=>/正在读取/.test(e.textContent??'')),null,{timeout:120000});
     const status=await page.locator('.layer-status,.thematic-note,.satellite-status').allTextContents();
     if(status.some(s=>/加载失败|暂不可用|这一时刻没有|暂无.*云图/.test(s)))throw Error('Missing data: '+status.join('; '));
+    if(shot.layers?.clouds&&!status.some(s=>s.includes(expectedCloudTime)))throw Error('Cloud observation changed before capture');
     if(errors.length)throw Error(errors.join('; '));
     if(!await page.evaluate(()=>window.__terrascope.idle(300000)))throw Error('Data tile load timeout');
     const name = sequence ? dir + "/" + String(i).padStart(4, "0") + ".png" : dir + "/" + shot.id + "-" + ["a", "b", "c"][i] + ".jpg";
@@ -185,8 +187,9 @@ async function captureShot(browser, shot) {
    }catch(error){
     entry.status='failed';entry.error=String(error);save();
     try{const diagnostic=await page.evaluate(()=>({statuses:Array.from(document.querySelectorAll('[role=status],.thematic-note')).map(e=>e.textContent),resources:performance.getEntriesByType('resource').slice(-80).map(r=>({name:r.name,duration:r.duration,responseEnd:r.responseEnd}))}));
-    const filename=OUT+'/'+shot.id+'-failure-'+(shot._indices?.[0]??0);
-    writeFileSync(filename+'.json',JSON.stringify({error:String(error),frameIndex,expectedCloudTime,diagnostic,errors,sources:entry.sources.slice(-100)},null,2));await page.screenshot({path:filename+'.png',timeout:180000});}catch(diagnosticError){console.error('Diagnostic failed',String(diagnosticError));}
+    await Promise.allSettled(responseReads);
+    const filename=OUT+'/'+shot.id+'-failure-'+(shot._indices?.[0]??0)+'-'+Date.now();
+    writeFileSync(filename+'.json',JSON.stringify({error:String(error),frameIndex,expectedCloudTime,diagnostic,errors,tileSignatures,sources:entry.sources.slice(-100)},null,2));await page.screenshot({path:filename+'.png',timeout:180000});}catch(diagnosticError){console.error('Diagnostic failed',String(diagnosticError));}
     throw error;
   }finally{await page.close();}
 

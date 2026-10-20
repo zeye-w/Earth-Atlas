@@ -45,6 +45,10 @@ if(mode==='final'){
   cpSync(resolve(source,'manifest.json'),resolve(root,'video/delivery/capture-manifest.json'));
   writeFileSync(resolve(root,'video/delivery/capture-integrity.json'),JSON.stringify({specSha256:specHash,frames:integrity},null,2));
   cpSync(resolve(root,'video/CREDITS.md'),resolve(root,'video/delivery/CREDITS.md'));
+  const records=resolve(root,'video/delivery/source-records');mkdirSync(records,{recursive:true});
+  for(const name of ['noaa-ovation.json','s7-clouds-cloud-catalog.json'])if(existsSync(resolve(source,name)))cpSync(resolve(source,name),resolve(records,name));
+  const licenses=resolve(root,'video/delivery/licenses');mkdirSync(licenses,{recursive:true});
+  for(const name of ['Inter-OFL.txt','NotoSansSC-OFL.txt','SOURCES.md'])cpSync(resolve(root,'video/audio/fonts',name),resolve(licenses,name));
 }
 const delivery=resolve(root,'video/delivery');mkdirSync(delivery,{recursive:true});
 writeFileSync(resolve(delivery,mode+'-props.json'),JSON.stringify(props,null,2));

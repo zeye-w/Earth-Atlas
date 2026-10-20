@@ -3,6 +3,7 @@ import {resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
 const require=createRequire(resolve(root,'video/remotion/package.json'));
 const {bundle}=require('@remotion/bundler');
@@ -40,5 +41,9 @@ const qa=resolve(delivery,mode+'-review');mkdirSync(qa,{recursive:true});
 for(const name of readdirSync(qa))if(/^\d{4}\.png$/.test(name))unlinkSync(resolve(qa,name));
 const reviewFrames=spec.shots.filter(s=>(s.id==='s4-aurora'||s.id==='s4b-atmosphere')?s.id===props.auroraShot:!s.optional).map(s=>Math.floor((s.start+s.end)/2*spec.output.fps));
 for(const frame of reviewFrames)await renderStill({composition,serveUrl,inputProps:props,browserExecutable,frame,output:resolve(qa,String(frame).padStart(4,'0')+'.png')});
-if(mode==='final')cpSync(resolve(root,'video/production/review-notes.md'),resolve(delivery,'REVIEW.md'));
+if(mode==='final'){
+  cpSync(resolve(root,'video/production/review-notes.md'),resolve(delivery,'REVIEW.md'));
+  const names=['terrascope-promo-30s.mp4','terrascope-promo-30s.srt','CREDITS.md','REVIEW.md','capture-manifest.json','capture-integrity.json','final-qa.json'];
+  writeFileSync(resolve(delivery,'SHA256SUMS.txt'),names.map(name=>createHash('sha256').update(readFileSync(resolve(delivery,name))).digest('hex')+'  '+name).join('\n')+'\n');
+}
 console.log('DELIVERED '+output);
