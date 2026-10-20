@@ -393,11 +393,14 @@ h1 em { font-style:normal; color:var(--text-2); }
   .header-actions { padding:3px; border-radius:11px; }
   .header-action { min-width:31px; height:31px; min-height:31px; padding:3px 5px; gap:0; }
   .glass-panel { top:auto; bottom:12px; left:12px; right:12px; width:auto; border-radius:20px; }
-  .sidebar { height:min(68dvh,590px); }
+  /* Default-open controls must leave the full home globe visible above them. */
+  .sidebar { height:min(30dvh,270px); max-height:min(30dvh,270px); }
   .details-panel { height:min(55dvh,490px); }
   .sidebar.is-collapsed, .details-panel.is-collapsed { transform:translateY(35px) scale(.99); }
   .side-content { padding:20px 20px 17px; }
-  .sidebar h1 { margin:9px 0 10px; font-size:23px; }
+  .sidebar h1 { margin:7px 0 8px; font-size:20px; }
+  .sidebar h1 br { display:none; }
+  .sidebar .lead { display:none; }
   .lead { max-width:none; }
   .section-divider { margin:17px 0; }
   .regions { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); }
@@ -460,3 +463,26 @@ h1 em { font-style:normal; color:var(--text-2); }
 .record-ui-timebar .globe-guide, .record-ui-timebar .globe-attribution, .record-ui-timebar .globe-top-left, .record-ui-timebar .toast,
 .record-ui-timebar .cesium-viewer-bottom { display:none!important; }
 .record-ui-timebar .globe-dock { bottom:48px; }
+
+
+/* Landscape phones: preserve the shared open-panel behavior without letting
+   desktop-style cards eclipse the short viewport. Stay beside the globe rather
+   than putting a giant bottom sheet over the planet. */
+@media (orientation: landscape) and (max-height:550px) {
+  .topbar { height:58px; padding:0 12px; }
+  .brand-divider, .brand-caption, .online-indicator { display:none; }
+  .header-actions { gap:1px; }
+  .header-action { padding:4px 8px; }
+  .action-caption { display:none; }
+  .glass-panel.sidebar, .glass-panel.details-panel {
+    top:66px; bottom:10px; height:auto; max-height:none;
+    width:min(240px,32vw); border-radius:17px;
+  }
+  .glass-panel.sidebar { left:10px; right:auto; }
+  .glass-panel.details-panel { right:10px; left:auto; }
+  .side-content { padding:14px 14px 12px; }
+  .sidebar h1 { margin:5px 0 7px; font-size:19px; }
+  .sidebar .lead { display:none; }
+  .globe-dock { bottom:25px; width:min(380px, calc(100% - 500px)); }
+  .globe-guide { display:none; }
+}
