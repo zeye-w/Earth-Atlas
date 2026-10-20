@@ -8,6 +8,7 @@
  *
  * --mode stills  first / middle / last frame of each shot (framing review)
  * --mode frames  every frame at the output fps (PNG sequence per shot)
+ * --shot a,b     only these shot ids
  * --anchor 2026-10-18  override the anchor day D (default: two days ago, UTC)
  *
  * Set PW_CHROMIUM_PATH to use a preinstalled Chromium.
@@ -70,7 +71,7 @@ async function applyFrame(page, shot, t, shotSeconds) {
   const time = sceneTime(shot, t);
   const easing = shot.camera.easing ?? spec.defaults.easing;
   const pose = keyframeAt(shot.camera.keyframes, t, easing);
-  await page.evaluate(async ({ shot, time, pose, shotSeconds }) => {
+  return page.evaluate(async ({ shot, time, pose, shotSeconds }) => {
     const api = window.__terrascope;
     api.setTime(time);
     if (shot.effects?.auroraShimmer) api.setEffectsTime(shotSeconds * shot.effects.auroraShimmer.secondsPerSecond);
@@ -106,9 +107,11 @@ async function captureShot(browser, shot) {
   mkdirSync(dir, { recursive: true });
   for (let i = 0; i < count; i++) {
     const t = count === 1 ? 0 : i / (count - 1);
-    await applyFrame(page, shot, t, t * duration);
+    const started = Date.now();
+    const loaded = await applyFrame(page, shot, t, t * duration);
     const name = MODE === "frames" ? dir + "/" + String(i).padStart(4, "0") + ".png" : dir + "/" + shot.id + "-" + ["a", "b", "c"][i] + ".jpg";
     await page.screenshot({ path: name, ...(MODE === "frames" ? {} : { type: "jpeg", quality: 85 }), timeout: 180_000 });
+    console.log("  frame", i, "in", ((Date.now() - started) / 1000).toFixed(1) + " s", loaded ? "" : "(tiles still loading at timeout)");
   }
   console.log("captured", shot.id, count, "frame(s)");
   await page.close();
@@ -119,7 +122,8 @@ const browser = await chromium.launch({
   args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
 });
 console.log("anchor D =", new Date(anchor).toISOString());
-const shots = spec.shots.filter((shot) => shot.type !== "remotion-only" && (!args.shot || shot.id === args.shot));
+const wanted = args.shot ? args.shot.split(",") : null;
+const shots = spec.shots.filter((shot) => shot.type !== "remotion-only" && (!wanted || wanted.includes(shot.id)));
 const failed = [];
 for (const shot of shots) {
   try { await captureShot(browser, shot); }
