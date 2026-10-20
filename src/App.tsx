@@ -34,6 +34,8 @@ import { Inspector } from "./panels/Inspector";
 import { SearchPanel, SharePanel } from "./panels/SceneTools";
 import { GlobeDock, SceneSubtitle, TimeIndicator } from "./panels/TimeBar";
 import { TrackCard } from "./panels/TrackCard";
+import { RECORDING, installRecordingApi, type RecordUi } from "./recording";
+import type { LayerOptions, LayerToggles } from "./hooks/useLayerSettings";
 import "./styles.css";
 
 const isNarrow = () => window.innerWidth < 760;
@@ -61,6 +63,7 @@ function App() {
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
   const [trackedSatelliteId, setTrackedSatelliteId] = useState<string | null>(null);
   const userLocation = useUserLocation();
+  const [recordUi, setRecordUi] = useState<RecordUi>("full");
   const geology = useGeologyQuery();
 
   const openDetails = () => {
@@ -125,7 +128,7 @@ function App() {
   useGeoLabels(viewer, layers.geoLabels);
   const plateStatus = usePlateBoundaries(viewer, layers.plates);
   const volcanoes = useVolcanoes(viewer, layers.volcanoes);
-  const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, timeline });
+  const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, followCamera: !RECORDING, timeline });
   useUserLocationMarker(viewer, userLocation.location);
   const trackedSatellite = satellites.catalog.find(({ choice }) => choice.id === trackedSatelliteId)?.choice ?? null;
   const vectorState = useGeologyMap(viewer, { visible: layers.geology, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter });
@@ -151,6 +154,22 @@ function App() {
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
   }, [searchOpen, shareUrl]);
+
+  // Recording mode (?record): a scripted capture API, see src/recording.ts.
+  const telemetryOf = useRef(satellites.telemetryOf);
+  telemetryOf.current = satellites.telemetryOf;
+  useEffect(() => {
+    if (!RECORDING || !viewer) return;
+    return installRecordingApi({
+      viewer,
+      timeline,
+      setLayers: (next: Partial<LayerToggles>) => { for (const [key, value] of Object.entries(next)) setLayer(key as keyof LayerToggles, Boolean(value)); },
+      setOptions: (next: Partial<LayerOptions>) => { for (const [key, value] of Object.entries(next)) setOption(key as keyof LayerOptions, value as never); },
+      setUi: (mode) => { setRecordUi(mode); setTimebarOpen(mode === "timebar"); },
+      setTrackCard: setTrackedSatelliteId,
+      satelliteTelemetry: (id) => telemetryOf.current(id),
+    });
+  }, [viewer, timeline, setLayer, setOption]);
 
   const locationError = userLocation.state.status === "error" ? userLocation.state.message : null;
   useEffect(() => { if (locationError) setToast(locationError); }, [locationError]);
@@ -215,7 +234,7 @@ function App() {
   const groupProps = { layers, setLayer, options, setOption };
 
   return (
-    <div ref={shellRef} className={"app-shell quality-" + render.quality}>
+    <div ref={shellRef} className={"app-shell quality-" + render.quality + (RECORDING ? " recording record-ui-" + recordUi : "")}>
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={(place) => {
         if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
         setTrackedSatelliteId(null);

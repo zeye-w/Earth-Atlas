@@ -1,0 +1,43 @@
+name: Video Preview Stills
+# Renders the first / middle / last frame of every shot in video/shots.json
+# with live data, through the site's recording mode, and commits them to
+# video/preview/ on the branch it runs on. Run it on a working branch (not
+# main) to review framing before rendering full frame sequences.
+on:
+  workflow_dispatch:
+    inputs:
+      shot:
+        description: "Only this shot id (empty: all)"
+        required: false
+        default: ""
+permissions:
+  contents: write
+jobs:
+  stills:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Capture stills
+        run: |
+          npx vite preview --port 4173 --strictPort &
+          for i in $(seq 60); do curl -sf http://localhost:4173 >/dev/null && break; sleep 1; done
+          node --experimental-strip-types video/reference/capture.mjs --base http://localhost:4173/ --mode stills --out video/preview ${{ inputs.shot && format('--shot {0}', inputs.shot) || '' }} || echo "some shots failed"
+      - name: Commit stills
+        if: github.ref != 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add video/preview
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "video: preview stills"
+          git push origin HEAD:${{ github.ref_name }}

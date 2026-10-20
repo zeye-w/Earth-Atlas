@@ -119,6 +119,17 @@ czm_material czm_getMaterial(czm_materialInput materialInput) {
 }
 `;
 
+// Recording mode drives the shimmer from the recorder's clock instead of
+// real time, so every captured frame is reproducible.
+const overlays = new Set<AuroraOverlay>();
+let fixedEffectsTime: number | null = null;
+
+/** Seconds of shimmer animation to show, or null to animate in real time. */
+export function setAuroraEffectsTime(seconds: number | null): void {
+  fixedEffectsTime = seconds;
+  if (seconds !== null) for (const overlay of overlays) overlay.setEffectsTime(seconds);
+}
+
 export class AuroraOverlay {
   private readonly viewer: Viewer;
   private primitives: Primitive[] = [];
@@ -131,6 +142,7 @@ export class AuroraOverlay {
 
   constructor(viewer: Viewer) {
     this.viewer = viewer;
+    overlays.add(this);
     this.frameHandle = requestAnimationFrame(this.onFrame);
   }
 
@@ -140,6 +152,7 @@ export class AuroraOverlay {
     if (this.viewer.isDestroyed()) return;
     for (const profile of profiles) this.addCurtains(profile);
     this.hemispheres = profiles.map((profile) => (profile.hemisphere === "south" ? -1 : 1));
+    if (fixedEffectsTime !== null) this.setEffectsTime(fixedEffectsTime);
     this.viewer.scene.requestRender();
   }
 
@@ -192,7 +205,7 @@ export class AuroraOverlay {
   private readonly onFrame = (frameMs: number): void => {
     if (this.viewer.isDestroyed()) return;
     this.frameHandle = requestAnimationFrame(this.onFrame);
-    if (!this.visible || this.materials.length === 0 || document.visibilityState !== "visible") return;
+    if (!this.visible || this.materials.length === 0 || document.visibilityState !== "visible" || fixedEffectsTime !== null) return;
     if (frameMs - this.lastFrameMs < 1000 / AURORA_FPS) return;
     // Skip work while every polar region with aurora faces away from the camera.
     const cameraDirection = Cartesian3.normalize(this.viewer.camera.positionWC, this.cameraScratch);
@@ -202,6 +215,11 @@ export class AuroraOverlay {
     for (const material of this.materials) material.uniforms.time = frameMs / 1000;
     this.viewer.scene.requestRender();
   };
+
+  setEffectsTime(seconds: number): void {
+    for (const material of this.materials) material.uniforms.time = seconds;
+    if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
+  }
 
   setVisible(visible: boolean): void {
     this.visible = visible;
@@ -218,6 +236,7 @@ export class AuroraOverlay {
   }
 
   dispose(): void {
+    overlays.delete(this);
     if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
     this.frameHandle = null;
     this.clear();

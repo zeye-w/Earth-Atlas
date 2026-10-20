@@ -450,3 +450,13 @@ h1 em { font-style:normal; color:var(--text-2); }
 .search-results button:hover { background:var(--fill-hover); }
 .search-results small { color:var(--text-2); }
 @media(max-width:760px) { .scene-tool-panel { top:72px; right:16px; } .header-actions { gap:0; } .header-action { padding-inline:8px; } }
+
+/* Recording mode (?record): nothing moves unless the recorder moves it. */
+.recording *, .recording *:before, .recording *:after { animation-play-state:paused!important; transition:none!important; }
+.record-ui-clean .topbar, .record-ui-clean .sidebar, .record-ui-clean .details-panel, .record-ui-clean .globe-dock,
+.record-ui-clean .globe-guide, .record-ui-clean .globe-attribution, .record-ui-clean .globe-top-left, .record-ui-clean .toast,
+.record-ui-clean .cesium-viewer-bottom,
+.record-ui-timebar .topbar, .record-ui-timebar .sidebar, .record-ui-timebar .details-panel, .record-ui-timebar .dock-row,
+.record-ui-timebar .globe-guide, .record-ui-timebar .globe-attribution, .record-ui-timebar .globe-top-left, .record-ui-timebar .toast,
+.record-ui-timebar .cesium-viewer-bottom { display:none!important; }
+.record-ui-timebar .globe-dock { bottom:48px; }

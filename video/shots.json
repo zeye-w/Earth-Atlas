@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "title": "TerraScope · 数字地球 — 30s promo",
+  "output": { "width": 1920, "height": 1080, "fps": 30, "duration": 30 },
+  "site": {
+    "baseUrl": "https://earth-atlas.edwardlab.workers.dev/",
+    "recordQuery": "?record",
+    "notes": "Load baseUrl + recordQuery + '#scene=' + JSON scene per shot; drive window.__terrascope per frame (src/recording.ts)."
+  },
+  "anchor": {
+    "id": "D",
+    "definition": "UTC midnight two days before the capture date. All fixed times are hours relative to D, so every source (clouds ~30 d, earthquakes 30 d, satellite elements <= 10 d) has data."
+  },
+  "defaults": {
+    "layers": { "clouds": false, "geology": false, "dayNight": true, "cities": false, "atmosphere": true, "aurora": false, "lights": true, "quakes": false, "plates": false, "volcanoes": false, "satellites": false, "paths": false, "geoLabels": false, "trueColor": false },
+    "options": { "cloudOpacity": 85, "opacity": 90, "mapMode": "raster", "ageFilter": "all", "rockFilter": "all", "quakeRange": "week" },
+    "ui": "clean",
+    "easing": "easeInOutCubic"
+  },
+  "shots": [
+    {
+      "id": "s1-cold-open",
+      "title": "开场 · 此刻的地球 / Cold open",
+      "start": 0.0, "end": 3.0,
+      "time": { "mode": "fixed", "fromHours": 10.5, "toHours": 10.75 },
+      "camera": { "type": "pose", "easing": "easeOutCubic", "keyframes": [
+        { "t": 0, "longitude": 112, "latitude": 22, "height": 38000000, "heading": 0, "pitch": -90 },
+        { "t": 1, "longitude": 108, "latitude": 24, "height": 21000000, "heading": 0, "pitch": -90 }
+      ] },
+      "captions": [ { "in": 0.9, "out": 2.9, "zh": "此刻的地球", "en": "EARTH, RIGHT NOW" } ],
+      "transitionIn": { "type": "fade-from-black", "seconds": 0.8 }
+    },
+    {
+      "id": "s2-terminator",
+      "title": "日照扫过欧洲非洲 / Terminator sweep",
+      "start": 3.0, "end": 6.5,
+      "time": { "mode": "fixed", "fromHours": 15.0, "toHours": 19.5 },
+      "camera": { "type": "pose", "keyframes": [
+        { "t": 0, "longitude": 18, "latitude": 28, "height": 19000000, "heading": 0, "pitch": -90 },
+        { "t": 1, "longitude": 14, "latitude": 30, "height": 17500000, "heading": 0, "pitch": -90 }
+      ] },
+      "captions": [ { "in": 0.3, "out": 3.3, "zh": "真实日照 · 由 UTC 时间计算", "en": "REAL SUNLIGHT, COMPUTED FROM UTC" } ],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 }
+    },
+    {
+      "id": "s3-city-lights",
+      "title": "欧洲夜光俯冲 / City lights",
+      "start": 6.5, "end": 10.0,
+      "time": { "mode": "fixed", "fromHours": 21.5, "toHours": 21.75 },
+      "camera": { "type": "pose", "keyframes": [
+        { "t": 0, "longitude": 10, "latitude": 40, "height": 5200000, "heading": 10, "pitch": -72 },
+        { "t": 1, "longitude": 11, "latitude": 41.5, "height": 2600000, "heading": 18, "pitch": -55 }
+      ] },
+      "captions": [ { "in": 0.3, "out": 3.3, "zh": "NASA 卫星观测的城市夜光", "en": "CITY LIGHTS SEEN BY NASA SATELLITES" } ],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 }
+    },
+    {
+      "id": "s4-aurora",
+      "title": "极光 / Aurora",
+      "start": 10.0, "end": 13.5,
+      "time": { "mode": "live" },
+      "layers": { "aurora": true },
+      "effects": { "auroraShimmer": { "secondsPerSecond": 1.0 } },
+      "camera": { "type": "pose", "longitudeRef": "antisolar", "keyframes": [
+        { "t": 0, "longitude": -10, "latitude": 50, "height": 3200000, "heading": 0, "pitch": -56 },
+        { "t": 1, "longitude": 15, "latitude": 52, "height": 2800000, "heading": 15, "pitch": -50 }
+      ] },
+      "captions": [ { "in": 0.3, "out": 3.3, "zh": "NOAA 实时极光预报", "en": "LIVE AURORA FORECAST · NOAA" } ],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 },
+      "fallback": "Aurora is live-only. If the NOAA panel shows a peak below 8 % in the north, mirror the shot to the south (latitude -50/-52, heading 180/165, using the southern peak). If both are below 8 %, swap in shot s4b-atmosphere."
+    },
+    {
+      "id": "s4b-atmosphere",
+      "title": "（备用）大气分层 / Atmosphere layers (fallback for s4)",
+      "start": 10.0, "end": 13.5,
+      "optional": true,
+      "time": { "mode": "fixed", "fromHours": 12.0, "toHours": 12.0 },
+      "layers": { "dayNight": false, "lights": false },
+      "atmosphereShells": 5,
+      "camera": { "type": "pose", "keyframes": [
+        { "t": 0, "longitude": 20, "latitude": 0, "height": 1200000, "heading": 90, "pitch": -28 },
+        { "t": 1, "longitude": 24, "latitude": 1, "height": 1000000, "heading": 96, "pitch": -24 }
+      ] },
+      "captions": [ { "in": 0.3, "out": 3.3, "zh": "按真实高度绘制的大气分层", "en": "THE ATMOSPHERE, LAYER BY LAYER" } ],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 }
+    },
+    {
+      "id": "s5-iss",
+      "title": "跟踪国际空间站 / Follow the ISS",
+      "start": 13.5, "end": 17.5,
+      "time": { "mode": "fixed", "fromHours": 12.0, "toHours": 12.0667 },
+      "layers": { "satellites": true, "paths": true },
+      "trackCard": "iss",
+      "camera": { "type": "lookAtSatellite", "satellite": "iss", "keyframes": [
+        { "t": 0, "headingOffset": 0, "pitch": -16, "range": 1500000 },
+        { "t": 1, "headingOffset": 25, "pitch": -24, "range": 900000 }
+      ] },
+      "captions": [ { "in": 0.4, "out": 3.8, "zh": "跟踪国际空间站 · SGP4 轨道推算", "en": "FOLLOW THE ISS · SGP4 ORBIT PREDICTION", "position": "lower-left" } ],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 }
+    },
+    {
+      "id": "s6-earthquakes",
+      "title": "30 天地震回放 / Earthquake replay",
+      "start": 17.5, "end": 21.5,
+      "ui": "timebar",
+      "time": { "mode": "fixed", "fromHours": -648, "toHours": 0 },
+      "layers": { "dayNight": false, "lights": false, "quakes": true, "plates": true },
+      "options": { "quakeRange": "month" },
+      "camera": { "type": "pose", "keyframes": [
+        { "t": 0, "longitude": 160, "latitude": 5, "height": 17000000, "heading": 0, "pitch": -90 },
+        { "t": 1, "longitude": 140, "latitude": 10, "height": 15500000, "heading": 0, "pitch": -90 }
+      ] },
+      "captions": [ { "in": 0.4, "out": 3.8, "zh": "30 天全球地震回放", "en": "30 DAYS OF EARTHQUAKES, REPLAYED", "position": "upper-center" } ],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 }
+    },
+    {
+      "id": "s7-clouds",
+      "title": "云层流动 / Clouds in motion",
+      "start": 21.5, "end": 25.0,
+      "time": { "mode": "hourly-stills", "fromHours": 0, "toHours": 30 },
+      "layers": { "dayNight": false, "lights": false, "clouds": true },
+      "camera": { "type": "pose", "keyframes": [
+        { "t": 0, "longitude": 135, "latitude": 18, "height": 10500000, "heading": 0, "pitch": -90 },
+        { "t": 1, "longitude": 135, "latitude": 18, "height": 10500000, "heading": 0, "pitch": -90 }
+      ] },
+      "post": "Cloud frames are hourly: capture one still per hour (31 stills, static camera) and cross-fade between consecutive stills in Remotion (~3.4 video frames each); add a slow push-in (scale 1.00 -> 1.06) in Remotion.",
+      "captions": [ { "in": 0.3, "out": 3.3, "zh": "逐小时红外云图 · 随时间流动", "en": "HOURLY INFRARED CLOUDS IN MOTION" } ],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 }
+    },
+    {
+      "id": "s8-hero",
+      "title": "产品全景 / Hero pull-back",
+      "start": 25.0, "end": 27.6,
+      "ui": "full",
+      "time": { "mode": "fixed", "fromHours": 10.5, "toHours": 10.5 },
+      "layers": { "satellites": true, "paths": true, "geoLabels": true, "cities": true },
+      "camera": { "type": "pose", "easing": "easeOutCubic", "keyframes": [
+        { "t": 0, "longitude": 100, "latitude": 20, "height": 12000000, "heading": 0, "pitch": -90 },
+        { "t": 1, "longitude": 96, "latitude": 18, "height": 19000000, "heading": 0, "pitch": -90 }
+      ] },
+      "captions": [],
+      "transitionIn": { "type": "cross-dissolve", "seconds": 0.35 }
+    },
+    {
+      "id": "s9-end-card",
+      "title": "结尾卡 / End card",
+      "start": 27.6, "end": 30.0,
+      "type": "remotion-only",
+      "background": "Last frame of s8, darkened to 35 % and blurred 12 px over 0.6 s.",
+      "text": {
+        "logo": "TERRASCOPE",
+        "subtitleZh": "数字地球",
+        "taglineZh": "开放数据驱动的实时数字地球",
+        "taglineEn": "A live digital Earth, built on open data",
+        "url": "earth-atlas.edwardlab.workers.dev",
+        "credits": "NASA · NOAA · USGS · CelesTrak · SSEC/UW–Madison · Smithsonian GVP · Macrostrat · Natural Earth"
+      },
+      "transitionIn": { "type": "blur-darken", "seconds": 0.6 },
+      "transitionOut": { "type": "fade-to-black", "seconds": 0.5 }
+    }
+  ]
+}

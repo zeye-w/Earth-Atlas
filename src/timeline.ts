@@ -30,6 +30,11 @@ export interface TimeState {
   span: TimeSpan;
 }
 
+/** Smallest span whose range reaches back to `time`. */
+export function spanFor(time: number, now: number): TimeSpan {
+  return TIME_SPANS.find((span) => time >= now - SPAN_MS[span]) ?? "month";
+}
+
 export function timeRange(span: TimeSpan, now: number): { start: number; end: number } {
   return { start: now - SPAN_MS[span], end: now + FUTURE_MS };
 }

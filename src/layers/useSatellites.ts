@@ -19,8 +19,8 @@ function followTimeline(overlay: SatelliteOverlay, timeline: TimeController) {
 }
 
 /** Curated satellites from public GP elements (two-hour cache); no network when off. */
-export function useSatellites(viewer: Viewer | null, options: { visible: boolean; paths: boolean; speed: SatelliteSpeed; selectedId: string | null; trackedId: string | null; timeline: TimeController }) {
-  const { visible, paths, speed, selectedId, trackedId, timeline } = options;
+export function useSatellites(viewer: Viewer | null, options: { visible: boolean; paths: boolean; speed: SatelliteSpeed; selectedId: string | null; trackedId: string | null; followCamera?: boolean; timeline: TimeController }) {
+  const { visible, paths, speed, selectedId, trackedId, followCamera = true, timeline } = options;
   const overlayRef = useRef<SatelliteOverlay | null>(null);
   const latest = useRef(options);
   latest.current = options;
@@ -77,14 +77,14 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
   // Tracking: the camera follows the marker from behind and above (east,
   // north, up offset in metres); the user can still orbit around it.
   useEffect(() => {
-    const entity = trackedId && status === "ready" ? overlayRef.current?.markerEntity(trackedId) : undefined;
+    const entity = followCamera && trackedId && status === "ready" ? overlayRef.current?.markerEntity(trackedId) : undefined;
     if (!viewer || !entity) return;
     entity.viewFrom = new Cartesian3(0, -2_400_000, 1_600_000);
     viewer.trackedEntity = entity;
     return () => {
       if (!viewer.isDestroyed() && viewer.trackedEntity === entity) viewer.trackedEntity = undefined;
     };
-  }, [viewer, trackedId, status]);
+  }, [viewer, trackedId, status, followCamera]);
 
   // Read on demand (the tracking card polls), so updates do not re-render React.
   const tracking = useMemo(() => ({
@@ -92,5 +92,6 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
     position: () => (trackedId ? overlayRef.current?.markerPosition(trackedId) : undefined),
   }), [trackedId]);
 
-  return { status, catalog, records, tracking };
+  const telemetryOf = (id: string) => overlayRef.current?.telemetry(id, null) ?? null;
+  return { status, catalog, records, tracking, telemetryOf };
 }

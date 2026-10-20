@@ -186,6 +186,26 @@ test("the timeline moves the scene time and replays earthquakes", async ({ page 
   await expect(layerPanel(page).locator(".layer-extra .layer-status").first()).toContainText("21 次地震");
 });
 
+test("recording mode exposes the capture API only with ?record", async ({ page }) => {
+  await page.goto("/");
+  await waitForGlobe(page);
+  expect(await page.evaluate(() => "__terrascope" in window)).toBe(false);
+  await page.goto("about:blank");
+  await page.goto("/?record" + sceneUrl(10, 20, 17_000_000, {}).slice(1));
+  await page.waitForFunction(() => "__terrascope" in window);
+  const loaded = await page.evaluate(async () => {
+    const api = (window as unknown as { __terrascope: { ready(): Promise<void>; setUi(m: string): void; setTime(t: number | null): void; setCamera(p: object): void; idle(ms?: number): Promise<boolean> } }).__terrascope;
+    await api.ready();
+    api.setUi("clean");
+    api.setTime(Date.now() - 6 * 3_600_000);
+    api.setCamera({ longitude: 30, latitude: 10, height: 15_000_000 });
+    return api.idle(20_000);
+  });
+  expect(loaded).toBe(true);
+  await expect(page.locator(".topbar")).toBeHidden();
+  await expect(page.locator("#earth-layer-panel")).toBeHidden();
+});
+
 test("manual quality choice turns off automatic quality", async ({ page }) => {
   await page.goto("/");
   await waitForGlobe(page);
