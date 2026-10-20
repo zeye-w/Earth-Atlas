@@ -200,19 +200,19 @@
         "keyframes": [
           {
             "t": 0,
-            "longitude": -8,
-            "latitude": 55,
-            "height": 800000,
+            "longitude": -6,
+            "latitude": 56,
+            "height": 560000,
             "heading": 0,
-            "pitch": -21
+            "pitch": -27
           },
           {
             "t": 1,
-            "longitude": 8,
-            "latitude": 56,
-            "height": 650000,
-            "heading": 6,
-            "pitch": -22
+            "longitude": 5,
+            "latitude": 56.5,
+            "height": 480000,
+            "heading": 5,
+            "pitch": -28
           }
         ]
       },
@@ -355,7 +355,7 @@
             "t": 0,
             "longitude": 160,
             "latitude": 5,
-            "height": 20500000,
+            "height": 23500000,
             "heading": 0,
             "pitch": -90
           },
@@ -363,7 +363,7 @@
             "t": 1,
             "longitude": 140,
             "latitude": 10,
-            "height": 19000000,
+            "height": 22000000,
             "heading": 0,
             "pitch": -90
           }
