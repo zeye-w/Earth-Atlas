@@ -12,3 +12,12 @@ test('rejects absent, stale, malformed and calendar-normalized observations', ()
     assert.throws(() => latestCloudObservation(payload, now));
   }
 });
+test('timeline frames: latest observation not after the moment, within tolerance', async () => {
+  const { cloudTimes, cloudFrameAt } = await import('../src/cloudData.ts');
+  const times = cloudTimes([{id:'globalir', times:['20261019.030000','20261019.010000','20261019.020000','20261019.050000']}], now);
+  assert.deepEqual(times.map((d) => d.toISOString().slice(11, 13)), ['01', '02', '03', '05']);
+  assert.equal(cloudFrameAt(times, Date.parse('2026-10-19T02:40:00Z')).toISOString(), '2026-10-19T02:00:00.000Z');
+  assert.equal(cloudFrameAt(times, Date.parse('2026-10-19T04:59:00Z')).toISOString(), '2026-10-19T03:00:00.000Z', 'gap: previous frame within 2 h');
+  assert.equal(cloudFrameAt(times, Date.parse('2026-10-19T00:30:00Z')), null, 'before the archive');
+  assert.equal(cloudFrameAt(times, Date.parse('2026-10-19T08:00:00Z')), null, 'more than 2 h after the newest frame');
+});

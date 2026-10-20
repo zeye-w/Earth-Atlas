@@ -4,15 +4,11 @@
  * seen with the naked eye (observer in darkness, satellite in sunlight).
  * SGP4 from the same CelesTrak elements as the globe. Cesium-free.
  */
-import { degreesToRadians, ecfToLookAngles, eciToEcf, gstime, propagate } from "satellite.js";
 import { elementsValidAt, type OrbitRecord } from "./satelliteOrbits.ts";
+import { ecfAt, inSunlight, lookAngles, type Observer } from "./satelliteTelemetry.ts";
 import { solarElevation, subsolarPoint } from "./solar.ts";
 
-export interface Observer {
-  latitude: number;
-  longitude: number;
-  heightKm?: number;
-}
+export type { Observer };
 
 export interface SatellitePass {
   id: string;
@@ -30,8 +26,6 @@ export interface SatellitePass {
   visible: boolean;
 }
 
-const EARTH_RADIUS_KM = 6371;
-const RAD = 180 / Math.PI;
 /** Civil twilight: darker than this, a sunlit satellite stands out. */
 const DARK_SKY_SUN_ELEVATION = -6;
 
@@ -43,30 +37,10 @@ interface Sample {
 }
 
 function sample(record: OrbitRecord, observer: Observer, time: Date): Sample | null {
-  const result = propagate(record.satrec, time);
-  const eci = result?.position;
-  if (!eci || typeof eci !== "object" || ![eci.x, eci.y, eci.z].every(Number.isFinite)) return null;
-  const ecf = eciToEcf(eci, gstime(time));
-  const look = ecfToLookAngles({
-    latitude: degreesToRadians(observer.latitude),
-    longitude: degreesToRadians(observer.longitude),
-    height: observer.heightKm ?? 0,
-  }, ecf);
-  return { time, elevation: look.elevation * RAD, azimuth: ((look.azimuth * RAD) % 360 + 360) % 360, sunlit: inSunlight(ecf, time) };
-}
-
-/** Cylindrical Earth-shadow test in Earth-fixed coordinates. */
-export function inSunlight(ecf: { x: number; y: number; z: number }, time: Date): boolean {
-  const sun = subsolarPoint(time);
-  const lat = sun.latitude / RAD;
-  const lon = sun.longitude / RAD;
-  const s = { x: Math.cos(lat) * Math.cos(lon), y: Math.cos(lat) * Math.sin(lon), z: Math.sin(lat) };
-  const along = ecf.x * s.x + ecf.y * s.y + ecf.z * s.z;
-  if (along > 0) return true;
-  const px = ecf.x - along * s.x;
-  const py = ecf.y - along * s.y;
-  const pz = ecf.z - along * s.z;
-  return Math.hypot(px, py, pz) > EARTH_RADIUS_KM;
+  const position = ecfAt(record, time);
+  if (!position) return null;
+  const look = lookAngles(observer, position.ecf);
+  return { time, elevation: look.elevation, azimuth: look.azimuth, sunlit: inSunlight(position.ecf, time) };
 }
 
 /** Time where elevation crosses zero between two samples (linear). */

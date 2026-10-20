@@ -21,7 +21,7 @@ interface Props {
 
 export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, aurora, geomagnetic, live, trueColor }: Props) {
   return (
-    <LayerGroup title="EARTH VIEW" subtitle="地球视图" open>
+    <LayerGroup title="EARTH VIEW" subtitle="地球视图">
       <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={layers.dayNight} onChange={(v) => setLayer("dayNight", v)} />
       <ToggleRow icon={<Globe {...ICON} />} title="大气散射" caption="地球边缘的蓝色大气辉光" checked={layers.atmosphere} onChange={(v) => setLayer("atmosphere", v)} />
       <ToggleRow icon={<Layers2 {...ICON} />} title="大气分层" caption="按真实高度绘制各层顶部边界" checked={layers.shells} onChange={(v) => setLayer("shells", v)} />
@@ -45,9 +45,11 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
         </div>
       )}
       <ToggleRow icon={<Cloud {...ICON} />} title="卫星云图（红外）" caption="SSEC 多卫星全球合成 · 逐小时观测" checked={layers.clouds} onChange={(v) => setLayer("clouds", v)} />
-      {layers.clouds && !live && <p className="layer-status" role="status">云图只有最新观测，回看其他时刻时暂不显示。</p>}
-      {layers.clouds && live && <div className="cloud-controls">
-        <p className="thematic-note" role="status">{clouds.status === "loading" ? "正在读取卫星云图…" : clouds.status === "error" ? "云图加载失败；如保留上一时次，请以观测时间为准。" : "观测时间 " + (clouds.time ?? "—")}</p>
+      {layers.clouds && <div className="cloud-controls">
+        <p className="thematic-note" role="status">{clouds.status === "loading" ? "正在读取卫星云图…" :
+          clouds.status === "error" ? "云图加载失败；如保留上一时次，请以观测时间为准。" :
+          clouds.status === "nodata" ? (live ? "暂无 6 小时内的云图观测。" : "这一时刻没有云图：只保留最近约 30 天的逐小时观测，未来时刻也没有。") :
+          "观测时间 " + (clouds.time ?? "—") + (live ? "" : " · 跟随时间轴")}</p>
         <label className="opacity-head" htmlFor="cloud-opacity"><span>云图不透明度</span><span>{options.cloudOpacity}%</span></label>
         <input id="cloud-opacity" type="range" min="10" max="100" step="5" value={options.cloudOpacity} onChange={(event) => setOption("cloudOpacity", Number(event.target.value))} />
         <p className="thematic-note">亮白通常表示较冷云顶；包含地表信号，并非精确云掩膜。极区与拼接处可能有误差。免费服务可能显示水印。</p>

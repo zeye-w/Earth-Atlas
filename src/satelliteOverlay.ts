@@ -16,6 +16,7 @@ import {
 } from "cesium";
 import { LABEL_FONT } from "./labelFont.ts";
 import { elementsValidAt, orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
+import { telemetryAt, type Observer, type Telemetry } from "./satelliteTelemetry.ts";
 
 // Ground-fixed forecast path is recomputed after this much simulated time.
 export const SATELLITE_PATH_UPDATE_MS = 120_000;
@@ -243,6 +244,25 @@ export class SatelliteOverlay {
     this.pairs.length = 0;
     this.viewer.scene.requestRender();
   }
+  /** The marker entity, for the camera to track. */
+  markerEntity(id: string): Entity | undefined {
+    return this.pairs.find((pair) => pair.record.choice.id === id)?.marker;
+  }
+
+  /** Current marker position, or undefined while hidden (no reliable position). */
+  markerPosition(id: string): Cartesian3 | undefined {
+    const pair = this.pairs.find((p) => p.record.choice.id === id);
+    return pair && pair.marker.show ? pair.position.getValue() : undefined;
+  }
+
+  /** Live readouts at the overlay's current (live or timeline) moment. */
+  telemetry(id: string, observer: Observer | null): Telemetry | null {
+    const pair = this.pairs.find((p) => p.record.choice.id === id);
+    const time = this.simulatedTime();
+    if (!pair || !elementsValidAt(pair.record, time)) return null;
+    return telemetryAt(pair.record, time, observer);
+  }
+
   get count(): number { return this.pairs.length; }
   get followsTimeline(): boolean { return this.clock !== null; }
 }

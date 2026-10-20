@@ -25,7 +25,7 @@ export function LayerPanel({ open, onClose, onFlyTo, children }: { open: boolean
 
         {children}
 
-        <LayerGroup title="CAPITALS" subtitle="首都快速定位" open>
+        <LayerGroup title="CAPITALS" subtitle="首都快速定位">
           <div className="regions">
             {REGIONS.map((region) => (
               <button key={region.label} className="region-btn" onClick={() => onFlyTo(region)}>

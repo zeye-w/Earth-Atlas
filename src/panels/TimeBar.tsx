@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { ChevronLeft, ChevronRight, Clock, Pause, Play, RotateCcw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, LocateFixed, Pause, Play, RotateCcw, X } from "lucide-react";
 import { useTimeSelector } from "../hooks/useTimeline";
 import { FUTURE_MS, SPAN_LABELS, SPAN_MS, TIME_SPANS, formatTime, relativeTime, timeRange, type TimeController } from "../timeline";
 import { ICON, Segmented } from "../ui/controls";
@@ -30,15 +30,18 @@ interface DockProps {
   open: boolean;
   onToggle: () => void;
   onReset: () => void;
+  onLocateMe: () => void;
+  locating: boolean;
 }
 
 /** Bottom dock: reset view, the time-bar toggle and, when open, the time bar. */
-export function GlobeDock({ timeline, open, onToggle, onReset }: DockProps) {
+export function GlobeDock({ timeline, open, onToggle, onReset, onLocateMe, locating }: DockProps) {
   return (
     <div className={"globe-dock" + (open ? " timebar-open" : "")}>
       {open && <TimeBar timeline={timeline} onClose={onToggle} />}
       <div className="dock-row">
         <button className="dock-button" type="button" onClick={onReset} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
+        <button className="dock-button" type="button" onClick={onLocateMe} disabled={locating} aria-label="显示我的位置"><LocateFixed size={14} aria-hidden="true" /><span>{locating ? "定位中…" : "我的位置"}</span></button>
         {!open && <button className="dock-button" type="button" onClick={onToggle} aria-label="打开时间轴" aria-expanded={false}><Clock size={14} aria-hidden="true" /><span>时间轴</span></button>}
       </div>
     </div>
@@ -79,7 +82,7 @@ function TimeBar({ timeline, onClose }: { timeline: TimeController; onClose: () 
       </div>
       <div className="timebar-foot">
         <Segmented label="时间轴范围" options={TIME_SPANS} value={state.span} onChange={(span) => timeline.setSpan(span)} format={(span) => SPAN_LABELS[span]} />
-        <span className="timebar-hint">日照、地震、卫星和每日影像跟随时间轴；极光与云图只有实时数据。</span>
+        <span className="timebar-hint">日照、地震、卫星、云图和每日影像跟随时间轴；极光只有实时预报。</span>
       </div>
     </section>
   );

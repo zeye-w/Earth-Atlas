@@ -22,7 +22,7 @@ interface Props {
 export function TectonicsGroup({ layers, setLayer, options, setOption, quakes, quakeList, timeline, volcanoes, plateStatus }: Props) {
   const live = useTimeSelector(timeline, (state) => state.live);
   return (
-    <LayerGroup title="TECTONICS" subtitle="地震与板块" open={layers.quakes || layers.plates || layers.volcanoes}>
+    <LayerGroup title="TECTONICS" subtitle="地震与板块">
       <ToggleRow icon={<Activity {...ICON} />} title="实时地震" caption={"USGS · M" + QUAKE_FEEDS[options.quakeRange].minMagnitude + "+ · 每 5 分钟更新"} checked={layers.quakes} onChange={(v) => setLayer("quakes", v)} />
       {layers.quakes && (
         <div className="layer-extra">

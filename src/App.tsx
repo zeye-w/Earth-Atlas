@@ -11,6 +11,7 @@ import { HOME_VIEW, useViewer } from "./hooks/useViewer";
 import { useRenderQuality } from "./hooks/useRenderQuality";
 import { sceneLayers, useLayerSettings } from "./hooks/useLayerSettings";
 import { useSceneClock, useTimeSelector, useTimeline } from "./hooks/useTimeline";
+import { useUserLocation, useUserLocationMarker } from "./hooks/useUserLocation";
 import { SPAN_MS, type TimeSpan } from "./timeline";
 import { useEarthView } from "./layers/useEarthView";
 import { useClouds } from "./layers/useClouds";
@@ -32,6 +33,7 @@ import { GeologyGroup } from "./panels/GeologyGroup";
 import { Inspector } from "./panels/Inspector";
 import { SearchPanel, SharePanel } from "./panels/SceneTools";
 import { GlobeDock, SceneSubtitle, TimeIndicator } from "./panels/TimeBar";
+import { TrackCard } from "./panels/TrackCard";
 import "./styles.css";
 
 const isNarrow = () => window.innerWidth < 760;
@@ -57,6 +59,8 @@ function App() {
   const [selectedQuake, setSelectedQuake] = useState<Earthquake | null>(null);
   const [selectedVolcano, setSelectedVolcano] = useState<Volcano | null>(null);
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
+  const [trackedSatelliteId, setTrackedSatelliteId] = useState<string | null>(null);
+  const userLocation = useUserLocation();
   const geology = useGeologyQuery();
 
   const openDetails = () => {
@@ -95,9 +99,10 @@ function App() {
     }
     const entityId = (pickedId as Entity | undefined)?.id;
     if (typeof entityId === "string" && entityId.startsWith("satellite:")) {
-      setSelectedSatelliteId(entityId.slice("satellite:".length));
-      setControlsOpen(true);
-      if (isNarrow()) setDetailsOpen(false);
+      // Clicking a satellite starts tracking it.
+      const id = entityId.slice("satellite:".length);
+      setSelectedSatelliteId(id);
+      setTrackedSatelliteId(id);
       return;
     }
     const ground = viewer.camera.pickEllipsoid(position, Ellipsoid.WGS84);
@@ -112,15 +117,17 @@ function App() {
     setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"));
   useEarthView(viewer, layers, timeline);
   const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
-  // Clouds and aurora only exist for "now": hidden while viewing another moment.
-  const clouds = useClouds(viewer, layers.clouds && live, options.cloudOpacity);
+  const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity, timeline);
+  // The aurora forecast only exists for "now": hidden while viewing another moment.
   const aurora = useAurora(viewer, layers.aurora && live);
   useAtmosphereShells(viewer, layers.shells, options.shellScale);
   const quakes = useEarthquakes(viewer, layers.quakes, options.quakeRange, timeline);
   useGeoLabels(viewer, layers.geoLabels);
   const plateStatus = usePlateBoundaries(viewer, layers.plates);
   const volcanoes = useVolcanoes(viewer, layers.volcanoes);
-  const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, timeline });
+  const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, timeline });
+  useUserLocationMarker(viewer, userLocation.location);
+  const trackedSatellite = satellites.catalog.find(({ choice }) => choice.id === trackedSatelliteId)?.choice ?? null;
   const vectorState = useGeologyMap(viewer, { visible: layers.geology, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter });
 
   // The time-bar range also picks the matching USGS feed, so replay has data.
@@ -144,6 +151,12 @@ function App() {
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
   }, [searchOpen, shareUrl]);
+
+  const locationError = userLocation.state.status === "error" ? userLocation.state.message : null;
+  useEffect(() => { if (locationError) setToast(locationError); }, [locationError]);
+
+  // A camera flight cannot run while the camera is locked to a satellite.
+  useEffect(() => { if (!layers.satellites) setTrackedSatelliteId(null); }, [layers.satellites]);
 
   useEffect(() => {
     if (!toast) return;
@@ -175,16 +188,27 @@ function App() {
   // highest point and look down on the observer.
   const showPass = (pass: SatellitePass, observer: Observer) => {
     setSelectedSatelliteId(pass.id);
+    setTrackedSatelliteId(null);
     timeline.setTime(pass.peak.getTime());
     setTimebarOpen(true);
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(observer.longitude, observer.latitude, 4_000_000), duration: 1.6 });
   };
 
+  // Show (asking for permission the first time) and fly to the user's position.
+  const locateMe = async () => {
+    setTrackedSatelliteId(null);
+    const location = userLocation.location ?? await userLocation.locate();
+    if (!location) return;
+    viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(location.longitude, location.latitude, 2_500_000), duration: 1.6 });
+  };
+
   const flyTo = (region: Region) => {
+    setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000), duration: 1.8 });
   };
 
   const resetCamera = () => {
+    setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: HOME_VIEW, duration: 1.6 });
   };
 
@@ -194,6 +218,7 @@ function App() {
     <div ref={shellRef} className={"app-shell quality-" + render.quality}>
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={(place) => {
         if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
+        setTrackedSatelliteId(null);
         viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(place.longitude, place.latitude, place.height), duration: 1.5 });
         selectLocation(place.latitude, place.longitude);
         setSearchOpen(false);
@@ -219,7 +244,9 @@ function App() {
           <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} />
           <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
-            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} />
+            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass}
+            trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
+            location={userLocation.state} onLocate={userLocation.locate} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
         </LayerPanel>
 
@@ -230,7 +257,12 @@ function App() {
             <SceneSubtitle timeline={timeline} dayNight={layers.dayNight} />
           </div>
           {toast && <div className="toast" role="status">{toast}<button type="button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={13} aria-hidden="true" /></button></div>}
-          <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera} />
+          {viewer && trackedSatellite && satellites.status === "ready" && (
+            <TrackCard viewer={viewer} title={trackedSatellite.title} live={live} tracking={satellites.tracking}
+              location={userLocation.location} onLocate={() => void userLocation.locate()} onStop={() => setTrackedSatelliteId(null)} />
+          )}
+          <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
+            onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />
           {!timebarOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
           <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}

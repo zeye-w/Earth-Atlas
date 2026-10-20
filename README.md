@@ -22,7 +22,7 @@ English · [简体中文](README.zh-CN.md)
 
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
-- **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, and pass predictions for your location.
+- **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, pass predictions for your location, and a tracking camera with live telemetry beside the satellite.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
 - **Travel in time** — a timeline replays the past 24 hours, 7 or 30 days (and looks a day ahead): sunlight, earthquakes, satellite positions and daily satellite imagery all follow it.
 - **Honest by design** — no fabricated data. When a feed is down the layer says so and draws nothing; illustrative elements are labelled.
@@ -37,7 +37,7 @@ English · [简体中文](README.zh-CN.md)
 </tr>
 <tr>
 <td><img src="docs/screenshots/tectonics.jpg" alt="Earthquakes, plate boundaries and volcanoes"><br><b>Earthquakes, plates and volcanoes</b><br>USGS real-time earthquakes (size = magnitude, colour = depth), Bird (2003) plate boundaries with subduction zones, and ~1,200 Holocene volcanoes. Click for details.</td>
-<td><img src="docs/screenshots/satellites.jpg" alt="Satellites and orbit paths"><br><b>Satellites</b><br>ISS, Tiangong, Hubble and Earth-observation satellites moving along SGP4-predicted orbits, with optional 60× / 300× time preview. <i>Passes over me</i> lists the next 24 hours of passes over your location (or any picked point) — time, peak elevation, direction and whether it is visible to the naked eye — and jumps the timeline to one.</td>
+<td><img src="docs/screenshots/satellites.jpg" alt="Satellites and orbit paths"><br><b>Satellites</b><br>ISS, Tiangong, Hubble and Earth-observation satellites moving along SGP4-predicted orbits, with optional 60× / 300× time preview. <i>Track</i> (or click a satellite) locks the camera to it and shows live readouts beside it: sub-satellite point, altitude, speed, heading, sunlight, period, and its azimuth, elevation and range from your location. <i>Passes over me</i> lists the next 24 hours of passes over your location (or any picked point) — time, peak elevation, direction and whether it is visible to the naked eye — and jumps the timeline to one.</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/geology.jpg" alt="Geologic map and inspector"><br><b>Global geology</b><br>Macrostrat geologic map (raster, or experimental age / lithology vector views). Click the ground to list the mapped units, ages and rock types there.</td>
@@ -49,13 +49,13 @@ English · [简体中文](README.zh-CN.md)
 </tr>
 <tr>
 <td><img src="docs/screenshots/geo-labels.jpg" alt="Geographic labels over East Asia"><br><b>Geographic labels</b><br>Oceans, seas, straits, mountain ranges, deserts, plains, basins and rivers in Chinese, placed from Natural Earth geometry, with collision-aware layout that reveals more as you zoom in.</td>
-<td><img src="docs/screenshots/clouds.jpg" alt="Infrared cloud imagery"><br><b>Satellite clouds</b><br>SSEC RealEarth hourly multi-satellite infrared composite, pinned to one observation time that is shown in the panel.</td>
+<td><img src="docs/screenshots/clouds.jpg" alt="Infrared cloud imagery"><br><b>Satellite clouds</b><br>SSEC RealEarth hourly multi-satellite infrared composite, pinned to one observation time that is shown in the panel; about 30 days of frames are kept, so the clouds follow the timeline and move during replay.</td>
 </tr>
 </table>
 
 <p align="center"><img src="docs/screenshots/mobile.jpg" alt="TerraScope on a phone" width="260"><br><sub>Works on phones too: panels become bottom sheets and quality starts in Eco mode.</sub></p>
 
-**Also included:** place and coordinate search; shareable scene links that restore the camera, layers, filters and timeline moment; fullscreen; reduced-motion support; eco / balanced / high quality presets.
+**Also included:** your location on the globe (only when you ask, never uploaded); place and coordinate search; shareable scene links that restore the camera, layers, filters and timeline moment; fullscreen; reduced-motion support; eco / balanced / high quality presets.
 
 ## Data sources
 

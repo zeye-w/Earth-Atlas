@@ -8,6 +8,7 @@ import { parseGeologicalUnits } from "../src/geology.ts";
 import { parseLithologyDictionary } from "../src/lithology.ts";
 import { OVATION_URL, northernProfile, parseOvation, southernProfile } from "../src/auroraData.ts";
 import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
+import { CLOUD_METADATA_URL, cloudTileUrl, cloudTimes } from "../src/cloudData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { KP_HISTORY_URL, KP_NOW_URL, kpLevel, parseKpHistory, parseKpNow } from "../src/geomagnetic.ts";
 
@@ -181,6 +182,25 @@ for (const date of [trueColorDate(new Date()), trueColorDate(new Date(Date.now()
     failed = true;
     console.error("LIVE_GIBS_FAILURE:", label, error);
   }
+}
+
+// Cloud history for the timeline: about 30 days of hourly frames, and the
+// oldest still serves tiles to the deployed origin.
+try {
+  const response = await fetch(CLOUD_METADATA_URL, { signal: AbortSignal.timeout(20000), headers: { Origin: site } });
+  const cors = response.headers.get("access-control-allow-origin") ?? "(missing)";
+  const times = cloudTimes(await response.json());
+  console.log("RealEarth globalir catalog HTTP", response.status, "CORS", cors, "frames", times.length, "range", times[0]?.toISOString(), "..", times.at(-1)?.toISOString());
+  assert.ok(cors === "*" || cors === site, "CORS disallows deployed origin");
+  assert.ok(times.length >= 24 * 20, "fewer than 20 days of hourly frames");
+  const tile = await fetch(cloudTileUrl(times[0]).replace("x={x}&y={y}&z={z}", "x=1&y=1&z=2"), { signal: AbortSignal.timeout(20000), headers: { Origin: site } });
+  const type = tile.headers.get("content-type") || "(missing)";
+  const bytes = (await tile.arrayBuffer()).byteLength;
+  console.log("  oldest frame tile HTTP", tile.status, type, "bytes", bytes);
+  assert.ok(tile.ok && /image\//.test(type) && bytes > 5000, "oldest cloud frame has no tile");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_CLOUD_FAILURE:", error);
 }
 
 for (const path of [

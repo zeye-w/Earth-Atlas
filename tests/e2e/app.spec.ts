@@ -107,6 +107,45 @@ test("predicts satellite passes over my location and jumps the timeline to one",
   await expect(page.locator(".online-indicator")).toContainText("回看");
 });
 
+test("layer groups start collapsed", async ({ page }) => {
+  await page.goto("/");
+  await waitForGlobe(page);
+  const groups = layerPanel(page).locator("details.layer-group");
+  expect(await groups.count()).toBeGreaterThan(3);
+  expect(await groups.evaluateAll((all) => all.filter((el) => (el as HTMLDetailsElement).open).length)).toBe(0);
+});
+
+test("tracking a satellite shows live telemetry next to it, including from my location", async ({ page }) => {
+  await page.context().grantPermissions(["geolocation"]);
+  await page.context().setGeolocation({ latitude: 39.9, longitude: 116.4 });
+  await page.goto(sceneUrl(0, 0, 17_000_000, { satellites: true }));
+  await waitForGlobe(page);
+  // Permission already granted: the location is shown without asking.
+  await expect(page.getByRole("button", { name: "显示我的位置" })).toContainText("我的位置");
+  await openGroup(page, "SATELLITES");
+  await expect(layerPanel(page).locator(".satellite-status")).toContainText("已加载");
+  await page.getByRole("button", { name: "跟踪 ISS · 国际空间站" }).click();
+  const card = page.locator(".track-card");
+  await expect(card).toContainText("ISS · 国际空间站");
+  await expect(card).toContainText(/高度\s*\d+\.\d km/);
+  await expect(card).toContainText(/速度\s*7\.\d\d km\/s/);
+  await expect(card).toContainText("从我的位置看");
+  await card.getByRole("button", { name: "停止跟踪" }).click();
+  await expect(card).toHaveCount(0);
+});
+
+test("clouds follow the timeline and say when a moment has no frame", async ({ page }) => {
+  await page.goto(sceneUrl(0, 0, 17_000_000, { clouds: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "EARTH VIEW");
+  const note = layerPanel(page).locator(".cloud-controls .thematic-note").first();
+  await expect(note).toContainText("观测时间");
+  // The mocked catalog only has a frame from 30 minutes ago.
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(note).toContainText("这一时刻没有云图");
+});
+
 test("clouds show the observation time", async ({ page }) => {
   await page.goto(sceneUrl(0, 0, 17_000_000, { clouds: true }));
   await waitForGlobe(page);

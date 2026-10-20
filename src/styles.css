@@ -80,6 +80,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .dock-button:hover { transform:translateY(-2px); }
 
+.dock-button:disabled { opacity:.6; cursor:progress; }
+
+/* Satellite tracking card: follows the marker (transform set from script). */
+.track-card.glass-panel { left:0; top:0; z-index:12; width:268px; padding:11px 13px 10px; border-radius:16px; opacity:0; pointer-events:none; transition:opacity .2s; }
+.track-card.glass-panel.is-floating { opacity:1; pointer-events:auto; }
+.track-card header { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.track-card header strong { flex:1; min-width:0; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.track-card header button { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; border:0; background:var(--fill); color:var(--text-2); }
+.track-badge { flex:none; padding:2px 7px; border-radius:999px; font-size:9px; font-weight:600; color:#0b0c0f; background:#7fe0b0; }
+.track-card dl { display:grid; grid-template-columns:auto 1fr; gap:4px 10px; margin:0; font-size:10px; }
+.track-card dt { color:var(--text-3); }
+.track-card dd { margin:0; color:var(--text); font-variant-numeric:tabular-nums; text-align:right; }
+.track-look { margin-top:8px; padding:7px 8px; border-radius:9px; background:rgba(77,163,255,.12); border:1px solid rgba(77,163,255,.28); }
+.track-look span { font-size:9px; letter-spacing:.06em; color:#9ccaff; }
+.track-look p { margin:3px 0 0; font-size:10px; line-height:1.5; font-variant-numeric:tabular-nums; }
+.track-locate { width:100%; margin-top:8px; padding:6px; border-radius:9px; border:1px solid var(--line); background:var(--fill); color:var(--text); font-size:10px; }
+.track-empty { margin:0; font-size:10px; line-height:1.6; color:var(--text-2); }
+.track-note { margin:7px 0 0; font-size:9px; line-height:1.5; color:var(--text-3); }
+.satellite-track { flex:none; align-self:center; margin-left:auto; padding:3px 9px; border-radius:999px; border:1px solid var(--line); background:var(--fill); color:var(--text); font-size:9px; }
+.satellite-track:hover { background:var(--fill-hover); }
+.satellite-track.active { color:#0b0c0f; background:#7fe0b0; border-color:transparent; }
+
 /* Time bar */
 .timebar.glass-panel { position:relative; inset:auto; width:100%; padding:12px 14px 11px; border-radius:20px; display:flex; flex-direction:column; gap:9px; }
 .timebar-head { display:flex; align-items:center; gap:10px; min-width:0; }
@@ -267,7 +289,7 @@ h1 em { font-style:normal; color:var(--text-2); }
 .pass-time { grid-column:1 / -1; font-size:10px; font-variant-numeric:tabular-nums; color:var(--text-2); }
 .pass-detail { grid-column:1 / -1; font-size:9px; color:var(--text-3); }
 .satellite-entry.selected { background:var(--fill-strong); border-color:rgba(255,255,255,.2); }
-.satellite-entry > span:last-child { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.satellite-entry > span { display:flex; flex-direction:column; gap:3px; min-width:0; }
 .satellite-entry strong { font-size:10px; font-weight:600; }
 .satellite-entry small { font-size:9px; color:var(--text-3); }
 .satellite-glyph { flex:0 0 13px; margin-top:2px; color:var(--text-2); }
@@ -391,6 +413,7 @@ h1 em { font-style:normal; color:var(--text-2); }
   .globe-guide { bottom:87px; font-size:10px; }
   .guide-orbit { width:24px; height:24px; }
   .globe-dock { bottom:36px; width:calc(100% - 20px); }
+  .track-card.glass-panel { top:72px; left:10px; right:10px; bottom:auto; width:auto; opacity:1; pointer-events:auto; }
   .timebar-foot { flex-direction:column; align-items:stretch; gap:7px; }
   .timebar-foot .segmented { width:100%; }
   .timebar-hint { display:none; }

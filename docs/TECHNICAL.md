@@ -186,7 +186,8 @@ Balanced quality caps pixel ratio at 1.25 (about 31% fewer framebuffer pixels th
 - **Earthquakes:** events after the moment are hidden and those in the 24 hours before it are outlined, so replay shows them appearing in order. The time-bar span also selects the matching USGS feed (24 h/7 d at M2.5+, 30 d at M4.5+); before the feed's coverage the panel says earlier events are missing.
 - **Satellites:** SGP4 positions at the moment (static while paused). Satellites whose elements are more than 10 days from the moment are hidden rather than drawn with large propagation error.
 - **City lights:** daylit-tile skipping assumes "now", so away from live the layer is rebuilt without it.
-- **Aurora/Kp and infrared clouds** have only current data and are hidden away from live, with a note in the panel.
+- **Infrared clouds** show the hourly RealEarth frame for the moment (about 30 days are kept); a moment without a frame within two hours (before the archive, in a gap, or in the future) shows none and says so. During replay frames load at zoom ≤ 3 and each new frame replaces the previous one only after the globe has finished loading it.
+- **Aurora/Kp** have only current data and are hidden away from live, with a note in the panel.
 - **Daily true colour** shows the moment's UTC day (yesterday when live or in the future); the day is held during replay to avoid refetching every second.
 
 Shared scene links carry the moment as optional `time` (ms since epoch); a moment older than 30 days opens live.
@@ -202,4 +203,12 @@ The OVATION grid covers both hemispheres. `ovalProfile(grid, "north" | "south")`
 ## Satellite pass predictions
 
 `src/satellitePasses.ts` samples each loaded satellite every 30 s for the next 24 hours with SGP4 (the same CelesTrak elements as the globe), computing elevation and azimuth from the observer with `satellite.js` `ecfToLookAngles`. A pass runs from horizon to horizon (rise and set interpolated between samples) and is listed when it climbs at least 10°. "Visible to the naked eye" means that at some point above 10° the observer's Sun is below −6° (civil twilight) while the satellite is outside Earth's shadow (cylindrical shadow model). Satellites whose elements are more than 10 days from the window are skipped. The observer is the browser's geolocation (asked only when the button is pressed) or the point picked on the globe; it is used only in the browser. Selecting a pass highlights the satellite, moves the timeline to the pass's highest point and looks down on the observer. Predictions ignore refraction, terrain and brightness (magnitude), and can be off by a minute or so as elements age.
+
+## Satellite tracking and the user's location
+
+**Tracking** (the *Track* button in the satellite list, or clicking a satellite) sets Cesium's `trackedEntity` to the marker with a `viewFrom` offset behind and above it; the user can still orbit and zoom around it, and any other camera flight (reset, search, regions, passes) ends tracking. A card beside the marker (repositioned after every render, docked at the top on narrow screens) refreshes four times a second from `src/satelliteTelemetry.ts`: sub-satellite point, altitude, inertial speed, ground-track heading, sunlight (cylindrical shadow), orbital period, and — with the user's location — azimuth, elevation and range. It follows the timeline like the markers do, and says so when the moment is too far from the elements for a reliable position.
+
+**User location** comes from the browser's geolocation only when the user presses *My location* (or *Use my location* in pass predictions); if the site already has permission it is shown on load without a prompt. A blue dot (with the accuracy circle when between 200 m and 100 km) marks it. It is not sent anywhere.
+
+**Layer groups** in the left panel all start collapsed.
 

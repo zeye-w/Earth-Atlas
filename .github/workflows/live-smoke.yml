@@ -9,6 +9,7 @@ on:
       - "src/earthquakeData.ts"
       - "src/geomagnetic.ts"
       - "src/trueColorData.ts"
+      - "src/cloudData.ts"
       - ".github/workflows/live-smoke.yml"
   workflow_dispatch:
 permissions:

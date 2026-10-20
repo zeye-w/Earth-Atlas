@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { json2satrec } from "satellite.js";
 import { positionAt } from "../src/satelliteOrbits.ts";
-import { inSunlight, predictPasses } from "../src/satellitePasses.ts";
+import { predictPasses } from "../src/satellitePasses.ts";
+import { inSunlight } from "../src/satelliteTelemetry.ts";
 import { compassName } from "../src/compass.ts";
 import { subsolarPoint } from "../src/solar.ts";
 

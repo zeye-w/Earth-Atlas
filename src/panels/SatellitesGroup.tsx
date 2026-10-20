@@ -2,6 +2,7 @@ import { Satellite } from "lucide-react";
 import type { OrbitRecord, SatelliteChoice } from "../satelliteOrbits";
 import type { Observer, SatellitePass } from "../satellitePasses";
 import { PassPredictions } from "./PassPredictions";
+import type { LocationState, UserLocation } from "../hooks/useUserLocation";
 import type { SatelliteSpeed } from "../satelliteOverlay";
 import type { LayerOptions, LayerToggles } from "../hooks/useLayerSettings";
 import type { SatelliteStatus } from "../layers/useSatellites";
@@ -24,12 +25,17 @@ interface Props {
   records: readonly OrbitRecord[];
   selectedPoint: { latitude: number; longitude: number } | null;
   onSelectPass: (pass: SatellitePass, observer: Observer) => void;
+  trackedId: string | null;
+  onTrack: (id: string) => void;
+  onStopTracking: () => void;
+  location: LocationState;
+  onLocate: () => Promise<UserLocation | null>;
 }
 
-export function SatellitesGroup({ layers, setLayer, options, setOption, status, catalog, selectedId, timeline, records, selectedPoint, onSelectPass }: Props) {
+export function SatellitesGroup({ layers, setLayer, options, setOption, status, catalog, selectedId, timeline, records, selectedPoint, onSelectPass, trackedId, onTrack, onStopTracking, location, onLocate }: Props) {
   const live = useTimeSelector(timeline, (state) => state.live);
   return (
-    <LayerGroup title="SATELLITES" subtitle="在轨卫星" open={layers.satellites}>
+    <LayerGroup title="SATELLITES" subtitle="在轨卫星">
       <ToggleRow icon={<Satellite {...ICON} />} title="真实卫星轨道" caption="公开 GP 根数 · SGP4 轨道预测" checked={layers.satellites} onChange={(v) => setLayer("satellites", v)} />
       {layers.satellites && (
         <div className="satellite-controls">
@@ -54,11 +60,15 @@ export function SatellitesGroup({ layers, setLayer, options, setOption, status, 
                 <div className={"satellite-entry" + (selectedId === choice.id ? " selected" : "")} key={choice.id}>
                   <Satellite size={13} strokeWidth={1.7} className="satellite-glyph" aria-hidden="true" />
                   <span><strong>{choice.title}</strong><small>轨道历元：{epochLabel}</small></span>
+                  <button type="button" className={"satellite-track" + (trackedId === choice.id ? " active" : "")} onClick={() => (trackedId === choice.id ? onStopTracking() : onTrack(choice.id))}
+                    aria-label={(trackedId === choice.id ? "停止跟踪 " : "跟踪 ") + choice.title}>
+                    {trackedId === choice.id ? "停止" : "跟踪"}
+                  </button>
                 </div>
               ))}
             </div>
           )}
-          {status === "ready" && records.length > 0 && <PassPredictions records={records} selectedPoint={selectedPoint} onSelectPass={onSelectPass} />}
+          {status === "ready" && records.length > 0 && <PassPredictions records={records} selectedPoint={selectedPoint} onSelectPass={onSelectPass} location={location} onLocate={onLocate} />}
           <p className="satellite-disclaimer">数据：CelesTrak GP / SGP4。位置为轨道推算，并非实时遥测；轨迹表示地固坐标系下的预测路径。</p>
         </div>
       )}

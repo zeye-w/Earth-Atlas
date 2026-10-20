@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import type { Viewer } from "cesium";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Cartesian3, type Viewer } from "cesium";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
 import type { OrbitRecord, SatelliteChoice } from "../satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "../satelliteOverlay";
 import type { TimeController } from "../timeline";
+import type { Observer } from "../satelliteTelemetry";
 
 export type SatelliteStatus = "idle" | "loading" | "ready" | "error";
 
@@ -18,8 +19,8 @@ function followTimeline(overlay: SatelliteOverlay, timeline: TimeController) {
 }
 
 /** Curated satellites from public GP elements (two-hour cache); no network when off. */
-export function useSatellites(viewer: Viewer | null, options: { visible: boolean; paths: boolean; speed: SatelliteSpeed; selectedId: string | null; timeline: TimeController }) {
-  const { visible, paths, speed, selectedId, timeline } = options;
+export function useSatellites(viewer: Viewer | null, options: { visible: boolean; paths: boolean; speed: SatelliteSpeed; selectedId: string | null; trackedId: string | null; timeline: TimeController }) {
+  const { visible, paths, speed, selectedId, trackedId, timeline } = options;
   const overlayRef = useRef<SatelliteOverlay | null>(null);
   const latest = useRef(options);
   latest.current = options;
@@ -73,5 +74,23 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  return { status, catalog, records };
+  // Tracking: the camera follows the marker from behind and above (east,
+  // north, up offset in metres); the user can still orbit around it.
+  useEffect(() => {
+    const entity = trackedId && status === "ready" ? overlayRef.current?.markerEntity(trackedId) : undefined;
+    if (!viewer || !entity) return;
+    entity.viewFrom = new Cartesian3(0, -2_400_000, 1_600_000);
+    viewer.trackedEntity = entity;
+    return () => {
+      if (!viewer.isDestroyed() && viewer.trackedEntity === entity) viewer.trackedEntity = undefined;
+    };
+  }, [viewer, trackedId, status]);
+
+  // Read on demand (the tracking card polls), so updates do not re-render React.
+  const tracking = useMemo(() => ({
+    telemetry: (observer: Observer | null) => (trackedId ? overlayRef.current?.telemetry(trackedId, observer) ?? null : null),
+    position: () => (trackedId ? overlayRef.current?.markerPosition(trackedId) : undefined),
+  }), [trackedId]);
+
+  return { status, catalog, records, tracking };
 }

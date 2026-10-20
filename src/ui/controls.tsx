@@ -47,9 +47,10 @@ export function Segmented<T extends string | number>({ label, options, value, on
   );
 }
 
-export function LayerGroup({ title, subtitle, open, children }: { title: string; subtitle: string; open?: boolean; children: ReactNode }) {
+/** Collapsible group; all start collapsed. */
+export function LayerGroup({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <details className="layer-group" open={open || undefined}>
+    <details className="layer-group">
       <summary><span>{title}<small>{subtitle}</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
       {children}
     </details>
