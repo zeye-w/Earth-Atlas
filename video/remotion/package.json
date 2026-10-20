@@ -1,0 +1,6 @@
+{
+  "name": "terrascope-promo", "version": "1.0.0", "private": true, "type": "module",
+  "scripts": {"studio": "remotion studio src/index.ts", "typecheck": "tsc --noEmit", "render:preview": "remotion render src/index.ts TerraScopePreview ../../.cache/terrascope-preview.mp4", "render:final": "remotion render src/index.ts TerraScopeFinal ../../.cache/terrascope-promo-30s.mp4"},
+  "dependencies": {"@remotion/cli": "4.0.537", "@remotion/bundler": "4.0.537", "@remotion/renderer": "4.0.537", "remotion": "4.0.537", "ffmpeg-static": "^5.2.0", "ffprobe-static": "^3.1.0", "react": "19.2.0", "react-dom": "19.2.0"},
+  "devDependencies": {"@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "typescript": "~5.9.3"}
+}

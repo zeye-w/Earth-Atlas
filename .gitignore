@@ -9,3 +9,8 @@ test-results/
 playwright-report/
 
 .cache/
+
+/video/remotion/public/
+/video/production/public/
+/video/delivery/
+/video/audio/*.wav

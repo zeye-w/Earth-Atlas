@@ -58,3 +58,7 @@ node --experimental-strip-types video/reference/capture.mjs --base http://localh
 ## Review loop
 
 Claude reviews the preview stills and the first cut against the storyboard and replies with timecoded notes. Re-render only the shots that change.
+
+## Codex production project
+
+The independent Remotion app is in [`remotion/`](remotion/); reproducible capture/stage/render commands are in [`production/README.md`](production/README.md). `production/capture.mjs` adds bounded parallelism, resumable per-shot manifests, exact hourly cloud stills, same-day aurora fallback, and explicit failure checks to the reference protocol. [`CREDITS.md`](CREDITS.md) records original audio, fonts and data attribution. Rendered files live in the gitignored `delivery/` directory.

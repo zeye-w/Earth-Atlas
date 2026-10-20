@@ -1,0 +1,4 @@
+- NotoSansSC-variable.ttf: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf
+- NotoSansSC-OFL.txt: https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt
+- Inter-variable.ttf: https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz,wght%5D.ttf
+- Inter-OFL.txt: https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt

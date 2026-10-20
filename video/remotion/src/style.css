@@ -1,0 +1,9 @@
+body{margin:0;color:white;font-family:Inter,'Noto Sans SC',sans-serif}
+.caption{position:absolute;left:5%;right:5%;top:81%;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.caption.lower-left{text-align:left;right:25%}.caption.upper-center{top:10%}
+.zh{font-family:'Noto Sans SC',sans-serif;font-weight:300;font-size:46px;letter-spacing:.12em;line-height:1.45}
+.en{font-family:Inter,sans-serif;font-weight:500;font-size:16px;letter-spacing:.32em;opacity:.7;margin-top:14px}
+.endcard{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.logo{font-size:100px;letter-spacing:.16em;line-height:1.2}.logo span{font-weight:300}.logo b{font-weight:700}.subtitle{font-family:'Noto Sans SC',sans-serif;font-size:32px;letter-spacing:.5em;margin-top:12px}
+.tagline{font-family:'Noto Sans SC',sans-serif;font-size:32px;font-weight:300;letter-spacing:.12em;margin-top:56px}.tagline-en{font-size:20px;letter-spacing:.08em;opacity:.7;margin-top:16px}.url{font-size:26px;letter-spacing:.06em;margin-top:44px}.credits{position:absolute;bottom:70px;font-size:16px;letter-spacing:.04em;opacity:.65}
+.preview{position:absolute;left:24px;top:22px;max-width:90%;padding:10px 16px;background:rgba(0,0,0,.8);font-size:18px;letter-spacing:.04em;border:1px solid #e8c77a;color:#ffe9b5}
