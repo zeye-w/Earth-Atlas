@@ -90,7 +90,10 @@ test("explicit shared-scene camera is preserved on mobile, and reset uses portra
   expect(shared.layers.satellites).toBe(false);
 
   await page.getByRole("button", { name: "关闭分享" }).click();
-  await page.getByRole("button", { name: "重置视角" }).click();
+  // On portrait phones the open sheet legitimately overlaps the bottom dock.
+  // Close it before using the actual accessible action name of the reset button.
+  await page.getByRole("button", { name: "收起图层面板" }).click();
+  await page.getByRole("button", { name: "返回全球视角" }).click();
   await page.waitForTimeout(2300);
   await page.getByRole("button", { name: "分享当前场景" }).click();
   raw = new URL(await page.locator("#scene-share-url").inputValue()).hash.slice(1);
