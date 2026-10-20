@@ -20,11 +20,11 @@ test("phone portrait zooms out enough to show the whole planet above a compact d
     const angularRadius = Math.asin(EARTH_RADIUS_METRES / (EARTH_RADIUS_METRES + altitude));
     const halfFov = Math.atan(Math.tan(Math.PI / 6) * width / height);
     const fillWidth = Math.tan(angularRadius) / Math.tan(halfFov);
-    assert.ok(fillWidth <= 0.61 && fillWidth >= 0.55, \`width fraction \${fillWidth} at \${width}x\${height}\`);
+    assert.ok(fillWidth <= 0.61 && fillWidth >= 0.55, "width fraction " + fillWidth + " at " + width + "x" + height);
     // Mobile sheet consumes 30vh at the bottom; the globe must fit above it.
     const planetBottom = height / 2 + (width * fillWidth) / 2;
     const panelTop = height * 0.7 - 12;
-    assert.ok(planetBottom < panelTop + 8, \`planet bottom \${planetBottom} vs panel top \${panelTop}\`);
+    assert.ok(planetBottom < panelTop + 8, "planet bottom " + planetBottom + " vs panel top " + panelTop);
   }
 });
 
