@@ -41,7 +41,32 @@ jobs:
       - name: Install Chromium for Playwright
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests (all external services mocked)
-        run: npm run test:e2e
+        run: npm run test:e2e -- tests/e2e/app.spec.ts
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-app
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+  responsive-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Responsive browser tests (desktop and phones; external data mocked)
+        run: npm run test:e2e -- tests/e2e/responsive.spec.ts
       - name: Upload responsive viewport evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -50,11 +75,11 @@ jobs:
           path: test-results/**/initial-*.png
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload Playwright report
+      - name: Upload responsive Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-responsive
           path: |
             playwright-report/
             test-results/
