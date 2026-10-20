@@ -7,7 +7,7 @@ import { VOLCANO_ID_PREFIX, type Volcano } from "./volcanoData";
 import type { Observer, SatellitePass } from "./satellitePasses";
 import { RENDER_QUALITY_LABELS } from "./performance";
 import { readScene, sceneHash, type SceneState } from "./sceneState";
-import { HOME_VIEW, useViewer } from "./hooks/useViewer";
+import { homeDestination, useViewer } from "./hooks/useViewer";
 import { useRenderQuality } from "./hooks/useRenderQuality";
 import { sceneLayers, useLayerSettings } from "./hooks/useLayerSettings";
 import { useSceneClock, useTimeSelector, useTimeline } from "./hooks/useTimeline";
@@ -229,7 +229,10 @@ function App() {
 
   const resetCamera = () => {
     setTrackedSatelliteId(null);
-    viewer?.camera.flyTo({ destination: HOME_VIEW, duration: 1.6 });
+    viewer?.camera.flyTo({
+      destination: homeDestination(mountRef.current?.clientWidth ?? window.innerWidth, mountRef.current?.clientHeight ?? window.innerHeight),
+      duration: 1.6,
+    });
   };
 
   const groupProps = { layers, setLayer, options, setOption };
