@@ -201,18 +201,18 @@
           {
             "t": 0,
             "longitude": -6,
-            "latitude": 56,
-            "height": 560000,
+            "latitude": 53,
+            "height": 720000,
             "heading": 0,
-            "pitch": -27
+            "pitch": -24
           },
           {
             "t": 1,
             "longitude": 5,
-            "latitude": 56.5,
-            "height": 480000,
+            "latitude": 53.5,
+            "height": 640000,
             "heading": 5,
-            "pitch": -28
+            "pitch": -25
           }
         ]
       },
@@ -229,7 +229,7 @@
         "seconds": 0.35
       },
       "fallback": "Aurora is live-only. If the NOAA panel shows a peak below 8 % in the north, mirror the shot to the south (latitude -55/-56, heading 180/174, using the southern peak). If both are below 8 %, swap in shot s4b-atmosphere.",
-      "notes": "Low pass south of the night-side oval: the curtains stand on the horizon against space."
+      "notes": "Low pass about 10–12° equatorward of the night-side oval, so the curtains stand on the horizon against space. The oval moves with geomagnetic activity: if it sits much further north or south on capture day, shift the camera latitude to keep that 10–12° gap."
     },
     {
       "id": "s4b-atmosphere",

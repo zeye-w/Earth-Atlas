@@ -101,6 +101,9 @@ async function captureShot(browser, shot) {
   if (shot.camera.type === "lookAtSatellite") {
     await page.waitForFunction((id) => window.__terrascope.satellite(id) !== null, shot.camera.satellite, { timeout: 60_000 });
   }
+  // Warm-up: the first pose of a shot loads most of its tiles; give it longer.
+  await applyFrame(page, shot, 0, 0);
+  await page.evaluate(() => window.__terrascope.idle(120_000));
   const duration = shot.end - shot.start;
   const count = MODE === "frames" ? Math.round(duration * fps) : 3;
   const dir = OUT + (MODE === "frames" ? "/" + shot.id : "");

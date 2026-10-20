@@ -47,7 +47,7 @@ node --experimental-strip-types video/reference/capture.mjs --base http://localh
 - Shot `s7-clouds` is `hourly-stills`: capture one still per hour (31) and cross-fade in Remotion (see `post` in `shots.json`).
 - Shot `s4-aurora` is live-only; check its `fallback` before rendering.
 - Shot `s9-end-card` is Remotion-only.
-- On GitHub-hosted runners (software WebGL) expect roughly 1–3 s per frame, i.e. 15–45 min for all ~800 captured frames; split shots across jobs if needed.
+- Measured on GitHub-hosted runners (software WebGL, live data): consecutive frames of the top-down globe shots take about **5 s**; low, horizon-facing shots (s3 city lights, s4 aurora, s5 ISS) about **45 s** because far more tiles are visible. Capturing every frame of every shot is therefore roughly **2–3 hours**: run one job per shot (a matrix over shot ids, each well under the 6-hour job limit) and merge the PNG sequences. The first frame of each shot gets a longer warm-up.
 
 ## Deliverables
 
