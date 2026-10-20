@@ -24,6 +24,7 @@ English · [简体中文](README.zh-CN.md)
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
 - **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
+- **Travel in time** — a timeline replays the past 24 hours, 7 or 30 days (and looks a day ahead): sunlight, earthquakes, satellite positions and daily satellite imagery all follow it.
 - **Honest by design** — no fabricated data. When a feed is down the layer says so and draws nothing; illustrative elements are labelled.
 - **Fast and light** — render-on-demand, automatic quality by frame rate, layers loaded only when switched on; no API keys or paid services.
 
@@ -43,6 +44,10 @@ English · [简体中文](README.zh-CN.md)
 <td><img src="docs/screenshots/atmosphere-layers.jpg" alt="Atmosphere layers at the limb"><br><b>Atmosphere layers</b><br>Troposphere, stratosphere, mesosphere, Kármán line and thermosphere drawn at their real heights (U.S. Standard Atmosphere 1976), with labelled 5× / 20× exaggeration.</td>
 </tr>
 <tr>
+<td><img src="docs/screenshots/timeline.jpg" alt="Timeline replaying earthquakes"><br><b>Timeline</b><br>Drag or replay through the last 24 h / 7 / 30 days: the terminator, earthquakes (appearing as they happened), satellite positions and the daily imagery follow the chosen moment. Live-only feeds (aurora, clouds) say so instead of showing stale data.</td>
+<td><img src="docs/screenshots/true-color.jpg" alt="Daily true-colour imagery"><br><b>Daily true colour</b><br>NASA GIBS NOAA-20 VIIRS corrected reflectance for the selected UTC day — the real clouds, snow and smoke of that day rather than the static Blue Marble.</td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/geo-labels.jpg" alt="Geographic labels over East Asia"><br><b>Geographic labels</b><br>Oceans, seas, straits, mountain ranges, deserts, plains, basins and rivers in Chinese, placed from Natural Earth geometry, with collision-aware layout that reveals more as you zoom in.</td>
 <td><img src="docs/screenshots/clouds.jpg" alt="Infrared cloud imagery"><br><b>Satellite clouds</b><br>SSEC RealEarth hourly multi-satellite infrared composite, pinned to one observation time that is shown in the panel.</td>
 </tr>
@@ -50,13 +55,14 @@ English · [简体中文](README.zh-CN.md)
 
 <p align="center"><img src="docs/screenshots/mobile.jpg" alt="TerraScope on a phone" width="260"><br><sub>Works on phones too: panels become bottom sheets and quality starts in Eco mode.</sub></p>
 
-**Also included:** place and coordinate search; shareable scene links that restore the camera, layers and filters; fullscreen; reduced-motion support; eco / balanced / high quality presets.
+**Also included:** place and coordinate search; shareable scene links that restore the camera, layers, filters and timeline moment; fullscreen; reduced-motion support; eco / balanced / high quality presets.
 
 ## Data sources
 
 | Layer | Source | Update |
 | --- | --- | --- |
 | Day imagery | NASA GIBS — Blue Marble shaded relief & bathymetry | static |
+| Daily true colour | NASA GIBS — NOAA-20 VIIRS corrected reflectance | daily (previous UTC day when live) |
 | City lights | NASA GIBS — VIIRS Black Marble 2016 | 2016 composite (not tonight's lights) |
 | Aurora | NOAA SWPC — OVATION aurora nowcast | every 10 min |
 | Kp index | NOAA SWPC — planetary K-index | every 10 min |

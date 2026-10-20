@@ -1,5 +1,7 @@
 import { Activity, Triangle, Waypoints } from "lucide-react";
-import { DEPTH_CLASSES, QUAKE_FEEDS, QUAKE_RANGES } from "../earthquakeData";
+import { DEPTH_CLASSES, QUAKE_FEEDS, QUAKE_RANGES, quakesAt, type Earthquake, type QuakeRange } from "../earthquakeData";
+import { useTimeSelector } from "../hooks/useTimeline";
+import type { TimeController } from "../timeline";
 import type { LayerOptions, LayerToggles } from "../hooks/useLayerSettings";
 import type { QuakeStatus } from "../layers/useEarthquakes";
 import type { VolcanoInfo } from "../layers/useTectonics";
@@ -11,26 +13,29 @@ interface Props {
   options: LayerOptions;
   setOption: <K extends keyof LayerOptions>(key: K, value: LayerOptions[K]) => void;
   quakes: QuakeStatus;
+  quakeList: readonly Earthquake[];
+  timeline: TimeController;
   volcanoes: { status: "idle" | "loading" | "ready" | "error"; result?: VolcanoInfo };
   plateStatus: "idle" | "loading" | "ready" | "error";
 }
 
-export function TectonicsGroup({ layers, setLayer, options, setOption, quakes, volcanoes, plateStatus }: Props) {
+export function TectonicsGroup({ layers, setLayer, options, setOption, quakes, quakeList, timeline, volcanoes, plateStatus }: Props) {
+  const live = useTimeSelector(timeline, (state) => state.live);
   return (
     <LayerGroup title="TECTONICS" subtitle="地震与板块" open={layers.quakes || layers.plates || layers.volcanoes}>
       <ToggleRow icon={<Activity {...ICON} />} title="实时地震" caption={"USGS · M" + QUAKE_FEEDS[options.quakeRange].minMagnitude + "+ · 每 5 分钟更新"} checked={layers.quakes} onChange={(v) => setLayer("quakes", v)} />
       {layers.quakes && (
         <div className="layer-extra">
           <Segmented label="地震时间范围" options={QUAKE_RANGES} value={options.quakeRange} onChange={(v) => setOption("quakeRange", v)} format={(range) => QUAKE_FEEDS[range].label} />
-          <p className="layer-status" role="status">
+          {!live && quakes.state === "ready" ? <QuakeReplayStatus timeline={timeline} quakes={quakeList} range={options.quakeRange} /> : <p className="layer-status" role="status">
             {quakes.state === "loading" ? "正在读取 USGS 地震目录…" :
              quakes.state === "error" ? "USGS 地震数据暂不可用，未显示地震。" :
              quakes.state === "ready" ? (quakes.count ? quakes.count + " 次地震 · 最大 M" + quakes.largest!.magnitude.toFixed(1) + (quakes.largest!.place ? "（" + quakes.largest!.place + "）" : "") : "该时段没有符合条件的地震") : ""}
-          </p>
+          </p>}
           <div className="thematic-legend">
             {DEPTH_CLASSES.map((item) => <span key={item.label}><i style={{ backgroundColor: item.color, borderRadius: "50%" }} />{item.label}</span>)}
           </div>
-          <p className="layer-note">圆点越大震级越高，白色描边为 24 小时内发生；点击圆点查看详情。</p>
+          <p className="layer-note">圆点越大震级越高，白色描边为 24 小时内发生；点击圆点查看详情。用底部时间轴可按时间回放。</p>
         </div>
       )}
       <ToggleRow icon={<Triangle {...ICON} />} title="火山" caption="Smithsonian GVP 全新世火山名录" checked={layers.volcanoes} onChange={(v) => setLayer("volcanoes", v)} />
@@ -60,5 +65,18 @@ export function TectonicsGroup({ layers, setLayer, options, setOption, quakes, v
         </div>
       )}
     </LayerGroup>
+  );
+}
+
+/** Replay counts, re-rendered at most once per simulated hour. */
+function QuakeReplayStatus({ timeline, quakes, range }: { timeline: TimeController; quakes: readonly Earthquake[]; range: QuakeRange }) {
+  const hour = useTimeSelector(timeline, (state) => Math.floor(state.time / 3_600_000));
+  const { shown, covered } = quakesAt(quakes, range, hour * 3_600_000 + 3_599_999);
+  const largest = shown.reduce<Earthquake | null>((a, b) => (!a || b.magnitude > a.magnitude ? b : a), null);
+  return (
+    <p className="layer-status" role="status">
+      {"回放：截至所选时刻 " + shown.length + " 次地震" + (largest ? " · 最大 M" + largest.magnitude.toFixed(1) : "")}
+      {!covered && <><br />所选时刻早于「{QUAKE_FEEDS[range].label}」数据范围，更早的地震未显示。</>}
+    </p>
   );
 }

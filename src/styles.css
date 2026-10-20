@@ -68,15 +68,45 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .tag-dot { display:inline-block; width:5px; height:5px; margin-right:8px; border-radius:50%; background:#fff; box-shadow:0 0 8px rgba(255,255,255,.8); vertical-align:middle; }
 .map-subtitle { font-size:9px; letter-spacing:.2em; color:var(--text-3); }
 
-.reset-button {
-  position:absolute; left:50%; bottom:79px; transform:translateX(-50%);
+.globe-dock { position:absolute; left:50%; bottom:79px; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:10px; width:max(440px, min(720px, calc(100% - 780px))); pointer-events:none; }
+.globe-dock > * { pointer-events:auto; }
+.dock-row { display:flex; gap:8px; }
+.dock-button {
   display:flex; align-items:center; gap:6px; padding:9px 18px; border-radius:999px;
   font-size:11px; letter-spacing:.04em; color:var(--text);
   background:var(--glass-sheen), var(--glass-tint); border:1px solid var(--line);
   box-shadow:var(--glass-shadow); -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
   transition:transform .2s, background-color .2s;
 }
-.reset-button:hover { transform:translateX(-50%) translateY(-2px); }
+.dock-button:hover { transform:translateY(-2px); }
+
+/* Time bar */
+.timebar.glass-panel { position:relative; inset:auto; width:100%; padding:12px 14px 11px; border-radius:20px; display:flex; flex-direction:column; gap:9px; }
+.timebar-head { display:flex; align-items:center; gap:10px; min-width:0; }
+.timebar-mode { flex:none; padding:3px 8px; border-radius:999px; font-size:9px; font-weight:600; letter-spacing:.12em; color:#0b0c0f; background:#ffc56b; }
+.timebar-mode.live { background:#f4f5f7; }
+.timebar-time { font-size:13px; font-weight:600; letter-spacing:.02em; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.timebar-relative { flex:1; min-width:0; font-size:11px; color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.timebar-live { flex:none; padding:5px 11px; border-radius:999px; border:1px solid var(--line); background:var(--fill-strong); color:var(--text); font-size:11px; }
+.timebar-live:hover, .timebar-step:hover, .timebar-play:hover, .timebar-close:hover { background:var(--fill-hover); }
+.timebar-close { flex:none; display:grid; place-items:center; width:26px; height:26px; border-radius:50%; border:0; background:var(--fill); color:var(--text-2); }
+.timebar-track { display:flex; align-items:center; gap:8px; }
+.timebar-step, .timebar-play { flex:none; display:grid; place-items:center; width:32px; height:32px; border-radius:50%; border:1px solid var(--line); background:var(--fill); color:var(--text); }
+.timebar-play { width:38px; height:38px; background:#f4f5f7; color:#0b0c0f; border:0; }
+.timebar-play:hover { background:#fff; }
+.timebar-slider { position:relative; flex:1; min-width:0; padding-bottom:15px; }
+.timebar-slider input { width:100%; margin:0; accent-color:#f4f5f7; }
+.timebar-now { position:absolute; top:-3px; width:2px; height:20px; margin-left:-1px; border-radius:1px; background:#ffc56b; pointer-events:none; opacity:.85; }
+.timebar-scale { position:absolute; left:0; right:0; bottom:0; height:12px; font-size:9px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+.timebar-scale span { position:absolute; top:0; transform:translateX(-50%); white-space:nowrap; }
+.timebar-scale span:first-child { left:0; transform:none; }
+.timebar-scale-now { color:#ffc56b; }
+.timebar-foot { display:flex; align-items:center; gap:12px; }
+.timebar-foot .segmented { flex:none; width:210px; }
+.timebar-foot .segmented button { padding:5px 0; font-size:10px; }
+.timebar-hint { font-size:10px; line-height:1.4; color:var(--text-3); }
+.online-indicator.replay { border:0; background:transparent; padding:0; color:#ffc56b; cursor:pointer; font-family:inherit; }
+.online-indicator.replay span { background:#ffc56b; box-shadow:0 0 10px rgba(255,197,107,.8); }
 .globe-guide { position:absolute; left:50%; bottom:130px; transform:translateX(-50%); display:flex; align-items:center; gap:11px; white-space:nowrap; font-size:11px; letter-spacing:.03em; color:var(--text-2); pointer-events:none; }
 .guide-orbit { display:grid; place-items:center; width:27px; height:27px; border-radius:50%; border:1px solid var(--line); background:var(--fill); font-size:15px; }
 .globe-attribution { position:absolute; left:50%; bottom:15px; transform:translateX(-50%); max-width:calc(100vw - 44px); text-align:center; font-size:9px; letter-spacing:.03em; color:var(--text-3); }
@@ -132,9 +162,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* While the globe moves or streams tiles the canvas repaints repeatedly;
    re-blurring the backdrop on every repaint is the expensive part, so swap
    to a solid tint until it settles. */
-.is-moving .glass-panel, .is-moving .header-actions, .is-moving .reset-button,
-.is-loading .glass-panel, .is-loading .header-actions, .is-loading .reset-button,
-.quality-eco .glass-panel, .quality-eco .header-actions, .quality-eco .reset-button {
+.is-moving .glass-panel, .is-moving .header-actions, .is-moving .dock-button,
+.is-loading .glass-panel, .is-loading .header-actions, .is-loading .dock-button,
+.quality-eco .glass-panel, .quality-eco .header-actions, .quality-eco .dock-button {
   -webkit-backdrop-filter:none; backdrop-filter:none;
   background-color:var(--glass-tint-solid);
 }
@@ -346,12 +376,15 @@ h1 em { font-style:normal; color:var(--text-2); }
   .panel-dismiss { top:11px; right:13px; }
   .globe-guide { bottom:87px; font-size:10px; }
   .guide-orbit { width:24px; height:24px; }
-  .reset-button { bottom:36px; }
+  .globe-dock { bottom:36px; width:calc(100% - 20px); }
+  .timebar-foot { flex-direction:column; align-items:stretch; gap:7px; }
+  .timebar-foot .segmented { width:100%; }
+  .timebar-hint { display:none; }
   .globe-attribution { bottom:9px; width:calc(100vw - 20px); font-size:8px; }
   .cesium-viewer-bottom { bottom:63px!important; right:8px!important; }
   .satellite-catalog { max-height:120px; }
   /* Small GPUs: keep the glass look with a cheaper, smaller blur. */
-  .glass-panel, .header-actions, .reset-button { --glass-blur: blur(12px) saturate(150%); }
+  .glass-panel, .header-actions, .dock-button { --glass-blur: blur(12px) saturate(150%); }
 }
 @media(max-width:390px) {
   .brand-name { font-size:10px; }
@@ -360,7 +393,7 @@ h1 em { font-style:normal; color:var(--text-2); }
   .globe-guide { display:none; }
 }
 @media(prefers-reduced-transparency:reduce) {
-  .glass-panel, .header-actions, .reset-button { -webkit-backdrop-filter:none; backdrop-filter:none; background-color:var(--glass-tint-solid); }
+  .glass-panel, .header-actions, .dock-button { -webkit-backdrop-filter:none; backdrop-filter:none; background-color:var(--glass-tint-solid); }
 }
 @media(prefers-reduced-motion:reduce) {
   *, *:before, *:after { animation-duration:.01ms!important; transition-duration:.01ms!important; }

@@ -1,4 +1,4 @@
-import { Cloud, Globe, Layers2, Lightbulb, MapPin, Mountain, Sparkles, SunMoon } from "lucide-react";
+import { Cloud, Globe, Image as ImageIcon, Layers2, Lightbulb, MapPin, Mountain, Sparkles, SunMoon } from "lucide-react";
 import { ATMOSPHERE_LAYERS, ATMOSPHERE_SCALES, formatHeight } from "../atmosphereLayers";
 import { kpLevel, type GeomagneticState } from "../geomagnetic";
 import type { Polled } from "../hooks/usePolledData";
@@ -14,9 +14,12 @@ interface Props {
   clouds: { status: string; time: string | null };
   aurora: AuroraStatus;
   geomagnetic: Polled<GeomagneticState>;
+  /** False while the timeline shows another moment. */
+  live: boolean;
+  trueColor: { date: string; source: string };
 }
 
-export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, aurora, geomagnetic }: Props) {
+export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, aurora, geomagnetic, live, trueColor }: Props) {
   return (
     <LayerGroup title="EARTH VIEW" subtitle="地球视图" open>
       <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={layers.dayNight} onChange={(v) => setLayer("dayNight", v)} />
@@ -34,8 +37,16 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
           <p className="layer-note">真实比例下对流层不到地球半径的 0.3%，在全球视角里只有一两个像素厚；拉近到地球边缘侧看最清楚。高度参考美国标准大气 1976，实际随纬度、季节与太阳活动变化。</p>
         </div>
       )}
+      <ToggleRow icon={<ImageIcon {...ICON} />} title="每日真彩影像" caption={"NASA GIBS · " + trueColor.source + " · 逐日拼接"} checked={layers.trueColor} onChange={(v) => setLayer("trueColor", v)} />
+      {layers.trueColor && (
+        <div className="layer-extra">
+          <p className="layer-status" role="status">影像日期 {trueColor.date}（UTC）· 跟随时间轴</p>
+          <p className="layer-note">极轨卫星一天内多次过境拼接而成，云是各地卫星过境时刻的云；轨道间的缝隙和极夜区域显示下方底图。当天影像仍在补全，因此"实时"时显示前一天。</p>
+        </div>
+      )}
       <ToggleRow icon={<Cloud {...ICON} />} title="卫星云图（红外）" caption="SSEC 多卫星全球合成 · 逐小时观测" checked={layers.clouds} onChange={(v) => setLayer("clouds", v)} />
-      {layers.clouds && <div className="cloud-controls">
+      {layers.clouds && !live && <p className="layer-status" role="status">云图只有最新观测，回看其他时刻时暂不显示。</p>}
+      {layers.clouds && live && <div className="cloud-controls">
         <p className="thematic-note" role="status">{clouds.status === "loading" ? "正在读取卫星云图…" : clouds.status === "error" ? "云图加载失败；如保留上一时次，请以观测时间为准。" : "观测时间 " + (clouds.time ?? "—")}</p>
         <label className="opacity-head" htmlFor="cloud-opacity"><span>云图不透明度</span><span>{options.cloudOpacity}%</span></label>
         <input id="cloud-opacity" type="range" min="10" max="100" step="5" value={options.cloudOpacity} onChange={(event) => setOption("cloudOpacity", Number(event.target.value))} />
@@ -44,7 +55,8 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
       </div>}
       <ToggleRow icon={<Lightbulb {...ICON} />} title="城市夜光" caption={layers.dayNight ? "NASA Black Marble 卫星夜光 · 仅夜侧" : "需开启实时昼夜光照"} checked={layers.lights} onChange={(v) => setLayer("lights", v)} />
       <ToggleRow icon={<Sparkles {...ICON} />} title="北极极光" caption="NOAA OVATION 实时预报 · 夜侧可见" checked={layers.aurora} onChange={(v) => setLayer("aurora", v)} />
-      {layers.aurora && aurora.state !== "idle" && (
+      {layers.aurora && !live && <p className="layer-status" role="status">极光预报与 Kp 指数只有实时数据，回看其他时刻时暂不显示。</p>}
+      {layers.aurora && live && aurora.state !== "idle" && (
         <p className="layer-status" role="status">
           {aurora.state === "loading" ? "正在读取 NOAA 极光预报…" :
            aurora.state === "error" ? "NOAA 极光数据暂不可用，未显示极光；不会绘制虚构极光。" :
@@ -52,7 +64,7 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
            "预报时间 " + (aurora.forecast ?? "—") + " · 最高可见概率 " + aurora.max + "% · 亮度按概率显示"}
         </p>
       )}
-      {layers.aurora && geomagnetic.status !== "idle" && <KpPanel geomagnetic={geomagnetic} />}
+      {layers.aurora && live && geomagnetic.status !== "idle" && <KpPanel geomagnetic={geomagnetic} />}
       <ToggleRow icon={<Mountain {...ICON} />} title="地理标注" caption="海洋、山脉、沙漠、平原、盆地与河流 · 自动避让" checked={layers.geoLabels} onChange={(v) => setLayer("geoLabels", v)} />
       <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={layers.cities} onChange={(v) => setLayer("cities", v)} />
     </LayerGroup>

@@ -15,7 +15,7 @@ import {
   type Viewer,
 } from "cesium";
 import { LABEL_FONT } from "./labelFont.ts";
-import { orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
+import { elementsValidAt, orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
 
 // Ground-fixed forecast path is recomputed after this much simulated time.
 export const SATELLITE_PATH_UPDATE_MS = 120_000;
@@ -84,6 +84,8 @@ export class SatelliteOverlay {
   // Simulated clock: simMs = anchorSimMs + (realNow - anchorRealMs) * speed.
   private anchorRealMs = Date.now();
   private anchorSimMs = Date.now();
+  // Set while the timeline shows a moment other than "live".
+  private clock: (() => Date) | null = null;
   private frameHandle: number | null = null;
   private lastFrameMs = 0;
   private readonly scratchHere = new Cartesian3();
@@ -146,7 +148,18 @@ export class SatelliteOverlay {
 
   /** Current simulated instant (equals real time at 1x). */
   simulatedTime(): Date {
+    if (this.clock) return this.clock();
     return new Date(this.anchorSimMs + (Date.now() - this.anchorRealMs) * this.speed);
+  }
+
+  /** Follow the timeline (null: back to the live, speed-controlled clock). */
+  setClock(clock: (() => Date) | null): void {
+    this.clock = clock;
+    if (!clock) {
+      this.anchorRealMs = Date.now();
+      this.anchorSimMs = this.speed === 1 ? this.anchorRealMs : this.anchorSimMs;
+    }
+    this.update(true);
   }
 
   setSpeed(speed: SatelliteSpeed): void {
@@ -176,8 +189,12 @@ export class SatelliteOverlay {
     const updatePaths = forcePaths || (this.showPaths && Math.abs(now.getTime() - this.lastPathSimMs) > SATELLITE_PATH_UPDATE_MS);
     const ahead = new Date(now.getTime() + HEADING_SAMPLE_MS);
     for (const pair of this.pairs) {
-      const pos = positionAt(pair.record, now);
+      // Far from the element epoch SGP4 drifts by hundreds of km: hide
+      // rather than draw a position we cannot vouch for.
+      const valid = elementsValidAt(pair.record, now);
+      const pos = valid ? positionAt(pair.record, now) : null;
       pair.marker.show = Boolean(pos);
+      if (!valid) pair.path.show = false;
       if (pos) {
         const here = toCartesian(pos, this.scratchHere);
         pair.position.setValue(here);
@@ -187,7 +204,7 @@ export class SatelliteOverlay {
           if (Cartesian3.magnitude(direction) > 0) pair.axis.setValue(Cartesian3.normalize(direction, new Cartesian3()));
         }
       }
-      if (updatePaths && this.showPaths) {
+      if (valid && updatePaths && this.showPaths) {
         const points = orbitPath(pair.record, now);
         pair.path.polyline!.positions = new ConstantProperty(points.map((point) => toCartesian(point)));
         pair.path.show = points.length > 1;
@@ -227,4 +244,5 @@ export class SatelliteOverlay {
     this.viewer.scene.requestRender();
   }
   get count(): number { return this.pairs.length; }
+  get followsTimeline(): boolean { return this.clock !== null; }
 }

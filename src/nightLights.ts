@@ -65,9 +65,11 @@ function lightsTile(image: ImageryTypes): ImageryTypes | Promise<ImageryTypes> {
  */
 export class NightLightsImageryProvider extends UrlTemplateImageryProvider {
   skippedTiles = 0;
+  /** Off while the timeline shows another moment: "daylit now" would be wrong then. */
+  skipDaylit = true;
 
   override requestImage(x: number, y: number, level: number, request?: Request): Promise<ImageryTypes> | undefined {
-    if (level >= MIN_SKIP_LEVEL) {
+    if (this.skipDaylit && level >= MIN_SKIP_LEVEL) {
       const rect = this.tilingScheme.tileXYToRectangle(x, y, level);
       const degrees = {
         west: CesiumMath.toDegrees(rect.west), south: CesiumMath.toDegrees(rect.south),

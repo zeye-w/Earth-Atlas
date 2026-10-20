@@ -28,8 +28,6 @@ function dismissSplash() {
   window.setTimeout(() => splash.remove(), 700);
 }
 
-const utcNow = () => new Date().toISOString().slice(11, 16);
-
 /**
  * Creates the Cesium viewer with the base scene (sky, sunlight, base
  * imagery), keeps the solar clock in sync, and reports camera motion and
@@ -44,14 +42,12 @@ export function useViewer(
 ) {
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [globeError, setGlobeError] = useState<string | null>(null);
-  const [utcTime, setUtcTime] = useState(utcNow);
   const clickRef = useRef(onLeftClick);
   clickRef.current = onLeftClick;
 
   useEffect(() => {
     if (!mountRef.current) return;
     let created: Viewer | null = null;
-    let solarClockTimer: number | null = null;
     let splashTimer: number | null = null;
     let detailTimer: number | null = null;
     try {
@@ -89,8 +85,8 @@ export function useViewer(
       scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
 
       // Physically positioned SunLight replaces the camera-following studio
-      // light. A fixed viewer clock is refreshed from UTC every minute, keeping
-      // the true solar terminator without forcing continuous WebGL rendering.
+      // light. The viewer clock does not run; the timeline sets it (live:
+      // refreshed from UTC every minute) without forcing continuous rendering.
       v.clock.shouldAnimate = false;
       v.clock.currentTime = JulianDate.fromDate(new Date());
       scene.light = new SunLight({ intensity: 2.0 });
@@ -112,14 +108,6 @@ export function useViewer(
         scene.skyAtmosphere.brightnessShift = 0;
         scene.skyAtmosphere.atmosphereLightIntensity = 14;
       }
-      const syncClock = () => {
-        if (v.isDestroyed() || document.visibilityState !== "visible") return;
-        v.clock.currentTime = JulianDate.fromDate(new Date());
-        setUtcTime(utcNow());
-        scene.requestRender();
-      };
-      solarClockTimer = window.setInterval(syncClock, 60_000);
-      document.addEventListener("visibilitychange", syncClock);
 
       if (initialScene) {
         const [lon, lat, height, heading, pitch, roll] = initialScene.camera;
@@ -166,10 +154,8 @@ export function useViewer(
       scene.requestRender();
 
       return () => {
-        if (solarClockTimer !== null) window.clearInterval(solarClockTimer);
         if (splashTimer !== null) window.clearTimeout(splashTimer);
         if (detailTimer !== null) window.clearTimeout(detailTimer);
-        document.removeEventListener("visibilitychange", syncClock);
         setViewer(null);
         if (!v.isDestroyed()) v.destroy();
       };
@@ -182,5 +168,5 @@ export function useViewer(
     // The viewer is created once; the initial scene only seeds the camera.
   }, []);
 
-  return { viewer, globeError, utcTime };
+  return { viewer, globeError };
 }

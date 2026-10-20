@@ -6,7 +6,7 @@ import type { AgeFilter, RockFilter, ThematicMode } from "../mapThematic";
 import type { SatelliteSpeed } from "../satelliteOverlay";
 
 /** Every layer toggle: the shareable scene keys plus geographic labels and the atmosphere shells. */
-export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; shells: boolean };
+export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; trueColor: boolean; shells: boolean };
 
 export interface LayerOptions {
   cloudOpacity: number;
@@ -26,7 +26,7 @@ function initialToggles(scene: SceneState | null): LayerToggles {
     satellites: typeof window !== "undefined" && window.innerWidth >= 760, paths: true,
   };
   // Links shared before geographic labels existed keep showing none.
-  return { ...(scene ? scene.layers : defaults), geoLabels: scene ? Boolean(scene.layers.geoLabels) : true, shells: Boolean(scene?.options.atmosphereShells) };
+  return { ...(scene ? scene.layers : defaults), geoLabels: scene ? Boolean(scene.layers.geoLabels) : true, trueColor: Boolean(scene?.layers.trueColor), shells: Boolean(scene?.options.atmosphereShells) };
 }
 
 function initialOptions(scene: SceneState | null): LayerOptions {
@@ -53,5 +53,5 @@ export function useLayerSettings(scene: SceneState | null) {
 
 /** The shareable subset of the layer toggles. */
 export function sceneLayers(layers: LayerToggles): SceneState["layers"] {
-  return { ...Object.fromEntries(LAYER_KEYS.map((key) => [key, layers[key]])), geoLabels: layers.geoLabels } as SceneState["layers"];
+  return { ...Object.fromEntries(LAYER_KEYS.map((key) => [key, layers[key]])), geoLabels: layers.geoLabels, trueColor: layers.trueColor } as SceneState["layers"];
 }

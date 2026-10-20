@@ -177,3 +177,21 @@ Geographic labels now include 12 deserts, 8 plains, 6 basins and 14 rivers (172 
 Screen-space collision layout uses measured text widths and padding, gives city/satellite labels priority, removes duplicate names in one view, and suppresses geographic labels that collide or leave the viewport. Smaller features appear only when zoomed in; names stay at their real anchors. Stationary frames reuse layout for up to one second rather than repeating projections on every animated frame.
 
 Balanced quality caps pixel ratio at 1.25 (about 31% fewer framebuffer pixels than the previous 1.5 on high-DPI screens); High remains available. The bundled globe paints before remote Blue Marble imagery (1.5 s delay) and night-light extraction (1.8 s delay); night lights cap at zoom 6, with lower fine detail in exchange for less download/decode/pixel processing. Aurora animation requests 6 rather than 12 frames/s. These are rendering-budget reductions, not a measured FPS guarantee on all devices.
+
+## Timeline
+
+`src/timeline.ts` holds the scene clock (`TimeController`): **live** follows UTC (refreshed every minute and when the tab becomes visible); otherwise the user has moved to a fixed moment, or is replaying forward (24 h span: 1 h per second; 7 d: 6 h/s; 30 d: 1 day/s; reaching the present returns to live). The range is the chosen span back from now plus one day ahead. Layers subscribe imperatively, so replay ticks do not re-render the React tree:
+
+- **Sunlight:** Cesium's clock (and so `SunLight` and the terminator) is set to the timeline moment.
+- **Earthquakes:** events after the moment are hidden and those in the 24 hours before it are outlined, so replay shows them appearing in order. The time-bar span also selects the matching USGS feed (24 h/7 d at M2.5+, 30 d at M4.5+); before the feed's coverage the panel says earlier events are missing.
+- **Satellites:** SGP4 positions at the moment (static while paused). Satellites whose elements are more than 10 days from the moment are hidden rather than drawn with large propagation error.
+- **City lights:** daylit-tile skipping assumes "now", so away from live the layer is rebuilt without it.
+- **Aurora/Kp and infrared clouds** have only current data and are hidden away from live, with a note in the panel.
+- **Daily true colour** shows the moment's UTC day (yesterday when live or in the future); the day is held during replay to avoid refetching every second.
+
+Shared scene links carry the moment as optional `time` (ms since epoch); a moment older than 30 days opens live.
+
+## Daily true-colour imagery
+
+NASA GIBS `VIIRS_NOAA20_CorrectedReflectance_TrueColor` (EPSG:3857, `GoogleMapsCompatible_Level9`, JPEG, CORS `*`), one mosaic per UTC day assembled from the satellite's daytime passes. Black no-data areas (gaps between swaths, polar night) are made transparent so the Blue Marble base shows through; the layer is hidden on the night side. Clouds are as seen at each place's overpass time, not a single instant. The live smoke test checks yesterday's and a month-old tile.
+

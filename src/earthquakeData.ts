@@ -12,6 +12,15 @@ export const QUAKE_RANGES: readonly QuakeRange[] = ["day", "week", "month"];
 export const QUAKE_REFRESH_MS = 5 * 60 * 1000;
 export const QUAKE_ID_PREFIX = "quake:";
 
+/** Events that had happened by `time`, plus whether the feed reaches back that far. */
+export function quakesAt(quakes: readonly Earthquake[], range: QuakeRange, time: number, now = Date.now()) {
+  const shown = quakes.filter((quake) => quake.time.getTime() <= time);
+  const covered = time >= now - QUAKE_RANGE_MS[range];
+  return { shown, covered };
+}
+
+export const QUAKE_RANGE_MS: Readonly<Record<QuakeRange, number>> = { day: 24 * 3_600_000, week: 7 * 24 * 3_600_000, month: 30 * 24 * 3_600_000 };
+
 export interface Earthquake {
   id: string;
   magnitude: number;

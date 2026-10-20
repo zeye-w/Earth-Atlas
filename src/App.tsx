@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Cartesian2, Cartesian3, Cartographic, Ellipsoid, Math as CesiumMath, type Entity, type Viewer } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
-import { Move3d, RotateCcw, X } from "lucide-react";
+import { Move3d, X } from "lucide-react";
 import { QUAKE_ID_PREFIX, type Earthquake } from "./earthquakeData";
 import { VOLCANO_ID_PREFIX, type Volcano } from "./volcanoData";
 import { RENDER_QUALITY_LABELS } from "./performance";
@@ -9,12 +9,15 @@ import { readScene, sceneHash, type SceneState } from "./sceneState";
 import { HOME_VIEW, useViewer } from "./hooks/useViewer";
 import { useRenderQuality } from "./hooks/useRenderQuality";
 import { sceneLayers, useLayerSettings } from "./hooks/useLayerSettings";
+import { useSceneClock, useTimeSelector, useTimeline } from "./hooks/useTimeline";
+import { SPAN_MS, type TimeSpan } from "./timeline";
 import { useEarthView } from "./layers/useEarthView";
 import { useClouds } from "./layers/useClouds";
 import { useAurora } from "./layers/useAurora";
 import { useAtmosphereShells } from "./layers/useAtmosphereShells";
 import { useEarthquakes } from "./layers/useEarthquakes";
 import { useGeoLabels } from "./layers/useGeoLabels";
+import { useTrueColor } from "./layers/useTrueColor";
 import { usePlateBoundaries, useVolcanoes } from "./layers/useTectonics";
 import { useSatellites } from "./layers/useSatellites";
 import { useGeologyMap } from "./layers/useGeologyMap";
@@ -27,6 +30,7 @@ import { SatellitesGroup } from "./panels/SatellitesGroup";
 import { GeologyGroup } from "./panels/GeologyGroup";
 import { Inspector } from "./panels/Inspector";
 import { SearchPanel, SharePanel } from "./panels/SceneTools";
+import { GlobeDock, SceneSubtitle, TimeIndicator } from "./panels/TimeBar";
 import "./styles.css";
 
 const isNarrow = () => window.innerWidth < 760;
@@ -34,6 +38,13 @@ const isNarrow = () => window.innerWidth < 760;
 function App() {
   const [initialScene] = useState(() => readScene(window.location.hash));
   const { layers, setLayer, options, setOption } = useLayerSettings(initialScene);
+  // A shared moment older than the timeline reaches opens live instead.
+  const timeline = useTimeline({
+    span: options.quakeRange,
+    time: initialScene?.time !== undefined && initialScene.time > Date.now() - SPAN_MS.month ? initialScene.time : undefined,
+  });
+  const live = useTimeSelector(timeline, (state) => state.live);
+  const [timebarOpen, setTimebarOpen] = useState(() => !live);
   const shellRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -94,19 +105,32 @@ function App() {
     selectLocation(CesiumMath.toDegrees(cartographic.latitude), CesiumMath.toDegrees(cartographic.longitude));
   };
 
-  const { viewer, globeError, utcTime } = useViewer(mountRef, shellRef, initialScene, handleClick);
+  const { viewer, globeError } = useViewer(mountRef, shellRef, initialScene, handleClick);
+  useSceneClock(viewer, timeline);
   const render = useRenderQuality(viewer, (quality, fps) =>
     setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"));
-  useEarthView(viewer, layers);
-  const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity);
-  const aurora = useAurora(viewer, layers.aurora);
+  useEarthView(viewer, layers, timeline);
+  const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
+  // Clouds and aurora only exist for "now": hidden while viewing another moment.
+  const clouds = useClouds(viewer, layers.clouds && live, options.cloudOpacity);
+  const aurora = useAurora(viewer, layers.aurora && live);
   useAtmosphereShells(viewer, layers.shells, options.shellScale);
-  const quakes = useEarthquakes(viewer, layers.quakes, options.quakeRange);
+  const quakes = useEarthquakes(viewer, layers.quakes, options.quakeRange, timeline);
   useGeoLabels(viewer, layers.geoLabels);
   const plateStatus = usePlateBoundaries(viewer, layers.plates);
   const volcanoes = useVolcanoes(viewer, layers.volcanoes);
-  const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId });
+  const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, timeline });
   const vectorState = useGeologyMap(viewer, { visible: layers.geology, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter });
+
+  // The time-bar range also picks the matching USGS feed, so replay has data.
+  useEffect(() => {
+    let span: TimeSpan = timeline.getState().span;
+    return timeline.subscribe((state) => {
+      if (state.span === span) return;
+      span = state.span;
+      setOption("quakeRange", state.span);
+    });
+  }, [timeline, setOption]);
 
   useEffect(() => {
     if (initialScene?.point) selectLocation(initialScene.point.latitude, initialScene.point.longitude);
@@ -136,6 +160,7 @@ function App() {
       camera: [CesiumMath.toDegrees(position.longitude), CesiumMath.toDegrees(position.latitude), Math.max(15000, Math.min(65000000, position.height)), camera.heading, camera.pitch, camera.roll],
       layers: sceneLayers(layers),
       point: point ?? undefined,
+      time: live ? undefined : timeline.getState().time,
       options: { cloudOpacity: options.cloudOpacity, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter, quakeRange: options.quakeRange, atmosphereShells: layers.shells ? options.shellScale : 0 },
     };
     const url = new URL(window.location.href);
@@ -165,7 +190,7 @@ function App() {
       }} />}
       {shareUrl && <SharePanel url={shareUrl} onClose={() => setShareUrl(null)} />}
       <TopBar
-        utcTime={utcTime}
+        clock={<TimeIndicator timeline={timeline} />}
         searchOpen={searchOpen}
         onToggleSearch={() => setSearchOpen((open) => !open)}
         onShare={() => void shareScene()}
@@ -181,9 +206,9 @@ function App() {
 
       <main className="workspace">
         <LayerPanel open={controlsOpen} onClose={() => setControlsOpen(false)} onFlyTo={flyTo}>
-          <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} />
-          <TectonicsGroup {...groupProps} quakes={quakes.status} volcanoes={volcanoes} plateStatus={plateStatus} />
-          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} />
+          <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} />
+          <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
+          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
         </LayerPanel>
 
@@ -191,11 +216,11 @@ function App() {
           <div className="globe-mount" ref={mountRef} />
           <div className="globe-top-left">
             <span className="map-tag"><span className="tag-dot" /> 3D DIGITAL EARTH</span>
-            <span className="map-subtitle">{layers.dayNight ? "REAL-TIME SUNLIGHT" : "EARTH OBSERVATION"} · {utcTime} UTC</span>
+            <SceneSubtitle timeline={timeline} dayNight={layers.dayNight} />
           </div>
           {toast && <div className="toast" role="status">{toast}<button type="button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={13} aria-hidden="true" /></button></div>}
-          <button className="reset-button" type="button" onClick={resetCamera} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
-          <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>
+          <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera} />
+          {!timebarOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
           <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>

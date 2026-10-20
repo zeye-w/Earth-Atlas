@@ -117,6 +117,19 @@ test("geographic labels are on by default and can be turned off", async ({ page 
   await expect(toggle).not.toBeChecked();
 });
 
+test("the timeline moves the scene time and replays earthquakes", async ({ page }) => {
+  await page.goto(sceneUrl(QUAKE_POINT.longitude, QUAKE_POINT.latitude, 3_000_000, { quakes: true }));
+  await waitForGlobe(page);
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(page.locator(".online-indicator")).toContainText("回看");
+  await openGroup(page, "TECTONICS");
+  await expect(layerPanel(page).locator(".layer-extra .layer-status").first()).toContainText(/回放：截至所选时刻 1?\d 次地震/);
+  await page.getByRole("button", { name: "回到实时", exact: true }).click();
+  await expect(page.locator(".online-indicator")).toContainText("LIVE");
+  await expect(layerPanel(page).locator(".layer-extra .layer-status").first()).toContainText("21 次地震");
+});
+
 test("manual quality choice turns off automatic quality", async ({ page }) => {
   await page.goto("/");
   await waitForGlobe(page);

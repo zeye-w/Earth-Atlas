@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Credit, ImageryLayer, TileMapServiceImageryProvider, UrlTemplateImageryProvider, buildModuleUrl, type Entity, type Viewer } from "cesium";
 import { addWorldCityMarkers, declutterCityLabels } from "../cityMarkers";
 import { NIGHT_LIGHTS_REFRESH_MS, NightLightsImageryProvider } from "../nightLights";
+import type { TimeController } from "../timeline";
 
 // NASA Black Marble 2016 (VIIRS night lights composite, public domain).
 const BLACK_MARBLE_URL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png";
@@ -38,12 +39,14 @@ function darkenForNight(layer: ImageryLayer, show: boolean): ImageryLayer {
 // dayAlpha/nightAlpha across the solar terminator when lighting is on (with
 // lighting off everything counts as day, so it disappears). Tiles lying
 // entirely in daylight are never downloaded (NightLightsImageryProvider).
-function createLightsLayer(show: boolean): ImageryLayer {
-  const layer = new ImageryLayer(new NightLightsImageryProvider({
+function createLightsLayer(show: boolean, skipDaylit: boolean): ImageryLayer {
+  const provider = new NightLightsImageryProvider({
     url: BLACK_MARBLE_URL,
     maximumLevel: 6,
     credit: new Credit('<a href="https://earthobservatory.nasa.gov/features/NightLights" target="_blank" rel="noopener noreferrer">Night lights: NASA Black Marble 2016 (VIIRS)</a>'),
-  }));
+  });
+  provider.skipDaylit = skipDaylit;
+  const layer = new ImageryLayer(provider);
   layer.dayAlpha = 0;
   layer.nightAlpha = 1;
   layer.show = show;
@@ -51,7 +54,7 @@ function createLightsLayer(show: boolean): ImageryLayer {
 }
 
 /** Sunlight, sky/ground atmosphere, city markers and night-side city lights. */
-export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean; atmosphere: boolean; cities: boolean; lights: boolean }) {
+export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean; atmosphere: boolean; cities: boolean; lights: boolean }, timeline: TimeController) {
   const markersRef = useRef<Entity[]>([]);
   const lightsRef = useRef<ImageryLayer | null>(null);
   const nightBaseRef = useRef<ImageryLayer | null>(null);
@@ -71,7 +74,7 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
       viewer.imageryLayers.add(polarNightBaseRef.current, 1);
       nightBaseRef.current = createNightBaseLayer(lightsVisibleRef.current);
       viewer.imageryLayers.add(nightBaseRef.current);
-      lightsRef.current = createLightsLayer(lightsVisibleRef.current);
+      lightsRef.current = createLightsLayer(lightsVisibleRef.current, timeline.getState().live);
       viewer.imageryLayers.add(lightsRef.current);
       viewer.scene.requestRender();
     };
@@ -80,18 +83,32 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
     // terminator moves. The new layer is added above the old one, which is
     // removed once the replacement has had time to load (no blink).
     let removeOldTimer: number | null = null;
-    const refreshTimer = window.setInterval(() => {
+    const rebuild = (live: boolean) => {
       const old = lightsRef.current;
-      if (!old || viewer.isDestroyed() || !lightsVisibleRef.current || document.visibilityState !== "visible") return;
-      const next = createLightsLayer(true);
+      if (!old || viewer.isDestroyed()) return;
+      const next = createLightsLayer(old.show, live);
       viewer.imageryLayers.add(next, viewer.imageryLayers.indexOf(old) + 1);
       lightsRef.current = next;
       removeOldTimer = window.setTimeout(() => {
         if (!viewer.isDestroyed() && viewer.imageryLayers.contains(old)) viewer.imageryLayers.remove(old, true);
       }, 15_000);
+    };
+    const refreshTimer = window.setInterval(() => {
+      const { live } = timeline.getState();
+      if (live && lightsVisibleRef.current && document.visibilityState === "visible") rebuild(true);
     }, NIGHT_LIGHTS_REFRESH_MS);
+    // Away from "live" every tile may be needed: rebuild without skipping
+    // (and with skipping again on returning to live).
+    let wasLive = timeline.getState().live;
+    const removeTimeListener = timeline.subscribe(({ live }) => {
+      if (live === wasLive) return;
+      wasLive = live;
+      const current = lightsRef.current?.imageryProvider;
+      if (current instanceof NightLightsImageryProvider && current.skipDaylit !== live) rebuild(live);
+    });
     return () => {
       removeDeclutter();
+      removeTimeListener();
       window.clearTimeout(startupTimer);
       window.clearInterval(refreshTimer);
       if (removeOldTimer !== null) window.clearTimeout(removeOldTimer);
@@ -109,7 +126,7 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
       nightBaseRef.current = null;
       polarNightBaseRef.current = null;
     };
-  }, [viewer]);
+  }, [viewer, timeline]);
 
   useEffect(() => {
     if (!viewer) return;

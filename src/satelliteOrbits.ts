@@ -65,6 +65,10 @@ export function parseGPRecords(value: unknown): GPRecord[] {
 function recordAgeDays(epoch: Date, now: Date): number {
   return Math.abs(now.getTime() - epoch.getTime()) / 86_400_000;
 }
+/** Whether the elements are fresh enough to place the satellite at `time`. */
+export function elementsValidAt(record: OrbitRecord, time: Date): boolean {
+  return recordAgeDays(record.epoch, time) <= MAX_ELEMENT_AGE_DAYS;
+}
 export function convertGPRecords(records: readonly GPRecord[], now = new Date()): OrbitRecord[] {
   const byCatalog = new Map<number, GPRecord>();
   for (const record of records) {

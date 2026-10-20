@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowUpRight, Code, Crosshair, Layers, Maximize, Minimize, Orbit, Search, Share2, SlidersHorizontal } from "lucide-react";
 import { AUTO_QUALITY_MIN_FPS, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, type RenderQuality } from "../performance";
 import { ICON, Segmented } from "../ui/controls";
 
 interface Props {
-  utcTime: string;
+  clock: ReactNode;
   searchOpen: boolean;
   onToggleSearch: () => void;
   onShare: () => void;
@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function TopBar(props: Props) {
-  const { utcTime, searchOpen, onToggleSearch, onShare, controlsOpen, onToggleControls, detailsOpen, onToggleDetails } = props;
+  const { clock, searchOpen, onToggleSearch, onShare, controlsOpen, onToggleControls, detailsOpen, onToggleDetails } = props;
   return (
     <header className="topbar">
       <a className="brand" href="/" aria-label="TerraScope 首页">
@@ -29,7 +29,7 @@ export function TopBar(props: Props) {
         <span className="brand-caption">数字地球</span>
       </a>
       <div className="header-right">
-        <span className="online-indicator"><span /> LIVE · {utcTime} UTC</span>
+        {clock}
         <div className="header-actions" role="group" aria-label="页面视图控制">
           <button type="button" className="header-action" aria-label="搜索地点" aria-expanded={searchOpen} aria-controls="place-search-panel" onClick={onToggleSearch}><Search {...ICON} /><span className="action-caption">搜索</span></button>
           <button type="button" className="header-action" aria-label="分享当前场景" onClick={onShare}><Share2 {...ICON} /><span className="action-caption">分享</span></button>

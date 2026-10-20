@@ -31,8 +31,8 @@ const OFF = {
 };
 const OPTIONS = { cloudOpacity: 65, opacity: 85, mapMode: "raster", ageFilter: "all", rockFilter: "all", quakeRange: "month" };
 
-function sceneUrl(camera, layers, options = {}) {
-  const scene = { v: 1, camera, layers: { ...OFF, ...layers }, options: { ...OPTIONS, ...options } };
+function sceneUrl(camera, layers, options = {}, time) {
+  const scene = { v: 1, camera, layers: { ...OFF, ...layers }, options: { ...OPTIONS, ...options }, ...(time ? { time } : {}) };
   return BASE + "/#scene=" + encodeURIComponent(JSON.stringify(scene));
 }
 const topDown = (lon, lat, height) => [lon, lat, height, 0, -Math.PI / 2 + 1e-6, 0];
@@ -46,6 +46,8 @@ const SHOTS = [
   ["satellites", sceneUrl(topDown(wrap(sun.longitude), 20, 25_000_000), { satellites: true, paths: true }), { group: "SATELLITES", wait: "已加载" }],
   ["geology", sceneUrl(topDown(-104, 39, 4_500_000), { dayNight: false, geology: true, cities: true }), { click: "RECORD FOUND" }],
   ["atmosphere-layers", sceneUrl([wrap(sun.longitude - 10), 0, 1_200_000, Math.PI / 2, -0.45, 0], { dayNight: false, cities: false }, { atmosphereShells: 5 }), { group: "EARTH VIEW" }],
+  ["timeline", sceneUrl(topDown(150, 15, 14_000_000), { quakes: true, plates: true, lights: true }, {}, Math.floor((Date.now() - 12 * 86_400_000) / 3_600_000) * 3_600_000), { group: "TECTONICS", wait: "回放" }],
+  ["true-color", sceneUrl(topDown(wrap(sun.longitude - 15), 12, 12_500_000), { dayNight: false, trueColor: true }), {}],
   ["geo-labels", sceneUrl(topDown(116, 30, 6_500_000), { dayNight: false, cities: true, geoLabels: true }), {}],
   ["clouds", sceneUrl(topDown(wrap(sun.longitude), 12, 17_000_000), { dayNight: false, clouds: true }), {}],
 ];

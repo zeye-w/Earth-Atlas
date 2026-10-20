@@ -8,6 +8,7 @@ import { parseGeologicalUnits } from "../src/geology.ts";
 import { parseLithologyDictionary } from "../src/lithology.ts";
 import { OVATION_URL, northernProfile, parseOvation } from "../src/auroraData.ts";
 import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
+import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { KP_HISTORY_URL, KP_NOW_URL, kpLevel, parseKpHistory, parseKpNow } from "../src/geomagnetic.ts";
 
 async function get(label, url, timeout = 20000) {
@@ -162,6 +163,26 @@ for (const [label, url] of [
 }
 
 const site = "https://earth-atlas.edwardlab.workers.dev";
+
+// Daily true colour: yesterday's and a month-old mosaic must reach the deployed origin.
+for (const date of [trueColorDate(new Date()), trueColorDate(new Date(Date.now() - 28 * 24 * 60 * 60 * 1000))]) {
+  const label = "GIBS true colour " + TRUE_COLOR_LAYER + " " + date;
+  try {
+    const response = await fetch(trueColorUrl(date).replace("{z}/{y}/{x}", "3/3/6"), { signal: AbortSignal.timeout(20000), headers: { Origin: site } });
+    const type = response.headers.get("content-type") || "(missing)";
+    const cors = response.headers.get("access-control-allow-origin") ?? "(missing)";
+    const bytes = (await response.arrayBuffer()).byteLength;
+    console.log(label, "HTTP", response.status, type, "CORS", cors, "bytes", bytes);
+    assert.ok(response.ok, "HTTP " + response.status);
+    assert.match(type, /image\/jpeg/i);
+    assert.ok(cors === "*" || cors === site, "CORS disallows deployed origin");
+    assert.ok(bytes > 5000, "tile unexpectedly small (no data?)");
+  } catch (error) {
+    failed = true;
+    console.error("LIVE_GIBS_FAILURE:", label, error);
+  }
+}
+
 for (const path of [
   "/",
   "/cesium/Workers/transferTypedArrayTest.js",
