@@ -16,7 +16,7 @@
 | 1 | 0.0–3.0 | 开场 | 黑暗中地球渐显，东亚黄昏，晨昏线横穿中国，镜头缓慢推近 | 此刻的地球 / EARTH, RIGHT NOW | 黑场淡入 0.8 s |
 | 2 | 3.0–6.5 | 日照扫过 | 欧洲非洲上空，时间推进 4.5 小时，晨昏线扫过，城市灯光逐个亮起 | 真实日照 · 由 UTC 时间计算 / REAL SUNLIGHT, COMPUTED FROM UTC | 叠化 |
 | 3 | 6.5–10.0 | 城市夜光 | 从 5,200 km 俯冲到 2,600 km，同时抬头，欧洲夜景灯光连成网，远处是地平线 | NASA 卫星观测的城市夜光 / CITY LIGHTS SEEN BY NASA SATELLITES | 叠化 |
-| 4 | 10.0–13.5 | 极光 | 夜侧极区，绿色极光帘幕在地平线上闪动，镜头缓慢横移 | NOAA 实时极光预报 / LIVE AURORA FORECAST · NOAA | 叠化 |
+| 4 | 10.0–13.5 | 极光 | 低空平视，绿色极光帘幕立在地平线上闪动，镜头缓慢横移 | NOAA 实时极光预报 / LIVE AURORA FORECAST · NOAA | 叠化 |
 | 5 | 13.5–17.5 | 跟踪 ISS | 镜头跟在国际空间站后上方，地球在下方流过，旁边是实时数据卡片 | 跟踪国际空间站 · SGP4 轨道推算 / FOLLOW THE ISS · SGP4 ORBIT PREDICTION | 叠化 |
 | 6 | 17.5–21.5 | 地震回放 | 太平洋火环，30 天地震按发生顺序点亮，板块边界，底部时间轴滑动 | 30 天全球地震回放 / 30 DAYS OF EARTHQUAKES, REPLAYED | 叠化 |
 | 7 | 21.5–25.0 | 云层流动 | 西太平洋，逐小时红外云图连续播放 30 小时，云系旋转移动 | 逐小时红外云图 · 随时间流动 / HOURLY INFRARED CLOUDS IN MOTION | 叠化 |
@@ -44,7 +44,8 @@
 - **重点**：灯光的暖色光晕与压暗的真实地表，这是我们之前专门调过的效果，适合给特写。
 
 ### 4 · 极光（10.0–13.5 s）
-- **画面**：从夜侧中纬度看向极区，绿紫色极光帘幕在地平线方向闪动；镜头横移约 25°。
+- **画面**：在夜侧极光带以南约 10° 的位置，以约 700 km 高度低空平视，绿色极光帘幕立在画面中部的地平线上、衬着星空闪动；镜头横移约 11°，同时轻微下降。
+- **拍摄日调整**：极光带的纬度随地磁活动变化。如果拍摄当天它明显偏北或偏南，就调整镜头纬度，保持与极光带相隔约 10–12°。
 - **数据限制**：极光只有实时预报，所以这个镜头必须用"实时"模式、录制当天拍。闪动动画由录制脚本逐帧控制（`setEffectsTime`），保证每次渲染一致。
 - **备用方案**（写在 `shots.json` 的 `fallback` 里）：北半球最高概率低于 8% 时改拍南半球；两边都很弱时换成 4b 镜头"大气分层"（地球边缘的分层光环，放大 5 倍并标注为示意）。
 
@@ -58,7 +59,7 @@
 ### 6 · 地震回放（17.5–21.5 s）
 - **画面**：俯视太平洋火环，过去 30 天的地震（M4.5+）按时间一个个出现，白圈标出 24 小时内的新地震；板块边界和俯冲带是暖色细线；底部是网站自带的时间轴，滑块随回放移动。
 - **时间**：D−27 天 → D（4 秒跑完 27 天）。
-- **镜头**：17,000 → 15,500 km，从 160°E 转到 140°E。
+- **镜头**：23,500 → 22,000 km，从 160°E 转到 140°E（地球与底部时间轴之间留出空隙）。
 - **字幕**：放在上方居中，避开底部时间轴。
 
 ### 7 · 云层流动（21.5–25.0 s）
@@ -103,3 +104,19 @@
 - 所有画面都必须由网站真实渲染，不在后期里"画"数据（例如不能 P 出更亮的极光或额外的地震点）。
 - 加速播放的镜头（2、5、6、7）已在字幕里点明是"计算/推算/回放"。
 - 城市夜光是 2016 年的 NASA 合成影像，字幕说的是"NASA 卫星观测的城市夜光"，没有说成"今晚"。
+
+## 预览帧
+
+以下是用真实数据、通过录制模式渲染的每个镜头首、中、尾三帧（锚点 D = 2026-10-18）。字幕、转场和调色都还没有加。用 *Video Preview Stills* 工作流可以重新生成。
+
+| 镜头 | 首帧 | 中间 | 尾帧 |
+|---|---|---|---|
+| 1 开场 | ![](preview/s1-cold-open-a.jpg) | ![](preview/s1-cold-open-b.jpg) | ![](preview/s1-cold-open-c.jpg) |
+| 2 日照扫过 | ![](preview/s2-terminator-a.jpg) | ![](preview/s2-terminator-b.jpg) | ![](preview/s2-terminator-c.jpg) |
+| 3 城市夜光 | ![](preview/s3-city-lights-a.jpg) | ![](preview/s3-city-lights-b.jpg) | ![](preview/s3-city-lights-c.jpg) |
+| 4 极光 | ![](preview/s4-aurora-a.jpg) | ![](preview/s4-aurora-b.jpg) | ![](preview/s4-aurora-c.jpg) |
+| 4b 大气分层（备用） | ![](preview/s4b-atmosphere-a.jpg) | ![](preview/s4b-atmosphere-b.jpg) | ![](preview/s4b-atmosphere-c.jpg) |
+| 5 跟踪 ISS | ![](preview/s5-iss-a.jpg) | ![](preview/s5-iss-b.jpg) | ![](preview/s5-iss-c.jpg) |
+| 6 地震回放 | ![](preview/s6-earthquakes-a.jpg) | ![](preview/s6-earthquakes-b.jpg) | ![](preview/s6-earthquakes-c.jpg) |
+| 7 云层流动 | ![](preview/s7-clouds-a.jpg) | ![](preview/s7-clouds-b.jpg) | ![](preview/s7-clouds-c.jpg) |
+| 8 产品全景 | ![](preview/s8-hero-a.jpg) | ![](preview/s8-hero-b.jpg) | ![](preview/s8-hero-c.jpg) |
