@@ -53,34 +53,49 @@ const browser = await chromium.launch({
 async function capture(file, url, { group, wait, click } = {}, viewport = { width: 1600, height: 900 }) {
   const page = await browser.newPage({ viewport });
   page.on("pageerror", (error) => console.warn(file, "page error:", error.message));
-  // Fresh document per shot: a hash-only change would not reload the app.
-  await page.goto("about:blank");
-  await page.goto(url);
-  await page.locator("#splash").waitFor({ state: "detached", timeout: 60_000 });
-  const panel = page.locator("#earth-layer-panel");
-  const panelOpen = async () => !(await panel.getAttribute("class"))?.includes("is-collapsed");
-  if (group) {
-    if (!(await panelOpen())) await page.getByRole("button", { name: "图层", exact: true }).click();
-    // Show only the group that matches this shot.
-    await panel.evaluate((el, g) => {
-      for (const details of el.querySelectorAll("details")) details.open = Boolean(details.querySelector("summary")?.textContent?.includes(g));
-    }, group);
-  } else if (await panelOpen()) {
-    await page.getByRole("button", { name: "收起图层面板" }).click();
+  try {
+    // Fresh document per shot: a hash-only change would not reload the app.
+    await page.goto("about:blank");
+    await page.goto(url);
+    await page.locator("#splash").waitFor({ state: "detached", timeout: 60_000 });
+    const panel = page.locator("#earth-layer-panel");
+    const panelOpen = async () => !(await panel.getAttribute("class"))?.includes("is-collapsed");
+    if (group) {
+      if (!(await panelOpen())) await page.getByRole("button", { name: "图层", exact: true }).click();
+      // Show only the group that matches this shot.
+      await panel.evaluate((el, g) => {
+        for (const details of el.querySelectorAll("details")) details.open = Boolean(details.querySelector("summary")?.textContent?.includes(g));
+      }, group);
+    } else if (await panelOpen()) {
+      await page.getByRole("button", { name: "收起图层面板" }).click();
+    }
+    if (wait) await page.getByText(wait).first().waitFor({ timeout: 60_000 }).catch(() => console.warn(file, "did not show", wait));
+    if (click) {
+      await page.waitForTimeout(8_000);
+      await page.mouse.click(viewport.width / 2, viewport.height / 2);
+      await page.getByText(click).first().waitFor({ timeout: 60_000 }).catch(() => console.warn(file, "did not show", click));
+    }
+    // Imagery tiles stream in for a while on a software renderer.
+    await page.waitForTimeout(Number(process.env.SETTLE_MS ?? 30_000));
+    // Animated layers (aurora, satellites) keep a software renderer busy.
+    await page.screenshot({ path: new URL(file + ".jpg", OUT).pathname, type: "jpeg", quality: 86, timeout: 180_000 });
+    console.log("captured", file);
+  } finally {
+    await page.close();
   }
-  if (wait) await page.getByText(wait).first().waitFor({ timeout: 60_000 }).catch(() => console.warn(file, "did not show", wait));
-  if (click) {
-    await page.waitForTimeout(8_000);
-    await page.mouse.click(viewport.width / 2, viewport.height / 2);
-    await page.getByText(click).first().waitFor({ timeout: 60_000 }).catch(() => console.warn(file, "did not show", click));
-  }
-  // Imagery tiles stream in for a while on a software renderer.
-  await page.waitForTimeout(Number(process.env.SETTLE_MS ?? 30_000));
-  await page.screenshot({ path: new URL(file + ".jpg", OUT).pathname, type: "jpeg", quality: 86 });
-  console.log("captured", file);
-  await page.close();
 }
 
-for (const [file, url, options] of SHOTS) await capture(file, url, options);
-await capture("mobile", sceneUrl(topDown(wrap(sun.longitude + 60), 20, 22_000_000), { cities: true, lights: true, geoLabels: true }), {}, { width: 390, height: 844 });
+const failed = [];
+async function tryCapture(...args) {
+  try {
+    await capture(...args);
+  } catch (error) {
+    // Keep going: one slow scene should not discard the others.
+    console.warn(args[0], "failed:", error.message);
+    failed.push(args[0]);
+  }
+}
+for (const [file, url, options] of SHOTS) await tryCapture(file, url, options);
+await tryCapture("mobile", sceneUrl(topDown(wrap(sun.longitude + 60), 20, 22_000_000), { cities: true, lights: true, geoLabels: true }), {}, { width: 390, height: 844 });
 await browser.close();
+if (failed.length) console.log("::warning::screenshots not updated: " + failed.join(", "));
