@@ -17,8 +17,12 @@ import {
   buildModuleUrl,
 } from "cesium";
 import type { SceneState } from "../sceneState";
+import { HOME_LATITUDE, HOME_LONGITUDE, DESKTOP_HOME_HEIGHT_METRES, homeViewHeight } from "../homeView";
 
-export const HOME_VIEW = Cartesian3.fromDegrees(58, 19, 17000000);
+export const HOME_VIEW = Cartesian3.fromDegrees(HOME_LONGITUDE, HOME_LATITUDE, DESKTOP_HOME_HEIGHT_METRES);
+export function homeDestination(width: number, height: number): Cartesian3 {
+  return Cartesian3.fromDegrees(HOME_LONGITUDE, HOME_LATITUDE, homeViewHeight(width, height));
+}
 
 // Fade out the static splash from index.html once the first globe tiles are in.
 function dismissSplash() {
@@ -109,10 +113,26 @@ export function useViewer(
         scene.skyAtmosphere.atmosphereLightIntensity = 14;
       }
 
+      // Shared scenes are explicit and must not be altered by responsive defaults.
+      // Otherwise adapt home altitude to aspect ratio; the geographic center
+      // remains 58E / 19N for every device.
+      let untouchedHome = !initialScene;
       if (initialScene) {
         const [lon, lat, height, heading, pitch, roll] = initialScene.camera;
         v.camera.setView({ destination: Cartesian3.fromDegrees(lon, lat, height), orientation: { heading, pitch, roll } });
-      } else v.camera.setView({ destination: HOME_VIEW });
+      } else v.camera.setView({ destination: homeDestination(mountRef.current.clientWidth, mountRef.current.clientHeight) });
+      // A phone can rotate before the user touches the globe. Reframe only
+      // while the initial home view is untouched; never hijack user navigation.
+      const stopAutoReframe = () => { untouchedHome = false; };
+      for (const type of ["pointerdown", "wheel", "touchstart"]) {
+        v.canvas.addEventListener(type, stopAutoReframe, { passive: true });
+      }
+      const onResize = () => {
+        if (!untouchedHome || v.isDestroyed()) return;
+        v.camera.setView({ destination: homeDestination(mountRef.current?.clientWidth ?? window.innerWidth, mountRef.current?.clientHeight ?? window.innerHeight) });
+        scene.requestRender();
+      };
+      window.addEventListener("resize", onResize);
       const removeSplashListener = scene.postRender.addEventListener(() => {
         if (!scene.globe.tilesLoaded) return;
         removeSplashListener();
@@ -154,6 +174,10 @@ export function useViewer(
       scene.requestRender();
 
       return () => {
+        window.removeEventListener("resize", onResize);
+        if (!v.isDestroyed()) {
+          for (const type of ["pointerdown", "wheel", "touchstart"]) v.canvas.removeEventListener(type, stopAutoReframe);
+        }
         if (splashTimer !== null) window.clearTimeout(splashTimer);
         if (detailTimer !== null) window.clearTimeout(detailTimer);
         setViewer(null);
