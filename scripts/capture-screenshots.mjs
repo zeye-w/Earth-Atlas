@@ -16,9 +16,14 @@ mkdirSync(OUT, { recursive: true });
 
 const sun = subsolarPoint(new Date());
 const wrap = (lon) => ((((lon + 180) % 360) + 360) % 360) - 180;
-// Most populated region that is currently deepest in night, for city lights.
-const NIGHT_REGIONS = [[10, 47], [115, 32], [80, 23], [-88, 37], [-55, -15]];
-const [nightLon, nightLat] = NIGHT_REGIONS.reduce((a, b) => (solarElevation(b[1], b[0], sun) < solarElevation(a[1], a[0], sun) ? b : a));
+// Populated regions: the one deepest in night shows the city lights; the one
+// closest to dusk anchors the hero shot so the terminator crosses land.
+const REGIONS = [[10, 47], [115, 32], [80, 23], [-88, 37], [-55, -15]];
+const elevation = ([lon, lat]) => solarElevation(lat, lon, sun);
+const [nightLon, nightLat] = REGIONS.reduce((a, b) => (elevation(b) < elevation(a) ? b : a));
+const [duskLon] = REGIONS.reduce((a, b) => (Math.abs(elevation(b) + 12) < Math.abs(elevation(a) + 12) ? b : a));
+// Shift the hero camera from that region 35° toward the Sun.
+const towardSun = Math.sign(wrap(sun.longitude - duskLon)) * 35;
 
 const OFF = {
   clouds: false, geology: false, dayNight: true, cities: false, atmosphere: true, aurora: false, lights: false,
@@ -34,13 +39,13 @@ const topDown = (lon, lat, height) => [lon, lat, height, 0, -Math.PI / 2 + 1e-6,
 
 /** [file, url, { panel group to show open, text to wait for, after() }] */
 const SHOTS = [
-  ["hero", sceneUrl(topDown(wrap(sun.longitude + 80), 18, 17_500_000), { cities: true, lights: true, geoLabels: true, satellites: true, paths: true }), { group: "EARTH VIEW" }],
+  ["hero", sceneUrl(topDown(wrap(duskLon + towardSun), 22, 17_500_000), { cities: true, lights: true, geoLabels: true, satellites: true, paths: true }), { group: "EARTH VIEW" }],
   ["night-lights", sceneUrl(topDown(nightLon, nightLat, 6_500_000), { lights: true, cities: true }), {}],
   ["aurora", sceneUrl(topDown(wrap(sun.longitude + 180), 72, 11_000_000), { aurora: true, lights: true }), { group: "EARTH VIEW", wait: "Kp " }],
   ["tectonics", sceneUrl(topDown(150, 12, 13_000_000), { dayNight: false, quakes: true, plates: true, volcanoes: true }), { group: "TECTONICS", wait: "次地震" }],
-  ["satellites", sceneUrl(topDown(wrap(sun.longitude), 20, 32_000_000), { satellites: true, paths: true }), { group: "SATELLITES", wait: "已加载" }],
+  ["satellites", sceneUrl(topDown(wrap(sun.longitude), 20, 25_000_000), { satellites: true, paths: true }), { group: "SATELLITES", wait: "已加载" }],
   ["geology", sceneUrl(topDown(-104, 39, 4_500_000), { dayNight: false, geology: true, cities: true }), { click: "RECORD FOUND" }],
-  ["atmosphere-layers", sceneUrl([wrap(sun.longitude - 10), 0, 1_200_000, Math.PI / 2, -0.18, 0], { dayNight: false, cities: false }, { atmosphereShells: 5 }), { group: "EARTH VIEW" }],
+  ["atmosphere-layers", sceneUrl([wrap(sun.longitude - 10), 0, 1_200_000, Math.PI / 2, -0.45, 0], { dayNight: false, cities: false }, { atmosphereShells: 5 }), { group: "EARTH VIEW" }],
   ["geo-labels", sceneUrl(topDown(116, 30, 6_500_000), { dayNight: false, cities: true, geoLabels: true }), {}],
   ["clouds", sceneUrl(topDown(wrap(sun.longitude), 12, 17_000_000), { dayNight: false, clouds: true }), {}],
 ];
