@@ -42,6 +42,14 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: End-to-end tests (all external services mocked)
         run: npm run test:e2e
+      - name: Upload responsive viewport evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: responsive-desktop-phone-views
+          path: test-results/**/initial-*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v7
