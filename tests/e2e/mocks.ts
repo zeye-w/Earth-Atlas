@@ -64,6 +64,16 @@ function constellationCsv() {
   return [header, ...rows].join("\n") + "\n";
 }
 
+/** Synthetic /api/flights snapshot (not real aircraft): one cruising over 0°N 0°E, one on the ground. */
+function flightSnapshot() {
+  const aircraft = [
+    ["e2e001", "E2E101", 0, 0, 10_973, 231.5, 90, "A20N", "B-E2E1", 2],
+    ["e2e002", "E2E202", 40, -73, null, 5, 180, "B738", "", 1],
+  ];
+  for (let i = 0; i < 40; i++) aircraft.push(["e2e1" + String(i).padStart(2, "0"), "", -30 + i, 60 + i, 2000 + i * 250, 200, (i * 37) % 360, "", "", 5]);
+  return { v: 1, source: "adsb.lol", time: Date.now(), aircraft };
+}
+
 /** Two hours of synthetic RTSW solar wind (not NOAA data), newest first. */
 function rtsw(kind: "wind" | "mag") {
   const rows = [];
@@ -84,6 +94,7 @@ function cloudProducts() {
 export async function mockNetwork(page: Page): Promise<void> {
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
+    if (url.hostname === "localhost" && url.pathname === "/api/flights") return json(route, flightSnapshot());
     if (url.hostname === "localhost" || url.protocol === "data:" || url.protocol === "blob:") return route.continue();
     if (url.hostname === "gibs.earthdata.nasa.gov") return png(route, url.pathname.includes("Black_Marble") ? TRANSPARENT_PNG : OCEAN_PNG);
     if (url.hostname === "tiles.macrostrat.org") return png(route, TRANSPARENT_PNG);

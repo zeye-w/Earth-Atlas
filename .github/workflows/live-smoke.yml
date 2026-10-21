@@ -12,6 +12,8 @@ on:
       - "src/cloudData.ts"
       - "src/constellationData.ts"
       - "src/solarWindData.ts"
+      - "src/flightData.ts"
+      - "worker/**"
       - ".github/workflows/live-smoke.yml"
   workflow_dispatch:
 permissions:

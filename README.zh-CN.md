@@ -2,7 +2,7 @@
 
 # TerraScope · 数字地球
 
-**在浏览器里运行的实时三维数字地球：实时日照、城市夜光、极光、地震、火山、卫星与全球地质，全部来自开放数据。**
+**在浏览器里运行的实时三维数字地球：实时日照、城市夜光、极光、地震、火山、卫星、航班与全球地质，全部来自开放数据。**
 
 [English](README.md) · 简体中文
 
@@ -22,6 +22,7 @@
 
 - **此刻真实的地球**：按当前 UTC 时间计算太阳位置，白天是 NASA Blue Marble 卫星影像，夜半球是 NASA Black Marble 城市灯光。
 - **实时地球物理数据**：USGS 地震、NOAA 极光预报与 Kp 地磁指数、史密森尼火山名录、PB2002 板块边界。
+- **实时航班**：来自志愿者 ADS-B 接收网（adsb.lol）的数千架航空器，按真实高度和航向绘制，每分钟更新。
 - **在轨卫星**：根据 CelesTrak 轨道根数用 SGP4 预测位置，轨道线画在真实高度上，还能预测卫星何时从你头顶飞过，以及跟踪卫星并在旁边显示实时数据。
 - **按需加载的地质图**：Macrostrat 全球地质图，点击任意位置查看岩石单元、地质年代和岩性。
 - **时间回溯**：时间轴可回看过去 24 小时、7 天或 30 天（也能看未来一天），日照、地震、卫星位置和每日卫星影像都随之变化。
@@ -44,6 +45,9 @@
 </tr>
 <tr>
 <td colspan="2"><img src="docs/screenshots/solar-wind.jpg" alt="太阳风与磁层"><br><b>太阳风与磁层</b><br>日地 L1 点实测的太阳风（NOAA SWPC 实时太阳风：速度、密度、行星际磁场 Bz）通过 Shue 等（1998）模型决定地球磁层顶的大小，外侧是近似的弓激波；粒子从太阳方向吹来，绕过磁层流向后方。粒子轨迹为示意并经过加速，边界大小来自实测数据。可沿时间轴回看最近约 24 小时。</td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/flights.jpg" alt="欧洲上空的实时航班"><br><b>实时航班</b><br>航空器通过 ADS-B 广播的位置，由 adsb.lol 的志愿者接收站收集（ODbL 开放数据），备用 OpenSky；因为这些数据源不允许浏览器直接访问，由本站自己的 Cloudflare Worker 中转。每架飞机画在真实高度上，机头指向航迹方向，颜色表示高度；两次更新（每分钟）之间按报告的速度继续前进（推算值）。点击飞机可查看航班号、机型、高度和速度。覆盖范围取决于接收站分布，海洋和部分国家很稀疏；只有实时数据，没有历史回放。</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/geology.jpg" alt="地质图与查询面板"><br><b>全球地质</b><br>Macrostrat 地质图（栅格，或实验性的年代 / 岩性矢量视图）。点击地面即可列出该处的地质单元、年代和岩石类型。</td>
@@ -73,6 +77,7 @@
 | 极光 | NOAA SWPC：OVATION 极光实时预报 | 每 10 分钟 |
 | Kp 指数 | NOAA SWPC：行星际 K 指数 | 每 10 分钟 |
 | 太阳风 | NOAA SWPC：L1 点实时太阳风（RTSW） | 1 分钟数据，每 10 分钟刷新 |
+| 实时航班 | adsb.lol：志愿者接收站的 ADS-B / MLAT 数据（ODbL），备用 OpenSky Network，经本站 Worker 中转 | 每分钟（仅实时） |
 | 地震 | USGS：GeoJSON 汇总数据 | 每 5 分钟 |
 | 火山 | 史密森尼学会 GVP：*Volcanoes of the World* | 内置，由工作流刷新 |
 | 板块边界 | Bird (2003) PB2002，Hugo Ahlenius / Nordpil 转换的 GeoJSON（ODC-BY） | 内置 |
@@ -112,12 +117,13 @@ scripts/             数据生成、线上数据源检查、截图生成
 tests/               单元测试（node:test）与端到端测试（Playwright）
 ```
 
-以静态资源形式部署在 Cloudflare Workers（`wrangler.jsonc`）。本页截图由 [README Screenshots](.github/workflows/screenshots.yml) 工作流使用实时数据渲染生成。
+部署在 Cloudflare Workers（`wrangler.jsonc`）：静态资源，加上一个在 `/api/flights` 中转航班数据的小型 Worker（`worker/`）。本页截图由 [README Screenshots](.github/workflows/screenshots.yml) 工作流使用实时数据渲染生成。
 
 ## 科学说明
 
 - 卫星位置是根据公开轨道根数做的 SGP4 **预测**，不是实时遥测。
 - 城市夜光是 2016 年的年度合成影像；极光帘幕的形状和动画是风格化的，位置和亮度来自 NOAA 预报。
+- 航班覆盖取决于志愿者接收站，并不是全部航班；两次更新之间的位置按速度和航向推算。
 - 火山颜色反映名录中的喷发年份，不是当前的预警级别。
 - 地质单元是地表填图单元；同一位置有多个结果时作为候选项列出。
 

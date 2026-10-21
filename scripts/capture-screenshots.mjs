@@ -1,6 +1,6 @@
 /**
  * Capture the README screenshots in docs/screenshots/ from a running build
- * with live data (NASA GIBS, NOAA SWPC, USGS, CelesTrak, Macrostrat, SSEC).
+ * with live data (NASA GIBS, NOAA SWPC, USGS, CelesTrak, Macrostrat, SSEC, adsb.lol).
  * Run by .github/workflows/screenshots.yml; needs open network access.
  *
  * Usage: node --experimental-strip-types scripts/capture-screenshots.mjs [baseURL]
@@ -9,6 +9,7 @@
 import { mkdirSync } from "node:fs";
 import { chromium } from "@playwright/test";
 import { solarElevation, subsolarPoint } from "../src/solar.ts";
+import { ADSB_LOL_URL, FLIGHT_USER_AGENT, parseAdsbLol } from "../src/flightData.ts";
 
 const BASE = process.argv[2] ?? "http://localhost:4173";
 const OUT = new URL("../docs/screenshots/", import.meta.url);
@@ -46,6 +47,7 @@ const SHOTS = [
   ["satellites", sceneUrl(topDown(wrap(sun.longitude), 20, 25_000_000), { satellites: true, paths: true }), { group: "SATELLITES", wait: "已加载" }],
   ["starlink", sceneUrl(topDown(wrap(sun.longitude + 50), 25, 24_000_000), { starlink: true, lights: true }), { group: "SATELLITES", wait: "颗卫星" }],
   ["solar-wind", sceneUrl(topDown(0, 0, 17_000_000), { solarWind: true }), { group: "EARTH VIEW", wait: "km/s", press: "拉远查看磁层" }],
+  ["flights", sceneUrl(topDown(8, 49, 4_200_000), { flights: true, lights: true, cities: true }), { group: "AVIATION", wait: "架航空器" }],
   ["geology", sceneUrl(topDown(-104, 39, 4_500_000), { dayNight: false, geology: true, cities: true }), { click: "RECORD FOUND" }],
   ["atmosphere-layers", sceneUrl([wrap(sun.longitude - 10), 0, 1_200_000, Math.PI / 2, -0.45, 0], { dayNight: false, cities: false }, { atmosphereShells: 5 }), { group: "EARTH VIEW" }],
   ["timeline", sceneUrl(topDown(150, 15, 14_000_000), { quakes: true, plates: true, lights: true }, {}, Math.floor((Date.now() - 12 * 86_400_000) / 3_600_000) * 3_600_000), { group: "TECTONICS", wait: "回放" }],
@@ -62,6 +64,11 @@ const browser = await chromium.launch({
 async function capture(file, url, { group, wait, click, press } = {}, viewport = { width: 1600, height: 900 }) {
   const page = await browser.newPage({ viewport });
   page.on("pageerror", (error) => console.warn(file, "page error:", error.message));
+  // `vite preview` has no Worker: answer /api/flights the way worker/index.ts does.
+  await page.route("**/api/flights", async (route) => {
+    const response = await fetch(ADSB_LOL_URL, { headers: { "User-Agent": FLIGHT_USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(30_000) });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(parseAdsbLol(await response.json())) });
+  });
   try {
     // Fresh document per shot: a hash-only change would not reload the app.
     await page.goto("about:blank");

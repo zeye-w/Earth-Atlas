@@ -160,6 +160,26 @@ test("the Starlink constellation loads and follows the timeline", async ({ page 
   await expect(status).toContainText("240 颗根数距所选时刻超过 10 天未显示");
 });
 
+test("live flights load, describe a clicked aircraft and hide away from live", async ({ page }) => {
+  await page.goto(sceneUrl(0, 0, 8_000_000, { flights: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "AVIATION");
+  const status = layerPanel(page).getByRole("status").filter({ hasText: "航空器" });
+  await expect(status).toContainText("42 架航空器 · 空中 41 架");
+  await expect(layerPanel(page)).toContainText("来源：adsb.lol（ODbL）");
+  // The cruising aircraft sits under the camera at the centre of the globe.
+  const canvas = page.locator(".cesium-widget canvas");
+  const box = (await canvas.boundingBox())!;
+  await expect(async () => {
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.locator(".toast")).toContainText("E2E101 · A20N B-E2E1 · 高度 10,973 m · 地速 833 km/h · 航向 90°", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  // No flight history: away from live the layer says so and draws nothing.
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(layerPanel(page)).toContainText("航班数据只有实时位置");
+});
+
 test("solar wind drives the magnetopause and says when there is no data", async ({ page }) => {
   await page.goto(sceneUrl(0, 0, 17_000_000, { solarWind: true }));
   await waitForGlobe(page);

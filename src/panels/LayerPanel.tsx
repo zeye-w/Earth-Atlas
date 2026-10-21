@@ -39,7 +39,7 @@ export function LayerPanel({ open, onClose, onFlyTo, children }: { open: boolean
 
         <div className="sidebar-note">
           <Info size={14} className="note-icon" aria-hidden="true" />
-          <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报来自 NOAA SWPC，地震来自 USGS，火山来自 Smithsonian GVP，板块边界来自 Bird (2003) PB2002（Nordpil 整理，ODC-BY），地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
+          <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报与太阳风来自 NOAA SWPC，航班位置来自 adsb.lol（ODbL）志愿者 ADS-B 接收网，地震来自 USGS，火山来自 Smithsonian GVP，板块边界来自 Bird (2003) PB2002（Nordpil 整理，ODC-BY），地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
         </div>
       </div>
       <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.2</div>

@@ -2,8 +2,13 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "earth-atlas",
   "compatibility_date": "2026-10-18",
+  // Only /api/* runs the Worker (live flight proxy); everything else is static.
+  "main": "worker/index.ts",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "404-page"
-  }
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true }
 }

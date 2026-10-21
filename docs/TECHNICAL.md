@@ -112,6 +112,8 @@ Recommended Git-connected Worker build/deploy configuration (verify against your
 - Deploy assets: `./dist` as specified in `wrangler.jsonc`
 - Production branch: `main`
 
+`wrangler.jsonc` also names a small Worker script (`worker/index.ts`) with `run_worker_first: ["/api/*"]`: only `/api/*` requests run it (today just `/api/flights`, see *Live flights*); every other path is served from the assets as before. `npx wrangler deploy` bundles it automatically; `npx wrangler dev` runs both locally (the Vite dev server has no `/api`).
+
 If you use the Cloudflare console's default Git integration build flow, ensure its deploy command actually reads the repository's Wrangler configuration and uploads the entire `dist` tree. Avoid upload methods that only publish `index.html` or `dist/assets`.
 
 Browser smoke test after deployment:
@@ -140,6 +142,8 @@ The geologic map and unit queries are provided by [Macrostrat](https://macrostra
 - Documentation: https://macrostrat.org/docs/data-services
 - Raster tiles: https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png
 - Point query: https://macrostrat.org/api/v2/geologic_units/map?lat=43&lng=-89.3
+
+Live aircraft positions come from [adsb.lol](https://adsb.lol/) (data under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/)), with the [OpenSky Network](https://opensky-network.org/) REST API as a fallback; the globe credits both while the layer is on.
 
 ## Lithology classification and era guide
 
@@ -224,3 +228,9 @@ Model: dynamic pressure Pd = 1.6726×10⁻⁶ · n · v² nPa; magnetopause from
 
 Particles (2,200, each with a three-point trail) enter 26 Earth radii upstream and leave 30 downstream; inside the bow shock their radial distance is mapped between the shock and the magnetopause so none enter the magnetosphere. Their paths are illustrative; their speed is proportional to the measured speed (sped up about 100×), their colour follows the speed, and the number shown follows the density. In recording mode the animation phase is set by `setEffectsTime`. With this layer on, the camera may zoom out to 600,000 km.
 
+
+## Live flights
+
+Data: ADS-B and MLAT positions received by volunteer receivers and published by adsb.lol (`https://re-api.adsb.lol/?all_with_pos`, ODbL 1.0; typically 5,000–8,000 aircraft, about 3 MB of JSON). None of the open feeds can be called from the browser: adsb.lol and adsb.fi send no CORS headers, OpenSky only allows its own origin (and limits anonymous clients to 400 credits a day), and airplanes.live requires approval. So the site's Worker (`worker/index.ts`) serves `/api/flights`: it fetches adsb.lol with an identifying User-Agent (adsb.lol rejects generic ones), falls back to OpenSky `/api/states/all` if that fails or returns fewer than 100 aircraft, and keeps only what is drawn — ICAO hex, callsign, position, altitude (geometric, else barometric; metres; null on the ground), ground speed (m/s), track, type, registration, and the position's age. Positions older than 60 s and category C targets (airport vehicles, obstacles) are dropped. The result (~300 KB) is held in memory for 30 s per Worker isolate, so visitors share one upstream request; if a refresh fails the last snapshot is served for up to five minutes, otherwise the endpoint answers 502 and the panel says the data is unavailable.
+
+The browser polls every minute while the layer is on and the timeline is live. Each aircraft is a billboard at its altitude, rotated to its track and coloured by altitude band (ground, below 3,000 m, 3,000–9,000 m, above 9,000 m). Between polls airborne aircraft are moved along a great circle at their reported ground speed and track (dead reckoning, at most two minutes past the report) — an estimate, as the panel says. Coverage depends on where volunteers run receivers: dense over North America, Europe and parts of Asia, sparse over the oceans, Africa and some countries, so the layer does not show every flight. The feeds keep no history, so away from live nothing is drawn and the panel explains why. Clicking an aircraft shows its callsign, type, registration, altitude, ground speed, track and how old the position report is.

@@ -22,6 +22,9 @@ import { useGeoLabels } from "./layers/useGeoLabels";
 import { useTrueColor } from "./layers/useTrueColor";
 import { useConstellation } from "./layers/useConstellation";
 import { useSolarWind } from "./layers/useSolarWind";
+import { useFlights } from "./layers/useFlights";
+import { FLIGHT_ID_PREFIX } from "./flightOverlay";
+import { describeFlight } from "./flightData";
 import { subsolarPoint } from "./solar";
 import { EARTH_RADIUS_KM } from "./solarWindData";
 import { STARLINK } from "./constellationData";
@@ -35,6 +38,7 @@ import { LayerPanel, type Region } from "./panels/LayerPanel";
 import { EarthViewGroup } from "./panels/EarthViewGroup";
 import { TectonicsGroup } from "./panels/TectonicsGroup";
 import { SatellitesGroup } from "./panels/SatellitesGroup";
+import { FlightsGroup } from "./panels/FlightsGroup";
 import { GeologyGroup } from "./panels/GeologyGroup";
 import { Inspector } from "./panels/Inspector";
 import { SearchPanel, SharePanel } from "./panels/SceneTools";
@@ -84,7 +88,7 @@ function App() {
     geology.query(latitude, longitude);
   };
 
-  // Clicks pick, in order: volcanoes, earthquakes, satellites, then the ground.
+  // Clicks pick, in order: volcanoes, earthquakes, satellites, aircraft, then the ground.
   const handleClick = (viewer: Viewer, position: Cartesian2) => {
     const picked = viewer.scene.pick(position);
     const pickedId: unknown = picked && typeof picked === "object" && "id" in picked ? (picked as { id?: unknown }).id : undefined;
@@ -109,6 +113,11 @@ function App() {
     if (typeof pickedId === "string" && pickedId.startsWith(CONSTELLATION_ID_PREFIX)) {
       const satellite = starlink.describe(Number(pickedId.split(":").at(-1)));
       if (satellite) setToast(satellite.name + " · 高度 " + Math.round(satellite.altitudeKm) + " km · " + (satellite.sunlit ? "日照中" : "地球阴影中"));
+      return;
+    }
+    if (typeof pickedId === "string" && pickedId.startsWith(FLIGHT_ID_PREFIX)) {
+      const flight = flights.describe(Number(pickedId.slice(FLIGHT_ID_PREFIX.length)));
+      if (flight) setToast(describeFlight(flight, Date.now()));
       return;
     }
     const entityId = (pickedId as Entity | undefined)?.id;
@@ -143,6 +152,8 @@ function App() {
   useUserLocationMarker(viewer, userLocation.location);
   const starlink = useConstellation(viewer, layers.starlink, STARLINK, timeline);
   const solarWind = useSolarWind(viewer, layers.solarWind, timeline);
+  // Aircraft positions exist only for "now": hidden while viewing another moment.
+  const flights = useFlights(viewer, layers.flights && live);
 
   // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
   useEffect(() => {
@@ -304,6 +315,7 @@ function App() {
             records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
             location={userLocation.state} onLocate={userLocation.locate} />
+          <FlightsGroup layers={layers} setLayer={setLayer} flights={flights.state} live={live} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
         </LayerPanel>
 
@@ -321,7 +333,7 @@ function App() {
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
             onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />
           {!timebarOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
-          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
