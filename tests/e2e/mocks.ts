@@ -56,6 +56,14 @@ function celestrak(url: URL) {
   return catalogue ? [make(Number(catalogue), 98, 40)] : [make(25544, 51.6, 10), make(48274, 41.5, 120)];
 }
 
+/** Synthetic Starlink-like constellation in CelesTrak's OMM CSV form (not real elements). */
+function constellationCsv() {
+  const epoch = new Date().toISOString().replace("Z", "");
+  const header = "OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE,ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID,ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT";
+  const rows = Array.from({ length: 240 }, (_, i) => ["E2E-STARLINK-" + i, "E2E", epoch, 15.06, 0.0001, i % 2 ? 53 : 97.6, (i * 9) % 360, 90, (i * 23) % 360, 0, "U", 90000 + i, 999, 1, 0.0002, 0, 0].join(","));
+  return [header, ...rows].join("\n") + "\n";
+}
+
 function cloudProducts() {
   const stamp = new Date(Date.now() - 30 * 60_000).toISOString().replace(/[-:]/g, "").replace("T", ".").slice(0, 15);
   return [{ id: "globalir", times: [stamp] }];
@@ -79,6 +87,7 @@ export async function mockNetwork(page: Page): Promise<void> {
       return json(route, [{ time_tag: new Date().toISOString().slice(0, 19), kp_index: 2, estimated_kp: 2.33 }]);
     }
     if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("noaa-planetary-k-index")) return json(route, kpHistory());
+    if (url.hostname === "celestrak.org" && url.searchParams.get("FORMAT") === "csv") return route.fulfill({ status: 200, contentType: "text/plain", headers: { "access-control-allow-origin": "*" }, body: constellationCsv() });
     if (url.hostname === "celestrak.org") return json(route, celestrak(url));
     if (url.hostname === "realearth.ssec.wisc.edu" && url.pathname.includes("products")) return json(route, cloudProducts());
     if (url.hostname === "realearth.ssec.wisc.edu") return png(route, TRANSPARENT_PNG);

@@ -9,6 +9,7 @@ import { parseLithologyDictionary } from "../src/lithology.ts";
 import { OVATION_URL, northernProfile, parseOvation, southernProfile } from "../src/auroraData.ts";
 import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
 import { CLOUD_METADATA_URL, cloudTileUrl, cloudTimes } from "../src/cloudData.ts";
+import { STARLINK, constellationUrl, parseOmmCsv, shellCounts, epochOf } from "../src/constellationData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { KP_HISTORY_URL, KP_NOW_URL, kpLevel, parseKpHistory, parseKpNow } from "../src/geomagnetic.ts";
 
@@ -201,6 +202,25 @@ try {
 } catch (error) {
   failed = true;
   console.error("LIVE_CLOUD_FAILURE:", error);
+}
+
+// Starlink constellation (CSV): size, count, element ages and CORS.
+try {
+  const started = Date.now();
+  const response = await fetch(constellationUrl(STARLINK), { signal: AbortSignal.timeout(30000), headers: { Origin: site } });
+  const text = await response.text();
+  const cors = response.headers.get("access-control-allow-origin") ?? "(missing)";
+  const records = parseOmmCsv(text);
+  const ages = records.map((r) => (Date.now() - epochOf(r).getTime()) / 86_400_000).sort((a, b) => a - b);
+  console.log("CelesTrak Starlink CSV HTTP", response.status, response.headers.get("content-type"), "CORS", cors, "bytes", text.length, "records", records.length, "in", Date.now() - started, "ms");
+  console.log("  header:", text.split("\n")[0].slice(0, 300));
+  console.log("  element age days: median", ages[Math.floor(ages.length / 2)].toFixed(1), "max", ages.at(-1).toFixed(1), "older than 10 d:", ages.filter((a) => a > 10).length);
+  console.log("  shells:", JSON.stringify(shellCounts(records).slice(0, 6)));
+  assert.ok(cors === "*" || cors === site, "CORS disallows deployed origin");
+  assert.ok(records.length > 1000, "too few Starlink records");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_CELESTRAK_STARLINK_FAILURE:", error);
 }
 
 for (const path of [

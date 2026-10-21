@@ -146,6 +146,20 @@ test("clouds follow the timeline and say when a moment has no frame", async ({ p
   await expect(note).toContainText("这一时刻没有云图");
 });
 
+test("the Starlink constellation loads and follows the timeline", async ({ page }) => {
+  await page.goto(sceneUrl(0, 0, 17_000_000, { starlink: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "SATELLITES");
+  const status = layerPanel(page).locator(".layer-extra .layer-status").first();
+  await expect(status).toContainText("240 颗卫星");
+  await expect(layerPanel(page)).toContainText("53° 120 颗");
+  // Far beyond the elements' validity, nothing is drawn rather than guessed.
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  await page.getByRole("radio", { name: "30 天" }).click();
+  for (let i = 0; i < 12; i++) await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(status).toContainText("240 颗根数距所选时刻超过 10 天未显示");
+});
+
 test("clouds show the observation time", async ({ page }) => {
   await page.goto(sceneUrl(0, 0, 17_000_000, { clouds: true }));
   await waitForGlobe(page);

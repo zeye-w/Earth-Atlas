@@ -10,6 +10,7 @@
  */
 import { Cartesian3, HeadingPitchRange, Math as CesiumMath, Matrix4, type Viewer } from "cesium";
 import { setAuroraEffectsTime } from "./aurora";
+import { hasPendingWork } from "./pendingWork";
 import { TIME_SPANS, spanFor, type TimeController } from "./timeline";
 import type { LayerOptions, LayerToggles } from "./hooks/useLayerSettings";
 import type { Telemetry } from "./satelliteTelemetry";
@@ -91,7 +92,7 @@ export function installRecordingApi(deps: Dependencies): () => void {
       await nextFrame();
       // A few consecutive loaded frames: state changes made through React
       // land a frame or two after the call that requested them.
-      stable = scene.globe.tilesLoaded ? stable + 1 : 0;
+      stable = scene.globe.tilesLoaded && !hasPendingWork() ? stable + 1 : 0;
       if (stable >= 4) return true;
     }
     return false;

@@ -20,6 +20,9 @@ import { useAtmosphereShells } from "./layers/useAtmosphereShells";
 import { useEarthquakes } from "./layers/useEarthquakes";
 import { useGeoLabels } from "./layers/useGeoLabels";
 import { useTrueColor } from "./layers/useTrueColor";
+import { useConstellation } from "./layers/useConstellation";
+import { STARLINK } from "./constellationData";
+import { CONSTELLATION_ID_PREFIX } from "./constellationOverlay";
 import { usePlateBoundaries, useVolcanoes } from "./layers/useTectonics";
 import { useSatellites } from "./layers/useSatellites";
 import { useGeologyMap } from "./layers/useGeologyMap";
@@ -100,6 +103,11 @@ function App() {
         return;
       }
     }
+    if (typeof pickedId === "string" && pickedId.startsWith(CONSTELLATION_ID_PREFIX)) {
+      const satellite = starlink.describe(Number(pickedId.split(":").at(-1)));
+      if (satellite) setToast(satellite.name + " · 高度 " + Math.round(satellite.altitudeKm) + " km · " + (satellite.sunlit ? "日照中" : "地球阴影中"));
+      return;
+    }
     const entityId = (pickedId as Entity | undefined)?.id;
     if (typeof entityId === "string" && entityId.startsWith("satellite:")) {
       // Clicking a satellite starts tracking it.
@@ -130,6 +138,7 @@ function App() {
   const volcanoes = useVolcanoes(viewer, layers.volcanoes);
   const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, followCamera: !RECORDING, timeline });
   useUserLocationMarker(viewer, userLocation.location);
+  const starlink = useConstellation(viewer, layers.starlink, STARLINK, timeline);
   const trackedSatellite = satellites.catalog.find(({ choice }) => choice.id === trackedSatelliteId)?.choice ?? null;
   const vectorState = useGeologyMap(viewer, { visible: layers.geology, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter });
 
@@ -263,7 +272,7 @@ function App() {
           <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} />
           <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
-            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass}
+            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
             location={userLocation.state} onLocate={userLocation.locate} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />

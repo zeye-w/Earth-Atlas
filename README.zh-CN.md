@@ -40,6 +40,9 @@
 <td><img src="docs/screenshots/satellites.jpg" alt="卫星与轨道"><br><b>卫星</b><br>国际空间站、天宫、哈勃和对地观测卫星沿 SGP4 预测轨道运行，可切换 60× / 300× 加速预览。<i>跟踪</i>（或直接点击卫星）会让镜头跟随卫星，并在卫星旁显示实时数据：星下点、高度、速度、航向、光照、轨道周期，以及从你所在位置看的方位、仰角和距离。<i>过境预测</i>列出未来 24 小时卫星飞过你所在位置（或任意选定地点）的时间、最高仰角、方向以及能否肉眼看到，点击即可在时间轴上查看。</td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/screenshots/starlink.jpg" alt="星链星座"><br><b>星链星座</b><br>CelesTrak 提供的全部约 11,000 颗星链卫星，在后台线程中用 SGP4 每秒计算两次位置。被太阳照亮的卫星是亮点，处在地球阴影中的是暗点；能看出 53°、43°、70°、97° 几个轨道壳层，以及刚发射、排成一串的"卫星火车"。也会跟随时间轴。</td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/geology.jpg" alt="地质图与查询面板"><br><b>全球地质</b><br>Macrostrat 地质图（栅格，或实验性的年代 / 岩性矢量视图）。点击地面即可列出该处的地质单元、年代和岩石类型。</td>
 <td><img src="docs/screenshots/atmosphere-layers.jpg" alt="地球边缘的大气分层"><br><b>大气分层</b><br>按真实高度绘制对流层、平流层、中间层、卡门线和热层的顶部边界（美国标准大气 1976），可放大 5× / 20× 并标注为示意。</td>
 </tr>
@@ -70,6 +73,7 @@
 | 火山 | 史密森尼学会 GVP：*Volcanoes of the World* | 内置，由工作流刷新 |
 | 板块边界 | Bird (2003) PB2002，Hugo Ahlenius / Nordpil 转换的 GeoJSON（ODC-BY） | 内置 |
 | 卫星 | CelesTrak：GP 轨道根数（OMM JSON），`satellite.js` SGP4 计算 | 缓存至少 2 小时 |
+| 星链星座 | CelesTrak：GP 分组 `starlink`（OMM CSV，约 1.7 MB） | 缓存至少 2 小时 |
 | 云图 | SSEC / UW–Madison RealEarth：`globalir` | 逐小时 |
 | 地质 | Macrostrat（CC BY 4.0） | 实时瓦片与查询 |
 | 地理标注 | Natural Earth（公共领域） | 内置 |

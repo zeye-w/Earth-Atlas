@@ -40,6 +40,9 @@ English · [简体中文](README.zh-CN.md)
 <td><img src="docs/screenshots/satellites.jpg" alt="Satellites and orbit paths"><br><b>Satellites</b><br>ISS, Tiangong, Hubble and Earth-observation satellites moving along SGP4-predicted orbits, with optional 60× / 300× time preview. <i>Track</i> (or click a satellite) locks the camera to it and shows live readouts beside it: sub-satellite point, altitude, speed, heading, sunlight, period, and its azimuth, elevation and range from your location. <i>Passes over me</i> lists the next 24 hours of passes over your location (or any picked point) — time, peak elevation, direction and whether it is visible to the naked eye — and jumps the timeline to one.</td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/screenshots/starlink.jpg" alt="The Starlink constellation"><br><b>Starlink constellation</b><br>All ~11,000 Starlink satellites from CelesTrak, propagated with SGP4 in a Web Worker twice a second. Sunlit satellites are bright, those in Earth's shadow faint; the 53°, 43°, 70° and 97° shells and freshly launched "trains" are visible. Follows the timeline.</td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/geology.jpg" alt="Geologic map and inspector"><br><b>Global geology</b><br>Macrostrat geologic map (raster, or experimental age / lithology vector views). Click the ground to list the mapped units, ages and rock types there.</td>
 <td><img src="docs/screenshots/atmosphere-layers.jpg" alt="Atmosphere layers at the limb"><br><b>Atmosphere layers</b><br>Troposphere, stratosphere, mesosphere, Kármán line and thermosphere drawn at their real heights (U.S. Standard Atmosphere 1976), with labelled 5× / 20× exaggeration.</td>
 </tr>
@@ -70,6 +73,7 @@ English · [简体中文](README.zh-CN.md)
 | Volcanoes | Smithsonian GVP — *Volcanoes of the World* | bundled, refreshed by workflow |
 | Plate boundaries | Bird (2003) PB2002, GeoJSON by Hugo Ahlenius / Nordpil (ODC-BY) | bundled |
 | Satellites | CelesTrak — GP elements (OMM JSON), SGP4 via `satellite.js` | cached ≥ 2 h |
+| Starlink constellation | CelesTrak — GP group `starlink` (OMM CSV, ~1.7 MB) | cached ≥ 2 h |
 | Clouds | SSEC / UW–Madison RealEarth — `globalir` | hourly |
 | Geology | Macrostrat (CC BY 4.0) | live tiles & queries |
 | Labels | Natural Earth (public domain) | bundled |

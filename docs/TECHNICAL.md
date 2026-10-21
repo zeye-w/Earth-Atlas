@@ -212,3 +212,7 @@ The OVATION grid covers both hemispheres. `ovalProfile(grid, "north" | "south")`
 
 **Layer groups** in the left panel all start collapsed.
 
+## Starlink constellation
+
+The *Starlink* toggle downloads CelesTrak's GP group `starlink` as OMM CSV (about 1.7 MB for ~11,000 satellites; the JSON form is four times larger and does not fit in localStorage). It is kept in memory and in Cache Storage for two hours, CelesTrak's update interval. A module Web Worker (`src/constellationWorker.ts`) converts the rows with `satellite.js` `json2satrec` and propagates all of them with SGP4 (about 20 ms for 11,000), returning Earth-fixed positions and a sunlit/shadow flag (cylindrical shadow) in transferable typed arrays. The main thread updates one `PointPrimitive` per satellite: twice a second when live, or when the timeline moves. Satellites whose elements are more than 10 days from the scene time, or whose solution is below 100 km (decayed), are not drawn, and the panel says how many. Clicking a point shows its name, altitude and sunlight. Recording mode also waits for pending worker results (`src/pendingWork.ts`) before each frame.
+

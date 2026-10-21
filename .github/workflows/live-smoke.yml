@@ -10,6 +10,7 @@ on:
       - "src/geomagnetic.ts"
       - "src/trueColorData.ts"
       - "src/cloudData.ts"
+      - "src/constellationData.ts"
       - ".github/workflows/live-smoke.yml"
   workflow_dispatch:
 permissions:
