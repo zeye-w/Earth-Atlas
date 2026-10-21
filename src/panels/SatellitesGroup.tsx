@@ -88,7 +88,7 @@ export function SatellitesGroup({ layers, setLayer, options, setOption, status, 
                 <span><i className="constellation-dot sunlit" />日照中</span>
                 <span><i className="constellation-dot" />地球阴影中</span>
               </div>
-              <p className="layer-note">轨道壳层（按倾角）：{(starlink.shells ?? []).filter((s) => s.count >= 50).map((s) => s.inclination + "° " + s.count.toLocaleString("zh-CN") + " 颗").join(" · ")}。新发射的卫星还在爬升，会排成一串"火车"。位置为 SGP4 推算，每秒更新；点击亮点查看名称和高度。</p>
+              <p className="layer-note">轨道壳层（按倾角）：{(starlink.shells ?? []).filter((s) => s.count >= 50).map((s) => s.inclination + "° " + s.count.toLocaleString("zh-CN") + " 颗").join(" · ")}。新发射的卫星还在爬升，会排成一串"火车"。位置为 SGP4 推算，每秒更新两次；点击亮点查看名称和高度。</p>
             </>
           )}
         </div>
