@@ -52,6 +52,8 @@ export interface RecordingApi {
   ready(): Promise<void>;
   setCamera(pose: CameraPose): void;
   lookAt(pose: LookAtPose): void;
+  /** Recording-only ECEF camera, for one uninterrupted camera flight between scenes. */
+  setCameraCartesian(pose: { position: [number, number, number]; target: [number, number, number] }): void;
   /** Scene time in ms since epoch, or null for live. */
   setTime(time: number | null): void;
   setLayers(layers: Partial<LayerToggles>): void;
@@ -116,6 +118,20 @@ export function installRecordingApi(deps: Dependencies): () => void {
       viewer.camera.lookAt(Cartesian3.fromDegrees(longitude, latitude, height), new HeadingPitchRange(CesiumMath.toRadians(heading), CesiumMath.toRadians(pitch), range));
       // Release the camera again, keeping its position.
       viewer.camera.lookAtTransform(Matrix4.IDENTITY);
+      scene.requestRender();
+    },
+    setCameraCartesian: ({ position, target }) => {
+      const cameraPosition = Cartesian3.fromArray(position);
+      const cameraTarget = Cartesian3.fromArray(target);
+      if (![...position, ...target].every(Number.isFinite)) throw new Error("Invalid ECEF camera");
+      const direction = Cartesian3.subtract(cameraTarget, cameraPosition, new Cartesian3());
+      if (Cartesian3.magnitude(direction) < 1000) throw new Error("Camera target is too close");
+      Cartesian3.normalize(direction, direction);
+      let up = Cartesian3.UNIT_Z;
+      if (Math.abs(Cartesian3.dot(up, direction)) > 0.97) up = Cartesian3.UNIT_Y;
+      up = Cartesian3.subtract(up, Cartesian3.multiplyByScalar(direction, Cartesian3.dot(up, direction), new Cartesian3()), new Cartesian3());
+      Cartesian3.normalize(up, up);
+      viewer.camera.setView({ destination: cameraPosition, orientation: { direction, up } });
       scene.requestRender();
     },
     setTime: (time) => {
