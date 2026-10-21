@@ -27,7 +27,7 @@ const surf=(lon,lat,h=0)=>{
 };
 const slerp=(a,b,t)=>{
   const na=normalize(a),nb=normalize(b),dot=Math.max(-1,Math.min(1,na.reduce((s,v,i)=>s+v*nb[i],0)));
-  if(dot>0.9995)return normalize(a.map((v,i)=>v+(nb[i]-v)*t));
+  if(dot>0.9995)return normalize(na.map((v,i)=>v+(nb[i]-v)*t));
   const th=Math.acos(dot),s=Math.sin(th);
   return add(mul(na,Math.sin((1-t)*th)/s),mul(nb,Math.sin(t*th)/s));
 };
