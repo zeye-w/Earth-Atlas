@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, Code, Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, SlidersHorizontal } from "lucide-react";
+import { Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, SlidersHorizontal } from "lucide-react";
 import { AUTO_QUALITY_MIN_FPS, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, type RenderQuality } from "../performance";
 import { ICON, Segmented } from "../ui/controls";
 
@@ -100,9 +100,6 @@ function SettingsMenu({ quality, onChooseQuality, autoQuality, onAutoQuality }: 
             {fullscreen ? <Minimize {...ICON} aria-hidden="true" /> : <Maximize {...ICON} aria-hidden="true" />}
             <span>{fullscreen ? "退出全屏" : "全屏浏览"}</span>
           </button>
-          <a className="settings-row" href="https://github.com/zeye-w/Earth-Atlas" target="_blank" rel="noreferrer">
-            <Code {...ICON} aria-hidden="true" /><span>GitHub 源代码</span><ArrowUpRight size={14} aria-hidden="true" />
-          </a>
         </div>
       )}
     </div>
