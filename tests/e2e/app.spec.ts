@@ -160,6 +160,22 @@ test("the Starlink constellation loads and follows the timeline", async ({ page 
   await expect(status).toContainText("240 颗根数距所选时刻超过 10 天未显示");
 });
 
+test("solar wind drives the magnetopause and says when there is no data", async ({ page }) => {
+  await page.goto(sceneUrl(0, 0, 17_000_000, { solarWind: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "EARTH VIEW");
+  const panel = layerPanel(page).locator(".solar-wind-panel");
+  await expect(panel).toContainText("450 km/s");
+  await expect(panel).toContainText("Bz -6.0 nT（南向）");
+  // 6 cm^-3 at 450 km/s is 2.03 nPa; with Bz -6 nT the Shue standoff is ~9.2 Earth radii.
+  await expect(panel).toContainText(/磁层顶距地心 9\.\d 个地球半径/);
+  await panel.getByRole("button", { name: "拉远查看磁层" }).click();
+  // The mocked feed covers two hours: a day earlier there is nothing to draw.
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(layerPanel(page)).toContainText("这一时刻没有太阳风数据");
+});
+
 test("clouds show the observation time", async ({ page }) => {
   await page.goto(sceneUrl(0, 0, 17_000_000, { clouds: true }));
   await waitForGlobe(page);

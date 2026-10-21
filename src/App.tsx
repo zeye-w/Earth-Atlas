@@ -21,6 +21,9 @@ import { useEarthquakes } from "./layers/useEarthquakes";
 import { useGeoLabels } from "./layers/useGeoLabels";
 import { useTrueColor } from "./layers/useTrueColor";
 import { useConstellation } from "./layers/useConstellation";
+import { useSolarWind } from "./layers/useSolarWind";
+import { subsolarPoint } from "./solar";
+import { EARTH_RADIUS_KM } from "./solarWindData";
 import { STARLINK } from "./constellationData";
 import { CONSTELLATION_ID_PREFIX } from "./constellationOverlay";
 import { usePlateBoundaries, useVolcanoes } from "./layers/useTectonics";
@@ -139,6 +142,13 @@ function App() {
   const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, followCamera: !RECORDING, timeline });
   useUserLocationMarker(viewer, userLocation.location);
   const starlink = useConstellation(viewer, layers.starlink, STARLINK, timeline);
+  const solarWind = useSolarWind(viewer, layers.solarWind, timeline);
+
+  // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
+  useEffect(() => {
+    if (!viewer) return;
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.solarWind ? 600_000_000 : 65_000_000;
+  }, [viewer, layers.solarWind]);
   const trackedSatellite = satellites.catalog.find(({ choice }) => choice.id === trackedSatelliteId)?.choice ?? null;
   const vectorState = useGeologyMap(viewer, { visible: layers.geology, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter });
 
@@ -230,6 +240,25 @@ function App() {
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(location.longitude, location.latitude, 2_500_000), duration: 1.6 });
   };
 
+  // Side view of the magnetosphere: Sun to one side, Earth in the middle.
+  const viewMagnetosphere = () => {
+    if (!viewer) return;
+    setTrackedSatelliteId(null);
+    const state = timeline.getState();
+    const sun = subsolarPoint(new Date(state.live ? Date.now() : state.time));
+    const toSun = Cartesian3.fromRadians(sun.longitude * Math.PI / 180, sun.latitude * Math.PI / 180, 0, undefined, new Cartesian3());
+    Cartesian3.normalize(toSun, toSun);
+    const side = Cartesian3.normalize(Cartesian3.cross(toSun, Cartesian3.UNIT_Z, new Cartesian3()), new Cartesian3());
+    const RE = EARTH_RADIUS_KM * 1000;
+    // Look at a point a few Earth radii sunward so the magnetopause nose is centred.
+    const target = Cartesian3.multiplyByScalar(toSun, 5 * RE, new Cartesian3());
+    const position = Cartesian3.add(Cartesian3.multiplyByScalar(side, 50 * RE, new Cartesian3()), Cartesian3.multiplyByScalar(Cartesian3.UNIT_Z, 12 * RE, new Cartesian3()), new Cartesian3());
+    Cartesian3.add(position, target, position);
+    const direction = Cartesian3.normalize(Cartesian3.subtract(target, position, new Cartesian3()), new Cartesian3());
+    const up = Cartesian3.normalize(Cartesian3.cross(Cartesian3.cross(direction, Cartesian3.UNIT_Z, new Cartesian3()), direction, new Cartesian3()), new Cartesian3());
+    viewer.camera.flyTo({ destination: position, orientation: { direction, up }, duration: 2.2 });
+  };
+
   const flyTo = (region: Region) => {
     setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000), duration: 1.8 });
@@ -269,7 +298,7 @@ function App() {
 
       <main className="workspace">
         <LayerPanel open={controlsOpen} onClose={() => setControlsOpen(false)} onFlyTo={flyTo}>
-          <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} />
+          <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} solarWind={solarWind} onViewMagnetosphere={viewMagnetosphere} />
           <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
             records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}

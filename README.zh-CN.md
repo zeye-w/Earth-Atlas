@@ -43,6 +43,9 @@
 <td colspan="2"><img src="docs/screenshots/starlink.jpg" alt="星链星座"><br><b>星链星座</b><br>CelesTrak 提供的全部约 11,000 颗星链卫星，在后台线程中用 SGP4 每秒计算两次位置。被太阳照亮的卫星是亮点，处在地球阴影中的是暗点；能看出 53°、43°、70°、97° 几个轨道壳层，以及刚发射、排成一串的"卫星火车"。也会跟随时间轴。</td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/screenshots/solar-wind.jpg" alt="太阳风与磁层"><br><b>太阳风与磁层</b><br>日地 L1 点实测的太阳风（NOAA SWPC 实时太阳风：速度、密度、行星际磁场 Bz）通过 Shue 等（1998）模型决定地球磁层顶的大小，外侧是近似的弓激波；粒子从太阳方向吹来，绕过磁层流向后方。粒子轨迹为示意并经过加速，边界大小来自实测数据。可沿时间轴回看最近约 24 小时。</td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/geology.jpg" alt="地质图与查询面板"><br><b>全球地质</b><br>Macrostrat 地质图（栅格，或实验性的年代 / 岩性矢量视图）。点击地面即可列出该处的地质单元、年代和岩石类型。</td>
 <td><img src="docs/screenshots/atmosphere-layers.jpg" alt="地球边缘的大气分层"><br><b>大气分层</b><br>按真实高度绘制对流层、平流层、中间层、卡门线和热层的顶部边界（美国标准大气 1976），可放大 5× / 20× 并标注为示意。</td>
 </tr>
@@ -69,6 +72,7 @@
 | 城市夜光 | NASA GIBS：VIIRS Black Marble 2016 | 2016 年合成（不是今晚的灯光） |
 | 极光 | NOAA SWPC：OVATION 极光实时预报 | 每 10 分钟 |
 | Kp 指数 | NOAA SWPC：行星际 K 指数 | 每 10 分钟 |
+| 太阳风 | NOAA SWPC：L1 点实时太阳风（RTSW） | 1 分钟数据，每 10 分钟刷新 |
 | 地震 | USGS：GeoJSON 汇总数据 | 每 5 分钟 |
 | 火山 | 史密森尼学会 GVP：*Volcanoes of the World* | 内置，由工作流刷新 |
 | 板块边界 | Bird (2003) PB2002，Hugo Ahlenius / Nordpil 转换的 GeoJSON（ODC-BY） | 内置 |

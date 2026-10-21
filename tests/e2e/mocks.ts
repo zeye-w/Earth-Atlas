@@ -64,6 +64,18 @@ function constellationCsv() {
   return [header, ...rows].join("\n") + "\n";
 }
 
+/** Two hours of synthetic RTSW solar wind (not NOAA data), newest first. */
+function rtsw(kind: "wind" | "mag") {
+  const rows = [];
+  for (let i = 0; i < 120; i++) {
+    const time_tag = new Date(Date.now() - i * 60_000).toISOString().slice(0, 19);
+    rows.push(kind === "wind"
+      ? { time_tag, active: true, source: "E2E", proton_speed: 450, proton_density: 6 }
+      : { time_tag, active: true, source: "E2E", bz_gsm: -6, bt: 8 });
+  }
+  return rows;
+}
+
 function cloudProducts() {
   const stamp = new Date(Date.now() - 30 * 60_000).toISOString().replace(/[-:]/g, "").replace("T", ".").slice(0, 15);
   return [{ id: "globalir", times: [stamp] }];
@@ -82,6 +94,8 @@ export async function mockNetwork(page: Page): Promise<void> {
       return json(route, { success: { v: 2, data: [{ lith_id: 7, name: "Sandstone", class: "sedimentary" }] } });
     }
     if (url.hostname === "earthquake.usgs.gov") return json(route, quakeFeed());
+    if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("rtsw_wind")) return json(route, rtsw("wind"));
+    if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("rtsw_mag")) return json(route, rtsw("mag"));
     if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("ovation")) return json(route, ovationGrid());
     if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("planetary_k_index_1m")) {
       return json(route, [{ time_tag: new Date().toISOString().slice(0, 19), kp_index: 2, estimated_kp: 2.33 }]);

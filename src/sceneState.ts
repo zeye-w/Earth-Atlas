@@ -1,10 +1,12 @@
+/** Camera height limit for shared scenes; the magnetosphere view needs ~0.5 million km. */
+export const MAX_CAMERA_HEIGHT = 600_000_000;
 export const LAYER_KEYS = ['clouds','geology','dayNight','cities','atmosphere','aurora','lights','quakes','plates','volcanoes','satellites','paths'] as const;
 export type LayerKey = typeof LAYER_KEYS[number];
 export interface SceneState {
   v: 1;
   camera: [number, number, number, number, number, number];
   // Layers added later are optional so earlier shared links stay valid.
-  layers: Record<LayerKey, boolean> & { geoLabels?: boolean; trueColor?: boolean; starlink?: boolean };
+  layers: Record<LayerKey, boolean> & { geoLabels?: boolean; trueColor?: boolean; starlink?: boolean; solarWind?: boolean };
   /** Timeline moment (ms since epoch); absent = live. */
   time?: number;
   point?: { latitude: number; longitude: number };
@@ -20,9 +22,9 @@ export function readScene(hash: string): SceneState | null {
     if (!raw) return null;
     const s = JSON.parse(raw);
     if (s.v !== 1 || !Array.isArray(s.camera) || s.camera.length !== 6 || !s.camera.every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) return null;
-    if (!validCoordinates(s.camera[1], s.camera[0]) || s.camera[2] < 15000 || s.camera[2] > 65000000 || Math.abs(s.camera[3]) > 7 || Math.abs(s.camera[4]) > Math.PI / 2 || Math.abs(s.camera[5]) > 7) return null;
+    if (!validCoordinates(s.camera[1], s.camera[0]) || s.camera[2] < 15000 || s.camera[2] > MAX_CAMERA_HEIGHT || Math.abs(s.camera[3]) > 7 || Math.abs(s.camera[4]) > Math.PI / 2 || Math.abs(s.camera[5]) > 7) return null;
     if (!s.layers || !LAYER_KEYS.every(k => typeof s.layers[k] === 'boolean')) return null;
-    if (['geoLabels','trueColor','starlink'].some(k => s.layers[k] !== undefined && typeof s.layers[k] !== 'boolean')) return null;
+    if (['geoLabels','trueColor','starlink','solarWind'].some(k => s.layers[k] !== undefined && typeof s.layers[k] !== 'boolean')) return null;
     if (s.time !== undefined && !(Number.isFinite(s.time) && s.time > 0)) return null;
     if (s.point && !validCoordinates(s.point.latitude,s.point.longitude)) return null;
     const o = s.options;

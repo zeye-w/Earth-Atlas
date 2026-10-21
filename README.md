@@ -43,6 +43,9 @@ English · [简体中文](README.zh-CN.md)
 <td colspan="2"><img src="docs/screenshots/starlink.jpg" alt="The Starlink constellation"><br><b>Starlink constellation</b><br>All ~11,000 Starlink satellites from CelesTrak, propagated with SGP4 in a Web Worker twice a second. Sunlit satellites are bright, those in Earth's shadow faint; the 53°, 43°, 70° and 97° shells and freshly launched "trains" are visible. Follows the timeline.</td>
 </tr>
 <tr>
+<td colspan="2"><img src="docs/screenshots/solar-wind.jpg" alt="Solar wind and the magnetosphere"><br><b>Solar wind and the magnetosphere</b><br>Measured solar wind at the L1 point (NOAA SWPC real-time solar wind: speed, density, IMF Bz) sets the size of Earth's magnetopause through the Shue et al. (1998) model, shown with an approximate bow shock; particles stream from the Sun and flow around them. The particle paths are illustrative and sped up; the boundary sizes come from the measurements. Follows the timeline over the last ~24 hours.</td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/geology.jpg" alt="Geologic map and inspector"><br><b>Global geology</b><br>Macrostrat geologic map (raster, or experimental age / lithology vector views). Click the ground to list the mapped units, ages and rock types there.</td>
 <td><img src="docs/screenshots/atmosphere-layers.jpg" alt="Atmosphere layers at the limb"><br><b>Atmosphere layers</b><br>Troposphere, stratosphere, mesosphere, Kármán line and thermosphere drawn at their real heights (U.S. Standard Atmosphere 1976), with labelled 5× / 20× exaggeration.</td>
 </tr>
@@ -69,6 +72,7 @@ English · [简体中文](README.zh-CN.md)
 | City lights | NASA GIBS — VIIRS Black Marble 2016 | 2016 composite (not tonight's lights) |
 | Aurora | NOAA SWPC — OVATION aurora nowcast | every 10 min |
 | Kp index | NOAA SWPC — planetary K-index | every 10 min |
+| Solar wind | NOAA SWPC — real-time solar wind (RTSW) at L1 | 1-minute data, refreshed every 10 min |
 | Earthquakes | USGS — GeoJSON summary feeds | every 5 min |
 | Volcanoes | Smithsonian GVP — *Volcanoes of the World* | bundled, refreshed by workflow |
 | Plate boundaries | Bird (2003) PB2002, GeoJSON by Hugo Ahlenius / Nordpil (ODC-BY) | bundled |

@@ -10,6 +10,7 @@ import { OVATION_URL, northernProfile, parseOvation, southernProfile } from "../
 import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
 import { CLOUD_METADATA_URL, cloudTileUrl, cloudTimes } from "../src/cloudData.ts";
 import { STARLINK, constellationUrl, parseOmmCsv, shellCounts, epochOf } from "../src/constellationData.ts";
+import { MAG_URL, WIND_URL, dynamicPressure, parseSolarWind, shueMagnetopause } from "../src/solarWindData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { KP_HISTORY_URL, KP_NOW_URL, kpLevel, parseKpHistory, parseKpNow } from "../src/geomagnetic.ts";
 
@@ -221,6 +222,24 @@ try {
 } catch (error) {
   failed = true;
   console.error("LIVE_CELESTRAK_STARLINK_FAILURE:", error);
+}
+
+// Solar wind (RTSW, ~24 h): CORS, size, coverage, latest values.
+try {
+  const responses = await Promise.all([WIND_URL, MAG_URL].map((url) => fetch(url, { signal: AbortSignal.timeout(30000), headers: { Origin: site } })));
+  const bodies = await Promise.all(responses.map((r) => r.text()));
+  responses.forEach((r, i) => console.log("SWPC solar wind", i ? "mag" : "wind", "HTTP", r.status, "CORS", r.headers.get("access-control-allow-origin") ?? "(missing)", "bytes", bodies[i].length, "start", bodies[i].slice(0, 110)));
+  const samples = parseSolarWind(JSON.parse(bodies[0]), JSON.parse(bodies[1]));
+  const latest = samples.at(-1);
+  const mp = shueMagnetopause(dynamicPressure(latest.density, latest.speed), latest.bz ?? 0);
+  console.log("  samples", samples.length, "range", new Date(samples[0].time).toISOString(), "..", new Date(latest.time).toISOString(), "with Bz", samples.filter((s) => s.bz !== null).length);
+  console.log("  sources", JSON.stringify(Object.fromEntries([...new Set(samples.map((x) => x.source))].map((src) => [src, samples.filter((x) => x.source === src).length]))));
+  console.log("  latest", JSON.stringify(latest), "Pd", dynamicPressure(latest.density, latest.speed).toFixed(2), "nPa  magnetopause r0", mp.r0.toFixed(2), "RE");
+  for (const r of responses) { const cors = r.headers.get("access-control-allow-origin"); assert.ok(cors === "*" || cors === site, "CORS disallows deployed origin"); }
+  assert.ok(samples.length > 1000, "fewer than 1000 solar wind samples");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_SWPC_SOLAR_WIND_FAILURE:", error);
 }
 
 for (const path of [

@@ -11,6 +11,7 @@
 import { Cartesian3, HeadingPitchRange, Math as CesiumMath, Matrix4, type Viewer } from "cesium";
 import { setAuroraEffectsTime } from "./aurora";
 import { hasPendingWork } from "./pendingWork";
+import { setSolarWindEffectsTime } from "./solarWindOverlay";
 import { TIME_SPANS, spanFor, type TimeController } from "./timeline";
 import type { LayerOptions, LayerToggles } from "./hooks/useLayerSettings";
 import type { Telemetry } from "./satelliteTelemetry";
@@ -83,6 +84,7 @@ export function installRecordingApi(deps: Dependencies): () => void {
   const { viewer, timeline } = deps;
   const scene = viewer.scene;
   setAuroraEffectsTime(0);
+  setSolarWindEffectsTime(0);
 
   const idle = async (timeoutMs = 30_000): Promise<boolean> => {
     const start = performance.now();
@@ -131,7 +133,7 @@ export function installRecordingApi(deps: Dependencies): () => void {
       const t = deps.satelliteTelemetry(id);
       return t ? { latitude: t.latitude, longitude: t.longitude, altitudeKm: t.altitudeKm, headingDeg: t.headingDeg } : null;
     },
-    setEffectsTime: (seconds) => setAuroraEffectsTime(seconds),
+    setEffectsTime: (seconds) => { setAuroraEffectsTime(seconds); setSolarWindEffectsTime(seconds); },
     idle,
     render: () => scene.render(),
   };
@@ -139,5 +141,6 @@ export function installRecordingApi(deps: Dependencies): () => void {
   return () => {
     delete (window as unknown as { __terrascope?: RecordingApi }).__terrascope;
     setAuroraEffectsTime(null);
+    setSolarWindEffectsTime(null);
   };
 }
