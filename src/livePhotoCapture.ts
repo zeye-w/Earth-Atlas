@@ -93,7 +93,11 @@ export function captureScene(viewer: Viewer, orbit: boolean, signal: AbortSignal
       try {
         await encoder!.flush();
         if (settled) return;
-        if (samples.length < MIN_FRAMES || !description) { fail(Error("录制画面不足，请降低画质后重录")); return; }
+        if (samples.length < MIN_FRAMES || !description) {
+          const seconds = (performance.now() - started) / 1000;
+          fail(Error(`录制画面不足（${seconds.toFixed(1)} 秒内只得到 ${samples.length} 帧${description ? "" : "，编码器未给出配置"}），请降低画质后重录`));
+          return;
+        }
         const video: EncodedVideo = { width: canvas.width, height: canvas.height, description, samples };
         const preview = new Blob([buildMovie(video, { container: "mp4" }) as BlobPart], { type: "video/mp4" });
         const elapsed = (samples[samples.length - 1].time - samples[0].time) / 1_000_000 + 1 / FPS;
