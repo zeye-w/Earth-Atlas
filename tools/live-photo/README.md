@@ -1,5 +1,7 @@
 # 网页当前场景 → iPhone 实况图（实验功能）
 
+> **现在网页不再需要这个本地服务。** 录制、H.264 编码和 JPG/MOV 配对封装都已在浏览器里完成（`src/livePhotoCapture.ts`、`src/livePhotoFormat.ts`，后者是本目录 `vendor/makelive_mov.py` 与 `jpeg.mjs` 的移植），线上网站即可导出。本目录保留作参考实现：`jpeg.mjs` 和 `movValidation.mjs` 被根目录的 `tests/livePhoto.test.mjs` 用来交叉校验浏览器版的输出。下面是原本地服务版本的说明。
+
 顶部「实况图」→ 录制当前场景 3 秒 → 预览并拖动封面滑块 → 导出资源包。
 画面直接来自 Cesium 的 postRender，不改变普通浏览的 WebGL 配置。可以固定/手动镜头或缓慢环绕；卫星跟踪时禁用额外环绕。只录地球 Canvas 和数据署名，不录面板或麦克风。关闭面板、取消录制或切到后台会停止录制并释放资源，环绕后恢复相机。
 

@@ -106,7 +106,7 @@ npm run test:e2e     # 基于构建产物的 Playwright 端到端测试（外部
 
 ### 实验：录制 iPhone 实况图
 
-顶部「实况图」入口可录制当前地球约 3 秒，预览并选择封面，通过本地媒体服务导出 JPEG/MOV 配对资源包。服务离线时仍能下载原始片段。尚需 iPhone 相册真机识别验收；线上 Workers 站点不包含本地封装服务。启动和导入步骤见 [tools/live-photo/README.md](tools/live-photo/README.md)。
+顶部「实况图」入口可录制当前地球约 3 秒，选一帧作封面，然后**直接在浏览器里生成 iPhone 实况图**：不需要服务器，线上网站即可使用。画面用 WebCodecs 编码为 H.264（iOS / macOS 上的 Safari 16.4 及以上，或 Chrome），封装为带 Apple 内容标识和 still-image-time 元数据轨的 QuickTime MOV，再配一张写入相同标识的 JPEG 封面（`src/livePhotoFormat.ts`）。在 iPhone 上点「存到照片」会用分享菜单保存这两个文件；在 Mac 上把 ZIP 里的 JPG 和 MOV 一起导入「照片」即合并为一张实况图，再经 iCloud 照片同步到手机。iOS 从分享菜单保存后是否会自动合并，还需要真机确认。单元测试用 ffprobe / ExifTool 检查生成的文件；[Live Photo export](.github/workflows/live-photo.yml) 工作流在 Google Chrome 中跑完整流程，并把生成的实况图保存为构件。`tools/live-photo/` 是之前的本地服务版本，保留作参考实现和校验工具。
 
 ## 项目结构
 

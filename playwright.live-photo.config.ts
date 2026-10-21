@@ -1,13 +1,19 @@
 import {defineConfig} from "@playwright/test";
 import base from "./playwright.config";
 
+// The full Live Photo flow needs a browser with an H.264 WebCodecs encoder:
+// Google Chrome or Safari, not the open-source Chromium build Playwright ships.
+// Run with LIVE_PHOTO_CHANNEL=chrome (as .github/workflows/live-photo.yml does).
 export default defineConfig({
   ...base,
   testDir: "tests/live-photo",
   testMatch: "*.spec.ts",
-  use: {...base.use, baseURL: "http://localhost:5175", viewport: {width: 1100, height: 760}, launchOptions: {...base.use?.launchOptions, args: process.platform === "win32" ? ["--use-angle=d3d11"] : base.use?.launchOptions?.args}},
-  webServer: [
-    {command: "npm run dev -- --host 127.0.0.1 --port 5175 --strictPort", url: "http://localhost:5175", reuseExistingServer: !process.env.CI, timeout: 60_000},
-    {command: "npm start --prefix tools/live-photo", url: "http://127.0.0.1:4174/api/live-photo/health", reuseExistingServer: !process.env.CI, timeout: 60_000},
-  ],
+  timeout: 180_000,
+  use: {
+    ...base.use,
+    channel: process.env.LIVE_PHOTO_CHANNEL || undefined,
+    viewport: {width: 1100, height: 760},
+    acceptDownloads: true,
+    launchOptions: {...base.use?.launchOptions, executablePath: process.env.LIVE_PHOTO_CHANNEL ? undefined : base.use?.launchOptions?.executablePath},
+  },
 });

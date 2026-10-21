@@ -6,12 +6,8 @@ import { viteStaticCopy } from "vite-plugin-static-copy";
 // This follows the official Cesium + Vite pattern (no Cesium ion needed).
 const cesiumSource = "node_modules/cesium/Build/Cesium";
 const cesiumBaseUrl = "cesium";
-// The native media encoder stays local; it is never bundled into the website.
-const livePhotoProxy = {"/api/live-photo": {target: "http://127.0.0.1:4174", changeOrigin: true}};
 
 export default defineConfig({
-  server: {proxy: livePhotoProxy},
-  preview: {proxy: livePhotoProxy},
   plugins: [
     react(),
     viteStaticCopy({

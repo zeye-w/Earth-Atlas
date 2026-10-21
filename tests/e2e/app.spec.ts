@@ -287,3 +287,21 @@ test("search flies to a place and shared links restore layers", async ({ page })
   await expect(page.getByRole("checkbox", { name: "大气分层" })).toBeChecked();
   await expect(page.getByRole("radio", { name: "放大 5×" })).toHaveAttribute("aria-checked", "true");
 });
+
+test("Live Photo: without an H.264 encoder the panel says so, also on a phone", async ({ page }) => {
+  await page.addInitScript(() => { delete (window as { VideoEncoder?: unknown }).VideoEncoder; });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(sceneUrl(100, 20, 17_000_000, {}));
+  await waitForGlobe(page);
+  const opener = page.getByRole("button", { name: "录制 iPhone 实况图", exact: true });
+  await opener.click();
+  const panel = page.getByRole("dialog", { name: "录制 iPhone 实况图" });
+  await expect(panel.getByRole("alert")).toContainText("不支持 H.264");
+  await expect(panel.getByRole("button", { name: "录制当前场景 · 3 秒", exact: true })).toBeDisabled();
+  const box = await panel.boundingBox();
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});

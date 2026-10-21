@@ -1,0 +1,47 @@
+name: Live Photo export
+# The browser-side Live Photo flow needs H.264 in WebCodecs, which the
+# Playwright Chromium build lacks; this runs it in Google Chrome and keeps the
+# generated JPG + MOV as an artifact for trying on an iPhone.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/livePhoto*.ts"
+      - "src/panels/LivePhotoPanel.tsx"
+      - "tests/live-photo/**"
+      - "playwright.live-photo.config.ts"
+      - ".github/workflows/live-photo.yml"
+permissions:
+  contents: read
+jobs:
+  chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Google Chrome and ffmpeg
+        run: |
+          npx playwright install --with-deps chrome
+          command -v ffprobe || (sudo apt-get update && sudo apt-get install -y ffmpeg)
+      - name: Record and export a Live Photo in Chrome
+        env:
+          LIVE_PHOTO_CHANNEL: chrome
+          LIVE_PHOTO_OUT: live-photo-output
+        run: npx playwright test --config playwright.live-photo.config.ts
+      - name: Upload the generated Live Photo
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: terrascope-live-photo
+          path: |
+            live-photo-output/
+            test-results/
+          retention-days: 14

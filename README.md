@@ -106,7 +106,7 @@ No API keys are needed. A network connection is required for the live imagery an
 
 ### Experimental iPhone Live Photo capture
 
-The **实况图** toolbar action records the current globe for about three seconds, previews it, and lets you select a key photo. A local media service exports a paired JPEG/MOV resource ZIP; original clip downloads work without that service. iPhone Photos recognition still requires device testing. The local encoder is not included in the hosted Workers site. Setup and import instructions: [tools/live-photo/README.md](tools/live-photo/README.md).
+The **实况图** toolbar action records the current globe for about three seconds and lets you pick the key photo; the browser then builds the iPhone Live Photo itself — no server involved, so it works on the hosted site. Frames are encoded to H.264 with WebCodecs (Safari 16.4+ on iOS/macOS, or Chrome) and packaged as a QuickTime MOV carrying Apple's content identifier and still-image-time metadata track, plus a JPEG key photo with the matching identifier (`src/livePhotoFormat.ts`). On an iPhone, *存到照片* opens the share sheet with both files; on a Mac, import the ZIP's JPG + MOV together into Photos and they merge into one Live Photo (then sync via iCloud Photos). Whether iOS merges a pair saved from the share sheet still needs checking on a device. The files are checked with ffprobe/ExifTool in unit tests, and the whole flow runs in Google Chrome in the [Live Photo export](.github/workflows/live-photo.yml) workflow, which keeps the generated pair as an artifact. `tools/live-photo/` is the earlier local-service version, kept as a reference implementation and validator.
 
 ## Project structure
 
