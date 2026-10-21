@@ -1,6 +1,6 @@
 import { Cloud, Globe, Image as ImageIcon, Layers2, Lightbulb, MapPin, Mountain, Sparkles, SunMoon, Wind } from "lucide-react";
 import { EARTH_RADIUS_KM, solarWindLevel } from "../solarWindData";
-import { SOLAR_WIND_TIME_LAPSE } from "../solarWindOverlay";
+import { SOLAR_WIND_TIME_LAPSE, SOUTHWARD_TINT_BZ } from "../solarWindOverlay";
 import type { SolarWindState } from "../layers/useSolarWind";
 import { ATMOSPHERE_LAYERS, ATMOSPHERE_SCALES, formatHeight } from "../atmosphereLayers";
 import { kpLevel, type GeomagneticState } from "../geomagnetic";
@@ -125,6 +125,7 @@ function SolarWindPanel({ state, live, onView }: { state: SolarWindState; live: 
   }
   const level = solarWindLevel(sample);
   const south = sample.bz !== null && sample.bz < 0;
+  const tinted = sample.bz !== null && sample.bz <= SOUTHWARD_TINT_BZ;
   return (
     <div className="layer-extra solar-wind-panel" role="status">
       <div className="kp-head">
@@ -137,7 +138,7 @@ function SolarWindPanel({ state, live, onView }: { state: SolarWindState; live: 
         <br />磁层顶距地心 {number(magnetopause.r0, 1)} 个地球半径（约 {number(magnetopause.r0 * EARTH_RADIUS_KM)} km）{south ? "，南向磁场时更易发生磁暴" : ""}
       </p>
       <div className="thematic-legend">
-        <span><i style={{ backgroundColor: south ? "#ff7ad9" : "#6fd3ff", height: 3, borderRadius: 2 }} />磁层顶（{south ? "粉色：南向 Bz" : "青色：北向 Bz"}）</span>
+        <span><i style={{ backgroundColor: tinted ? "#ff7ad9" : "#6fd3ff", height: 3, borderRadius: 2 }} />磁层顶（{tinted ? "粉色：Bz ≤ " + SOUTHWARD_TINT_BZ + " nT，明显南向" : "青色：Bz > " + SOUTHWARD_TINT_BZ + " nT"}）</span>
         <span><i style={{ backgroundColor: "#ffb36b", height: 3, borderRadius: 2 }} />弓激波</span>
         <span><i className="constellation-dot sunlit" style={{ background: "#ffd27a" }} />太阳风粒子</span>
       </div>

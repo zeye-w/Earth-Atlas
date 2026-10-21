@@ -35,6 +35,8 @@ const TRAIL = [0, 0.45, 0.9, 1.4];
 const TRAIL_ALPHA = [0.95, 0.55, 0.3, 0.14];
 /** Animation runs about this many times faster than the real solar wind. */
 export const SOLAR_WIND_TIME_LAPSE = 100;
+/** Bz at or below this (nT) tints the magnetopause pink. */
+export const SOUTHWARD_TINT_BZ = -5;
 const FRAME_MS = 1000 / 30;
 
 // Fresnel rim glow, fading toward the open tail (st.t runs nose -> tail).
@@ -202,7 +204,7 @@ export class SolarWindOverlay {
     this.visual = visual;
     if (!visual) { this.clearShells(); this.hideParticles(); this.viewer.scene.requestRender(); return; }
     const shapeChanged = !previous || Math.abs(previous.shape.r0 - visual.shape.r0) > 0.02 || Math.abs(previous.shape.alpha - visual.shape.alpha) > 0.005;
-    const southChanged = !previous || (previous.bz ?? 0) <= -5 !== (visual.bz ?? 0) <= -5;
+    const southChanged = !previous || (previous.bz ?? 0) <= SOUTHWARD_TINT_BZ !== (visual.bz ?? 0) <= SOUTHWARD_TINT_BZ;
     if (shapeChanged || southChanged) this.buildShells(visual);
     this.mpProfile = profile(visual.shape);
     this.bsProfile = profile(bowShock(visual.shape));
@@ -213,7 +215,7 @@ export class SolarWindOverlay {
 
   private buildShells(visual: SolarWindVisual): void {
     this.clearShells();
-    const south = (visual.bz ?? 0) <= -5;
+    const south = (visual.bz ?? 0) <= SOUTHWARD_TINT_BZ;
     const layers = [
       { shape: visual.shape, color: south ? "#ff7ad9" : "#6fd3ff", alpha: 0.75, power: 2.6 },
       { shape: bowShock(visual.shape), color: "#ffb36b", alpha: 0.32, power: 3.2 },
