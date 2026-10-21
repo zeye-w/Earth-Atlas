@@ -31,6 +31,16 @@ test("starts up, dismisses the splash and shows the main controls", async ({ pag
   await expect(page.locator(".globe-attribution")).toContainText("USGS");
 });
 
+test("settings do not expose the project GitHub repository", async ({ page }) => {
+  await page.goto("/");
+  await waitForGlobe(page);
+  await page.getByRole("button", { name: "显示设置" }).click();
+  await expect(page.getByRole("dialog", { name: "显示设置" })).toBeVisible();
+  await expect(page.locator('a[href="https://github.com/zeye-w/Earth-Atlas"]')).toHaveCount(0);
+  await expect(page.getByText("GitHub 源代码")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "全屏浏览" })).toBeVisible();
+});
+
 test("toggling a layer never scrolls the glass card itself", async ({ page }) => {
   await page.goto("/");
   await waitForGlobe(page);
