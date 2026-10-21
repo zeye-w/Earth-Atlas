@@ -10,10 +10,10 @@ export interface SceneClip extends EncodedVideo {
   preview: Blob;
 }
 
-const CLIP_SECONDS = 3;
-const MAX_SECONDS = 5;
-const MIN_FRAMES = 15;
 const FPS = 30;
+const FRAMES = 3 * FPS;
+/** Slow orbit: 2° per second of clip. */
+const ORBIT_STEP = (2 * Math.PI / 180) / FPS;
 const BITRATE = 8_000_000;
 // Baseline has no B-frames, so decode order is presentation order (what the
 // movie writer expects); level 4.0 covers the 1280-pixel capture.
@@ -43,9 +43,13 @@ export async function supportedCodec(width = 1280, height = 720): Promise<string
 }
 
 /**
- * Record ~3 s of the globe straight into H.264 (WebCodecs). Pixels are copied
- * in postRender, before WebGL clears its buffer, so ordinary browsing keeps
- * preserveDrawingBuffer off. The data attribution is drawn under the picture.
+ * Record 3 s (90 frames) of the globe straight into H.264 (WebCodecs).
+ * Frames are taken one per render, not by the clock: each one advances the
+ * slow orbit by a fixed step and is stamped i/30 s, so the clip is smooth
+ * however fast the device renders (a slow one just takes longer). Pixels are
+ * copied in postRender, before WebGL clears its buffer, so ordinary browsing
+ * keeps preserveDrawingBuffer off. The data attribution is drawn under the
+ * picture.
  */
 export function captureScene(viewer: Viewer, orbit: boolean, signal: AbortSignal, progress: (value: number) => void): Promise<SceneClip> {
   return new Promise((resolve, reject) => {
@@ -73,7 +77,7 @@ export function captureScene(viewer: Viewer, orbit: boolean, signal: AbortSignal
     const inputs = controller.enableInputs;
     let encoder: VideoEncoder | undefined;
     let removePostRender: (() => void) | undefined;
-    let raf = 0, timer = 0, encoded = 0, started = 0, previous = 0, lastProgress = 0, lastFrame = -Infinity, settled = false, stopping = false;
+    let raf = 0, timer = 0, encoded = 0, settled = false, stopping = false;
     let codec = "";
     let description: Uint8Array | null = null;
     const samples: EncodedSample[] = [];
@@ -93,14 +97,10 @@ export function captureScene(viewer: Viewer, orbit: boolean, signal: AbortSignal
       try {
         await encoder!.flush();
         if (settled) return;
-        if (samples.length < MIN_FRAMES || !description) {
-          const seconds = (performance.now() - started) / 1000;
-          fail(Error(`录制画面不足（${seconds.toFixed(1)} 秒内只得到 ${samples.length} 帧${description ? "" : "，编码器未给出配置"}），请降低画质后重录`));
-          return;
-        }
+        if (samples.length < FRAMES || !description) { fail(Error(`视频编码不完整（${samples.length} / ${FRAMES} 帧），请重录`)); return; }
         const video: EncodedVideo = { width: canvas.width, height: canvas.height, description, samples };
         const preview = new Blob([buildMovie(video, { container: "mp4" }) as BlobPart], { type: "video/mp4" });
-        const elapsed = (samples[samples.length - 1].time - samples[0].time) / 1_000_000 + 1 / FPS;
+        const elapsed = samples.length / FPS;
         settled = true; cleanup();
         resolve({ ...video, codec, frames: samples.length, elapsed, preview });
       } catch (error) { fail(error instanceof Error ? error : Error(String(error))); }
@@ -127,31 +127,26 @@ export function captureScene(viewer: Viewer, orbit: boolean, signal: AbortSignal
         camera.cancelFlight(); if (orbit) controller.enableInputs = false;
         removePostRender = viewer.scene.postRender.addEventListener(() => {
           if (settled || stopping || !encoder) return;
-          const now = performance.now();
-          if (!started) { started = previous = now; clearTimeout(timer); }
-          // At most 30 frames per second; skip frames while the encoder is behind.
-          if (now - lastFrame < 1000 / FPS - 2 || encoder.encodeQueueSize > 4) return;
+          if (encoded === 0) { clearTimeout(timer); timer = window.setTimeout(() => fail(Error("录制超时，请降低画质后重试")), 180_000); }
+          // Let the encoder catch up; this render is simply not used.
+          if (encoder.encodeQueueSize > 4) return;
           try {
             context.fillStyle = "#05070b"; context.fillRect(0, 0, canvas.width, canvas.height);
             context.drawImage(source, 0, 0, canvas.width, pictureHeight);
             context.font = `${fontSize}px sans-serif`; context.fillStyle = "#d5d9e2";
             lines.forEach((text, i) => context.fillText(text, 10, pictureHeight + (i + 1) * (fontSize + 3)));
-            const frame = new VideoFrame(canvas, { timestamp: Math.round((now - started) * 1000) });
-            encoder.encode(frame, { keyFrame: encoded++ % 15 === 0 });
+            const frame = new VideoFrame(canvas, { timestamp: Math.round(encoded * 1_000_000 / FPS) });
+            encoder.encode(frame, { keyFrame: encoded % 15 === 0 });
             frame.close();
-            lastFrame = now;
-          } catch { fail(Error("画面无法录制，可能有跨域图层或浏览器限制，请关闭相关图层后重试")); }
+          } catch { fail(Error("画面无法录制，可能有跨域图层或浏览器限制，请关闭相关图层后重试")); return; }
+          encoded++;
+          progress(encoded / FRAMES);
+          if (encoded >= FRAMES) { void finish(); return; }
+          if (orbit) camera.rotateRight(ORBIT_STEP);
         });
-        const tick = (now: number) => {
-          if (settled || viewer.isDestroyed()) { if (!settled) fail(Error("地球视图已关闭")); return; }
-          if (started) {
-            const elapsed = (now - started) / 1000;
-            if (now - lastProgress > 100) { progress(Math.min(1, elapsed / CLIP_SECONDS)); lastProgress = now; }
-            if (orbit) camera.rotateRight(Math.min((now - previous) / 1000, .1) * Math.PI / 180 * 2);
-            previous = now;
-            // A slow device may need a little longer to collect enough frames.
-            if ((elapsed >= CLIP_SECONDS && encoded >= MIN_FRAMES) || elapsed >= MAX_SECONDS) { void finish(); return; }
-          }
+        const tick = () => {
+          if (settled || stopping) return;
+          if (viewer.isDestroyed()) { fail(Error("地球视图已关闭")); return; }
           viewer.scene.requestRender(); raf = requestAnimationFrame(tick);
         };
         raf = requestAnimationFrame(tick);
