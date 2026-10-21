@@ -12,7 +12,6 @@ export default defineConfig({
   use: {
     ...base.use,
     channel: process.env.LIVE_PHOTO_CHANNEL || undefined,
-    viewport: {width: 1100, height: 760},
     acceptDownloads: true,
     launchOptions: {...base.use?.launchOptions, executablePath: process.env.LIVE_PHOTO_CHANNEL ? undefined : base.use?.launchOptions?.executablePath},
   },

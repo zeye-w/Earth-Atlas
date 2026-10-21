@@ -11,6 +11,8 @@ export interface SceneClip extends EncodedVideo {
 }
 
 const CLIP_SECONDS = 3;
+const MAX_SECONDS = 5;
+const MIN_FRAMES = 15;
 const FPS = 30;
 const BITRATE = 8_000_000;
 // Baseline has no B-frames, so decode order is presentation order (what the
@@ -91,7 +93,7 @@ export function captureScene(viewer: Viewer, orbit: boolean, signal: AbortSignal
       try {
         await encoder!.flush();
         if (settled) return;
-        if (samples.length < 15 || !description) { fail(Error("录制画面不足，请降低画质后重录")); return; }
+        if (samples.length < MIN_FRAMES || !description) { fail(Error("录制画面不足，请降低画质后重录")); return; }
         const video: EncodedVideo = { width: canvas.width, height: canvas.height, description, samples };
         const preview = new Blob([buildMovie(video, { container: "mp4" }) as BlobPart], { type: "video/mp4" });
         const elapsed = (samples[samples.length - 1].time - samples[0].time) / 1_000_000 + 1 / FPS;
@@ -143,7 +145,8 @@ export function captureScene(viewer: Viewer, orbit: boolean, signal: AbortSignal
             if (now - lastProgress > 100) { progress(Math.min(1, elapsed / CLIP_SECONDS)); lastProgress = now; }
             if (orbit) camera.rotateRight(Math.min((now - previous) / 1000, .1) * Math.PI / 180 * 2);
             previous = now;
-            if (elapsed >= CLIP_SECONDS) { void finish(); return; }
+            // A slow device may need a little longer to collect enough frames.
+            if ((elapsed >= CLIP_SECONDS && encoded >= MIN_FRAMES) || elapsed >= MAX_SECONDS) { void finish(); return; }
           }
           viewer.scene.requestRender(); raf = requestAnimationFrame(tick);
         };

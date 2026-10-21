@@ -4,10 +4,21 @@ import {mkdirSync, readFileSync, writeFileSync} from "node:fs";
 import {strFromU8, unzipSync} from "fflate";
 import {mockNetwork, sceneUrl, waitForGlobe} from "../e2e/mocks";
 import {inspectKeyPhoto} from "../../tools/live-photo/movValidation.mjs";
+import type {Locator} from "@playwright/test";
+
+/** Wait for the recorded clip; if the panel reports an error instead, fail with its text. */
+async function expectClip(panel: Locator) {
+  const preview = panel.getByLabel("录制片段预览"), alert = panel.locator(".live-photo-error");
+  await expect(preview.or(alert)).toBeVisible({timeout: 90_000});
+  if (await alert.isVisible()) throw new Error("Recording failed: " + await alert.textContent());
+}
 
 // Needs H.264 in WebCodecs (Google Chrome / Safari). Writes the pair to
 // LIVE_PHOTO_OUT when set, so it can be tried on a real iPhone.
 test.beforeEach(async ({page}) => {
+  // Software WebGL on CI renders a small window fast enough for ~15+ fps.
+  await page.setViewportSize({width: 820, height: 520});
+  page.on("console", message => { if (message.type() === "error" || message.type() === "warning") console.log("[browser]", message.text()); });
   await mockNetwork(page);
   await page.goto(sceneUrl(100, 20, 17_000_000, {geoLabels: false}));
   await waitForGlobe(page);
@@ -21,7 +32,7 @@ test("current globe -> H.264 clip -> chosen cover -> paired Live Photo, all in t
   const record = panel.getByRole("button", {name: "录制当前场景 · 3 秒", exact: true});
   await expect(record).toBeEnabled();
   await record.click();
-  await expect(panel.getByLabel("录制片段预览")).toBeVisible({timeout: 60_000});
+  await expectClip(panel);
   await panel.getByRole("slider", {name: "封面时刻"}).fill("1.2");
   await panel.getByRole("button", {name: "生成实况图", exact: true}).click();
   await expect(panel.getByRole("status").filter({hasText: "已生成"})).toBeVisible({timeout: 60_000});
@@ -74,5 +85,5 @@ test("cancelling and closing release recording and permit another attempt", asyn
   await page.getByRole("button", {name: "录制 iPhone 实况图", exact: true}).click();
   panel = page.getByRole("dialog", {name: "录制 iPhone 实况图"});
   await panel.getByRole("button", {name: "录制当前场景 · 3 秒", exact: true}).click();
-  await expect(panel.getByLabel("录制片段预览")).toBeVisible({timeout: 60_000});
+  await expectClip(panel);
 });

@@ -169,11 +169,12 @@ test("live flights load, describe a clicked aircraft and hide away from live", a
   await expect(layerPanel(page)).toContainText("来源：adsb.lol（ODbL）");
   // The cruising aircraft sits under the camera at the centre of the globe.
   const canvas = page.locator(".cesium-widget canvas");
-  const box = (await canvas.boundingBox())!;
   await expect(async () => {
+    // Re-measure each time: a click that misses opens the inspector and resizes the globe.
+    const box = (await canvas.boundingBox())!;
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     await expect(page.locator(".toast")).toContainText("E2E101 · A20N B-E2E1 · 高度 10,973 m · 地速 833 km/h · 航向 90°", { timeout: 1_000 });
-  }).toPass({ timeout: 15_000 });
+  }).toPass({ timeout: 30_000 });
   // No flight history: away from live the layer says so and draws nothing.
   await page.getByRole("button", { name: "打开时间轴" }).click();
   await page.getByRole("button", { name: "向前一步" }).click();
