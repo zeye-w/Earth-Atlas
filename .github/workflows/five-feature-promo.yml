@@ -1,0 +1,50 @@
+name: Terrascope Five Feature Promo
+on:
+  push:
+    branches:
+      - video/feature-reel-oct2026
+    paths:
+      - "video/feature-reel/**"
+      - ".github/workflows/five-feature-promo.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout Terrascope
+        uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install website dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install recording browser
+        run: npx playwright install --with-deps chromium
+      - name: Install Python rendering dependencies
+        run: |
+          python3 -m pip install --user --break-system-packages Pillow numpy
+          ffmpeg -version | head -1
+      - name: Capture five real-data features
+        env:
+          REEL_SITE: https://earth-atlas.edwardlab.workers.dev/
+          REEL_OUT: video/feature-reel/out
+        run: node --experimental-strip-types video/feature-reel/capture.mjs
+      - name: Render 30-second 1080p video
+        run: python3 video/feature-reel/render.py
+      - name: Verify output metadata
+        run: |
+          ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate -of json video/feature-reel/out/terrascope-five-features-30s.mp4
+      - name: Save real capture, MP4, captions and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terrascope-five-feature-reel
+          path: |
+            video/feature-reel/out/
+          if-no-files-found: warn
+          retention-days: 10
+          compression-level: 2
