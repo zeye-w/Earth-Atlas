@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Cartesian2, Cartesian3, Cartographic, Ellipsoid, Math as CesiumMath, type Entity, type Viewer } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { Move3d, X } from "lucide-react";
@@ -39,6 +39,7 @@ import type { LayerOptions, LayerToggles } from "./hooks/useLayerSettings";
 import "./styles.css";
 
 const isNarrow = () => window.innerWidth < 760;
+const LivePhotoPanel = lazy(() => import("./panels/LivePhotoPanel"));
 
 function App() {
   const [initialScene] = useState(() => readScene(window.location.hash));
@@ -54,6 +55,9 @@ function App() {
   const mountRef = useRef<HTMLDivElement>(null);
 
   const [searchOpen, setSearchOpen] = useState(false);
+  const [livePhotoOpen, setLivePhotoOpen] = useState(false);
+  const [livePhotoRecording, setLivePhotoRecording] = useState(false);
+  const closeLivePhoto = useCallback(() => setLivePhotoOpen(false), []);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [controlsOpen, setControlsOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 760);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -117,7 +121,7 @@ function App() {
   const { viewer, globeError } = useViewer(mountRef, shellRef, initialScene, handleClick);
   useSceneClock(viewer, timeline);
   const render = useRenderQuality(viewer, (quality, fps) =>
-    setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"));
+    setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), livePhotoRecording);
   useEarthView(viewer, layers, timeline);
   const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
   const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity, timeline);
@@ -243,11 +247,20 @@ function App() {
         setSearchOpen(false);
       }} />}
       {shareUrl && <SharePanel url={shareUrl} onClose={() => setShareUrl(null)} />}
+      {livePhotoOpen && <Suspense fallback={<div className="toast" role="status">正在打开实况图录制…</div>}><LivePhotoPanel viewer={viewer} allowOrbit={!trackedSatelliteId} onRecordingChange={setLivePhotoRecording}
+        onClose={closeLivePhoto} getScene={() => ({
+          sceneTime: new Date(timeline.getState().time).toISOString(), live: timeline.getState().live,
+          layers: sceneLayers(layers), options,
+          camera: viewer ? {position: viewer.camera.positionWC.clone(), heading: viewer.camera.heading, pitch: viewer.camera.pitch, roll: viewer.camera.roll} : null,
+          clouds, aurora: aurora.status, trueColor,
+        })}/></Suspense>}
       <TopBar
         clock={<TimeIndicator timeline={timeline} />}
         searchOpen={searchOpen}
         onToggleSearch={() => setSearchOpen((open) => !open)}
         onShare={() => void shareScene()}
+        livePhotoOpen={livePhotoOpen}
+        onLivePhoto={() => {setLivePhotoOpen(open => !open); setSearchOpen(false); setShareUrl(null);}}
         controlsOpen={controlsOpen}
         onToggleControls={() => { setControlsOpen((open) => !open); if (isNarrow()) setDetailsOpen(false); }}
         detailsOpen={detailsOpen}

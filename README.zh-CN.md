@@ -91,6 +91,10 @@ npm run test:e2e     # 基于构建产物的 Playwright 端到端测试（外部
 
 不需要任何 API Key；实时影像和数据需要联网。
 
+### 实验：录制 iPhone 实况图
+
+本分支顶部新增「实况图」入口：录制当前地球约 3 秒，预览并选择封面，通过本地媒体服务导出 JPEG/MOV 配对资源包。服务离线时仍能下载原始片段。尚需 iPhone 相册真机识别验收，未部署到线上站点。启动和导入步骤见 [tools/live-photo/README.md](tools/live-photo/README.md)。
+
 ## 项目结构
 
 ```

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowUpRight, Code, Crosshair, Layers, Maximize, Minimize, Orbit, Search, Share2, SlidersHorizontal } from "lucide-react";
+import { ArrowUpRight, Code, Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, SlidersHorizontal } from "lucide-react";
 import { AUTO_QUALITY_MIN_FPS, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, type RenderQuality } from "../performance";
 import { ICON, Segmented } from "../ui/controls";
 
@@ -8,6 +8,8 @@ interface Props {
   searchOpen: boolean;
   onToggleSearch: () => void;
   onShare: () => void;
+  livePhotoOpen: boolean;
+  onLivePhoto: () => void;
   controlsOpen: boolean;
   onToggleControls: () => void;
   detailsOpen: boolean;
@@ -33,6 +35,7 @@ export function TopBar(props: Props) {
         <div className="header-actions" role="group" aria-label="页面视图控制">
           <button type="button" className="header-action" aria-label="搜索地点" aria-expanded={searchOpen} aria-controls="place-search-panel" onClick={onToggleSearch}><Search {...ICON} /><span className="action-caption">搜索</span></button>
           <button type="button" className="header-action" aria-label="分享当前场景" onClick={onShare}><Share2 {...ICON} /><span className="action-caption">分享</span></button>
+          <button type="button" className={"header-action" + (props.livePhotoOpen ? " active" : "")} aria-label="录制 iPhone 实况图" aria-expanded={props.livePhotoOpen} onClick={props.onLivePhoto}><Film {...ICON}/><span className="action-caption">实况图</span></button>
           <button type="button" className={"header-action" + (controlsOpen ? " active" : "")} onClick={onToggleControls} aria-label="图层" aria-expanded={controlsOpen} aria-controls="earth-layer-panel">
             <Layers {...ICON} aria-hidden="true" /><span className="action-caption">图层</span>
           </button>

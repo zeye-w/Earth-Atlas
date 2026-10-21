@@ -17,12 +17,14 @@ function applyRenderQuality(viewer: Viewer, quality: RenderQuality) {
  * sustained low rate there means the device is struggling; step down one
  * level, at most every 6 s.
  */
-export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (quality: RenderQuality, fps: number) => void) {
+export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (quality: RenderQuality, fps: number) => void, suspendAuto = false) {
   const [quality, setQuality] = useState<RenderQuality>(() => typeof window === "undefined" ? "balanced" : initialRenderQuality(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches, navigator.hardwareConcurrency));
   const [autoQuality, setAutoQuality] = useState(true);
   const qualityRef = useRef(quality);
   const autoRef = useRef(autoQuality);
   const notifyRef = useRef(onAutoDowngrade);
+  const suspendRef = useRef(suspendAuto);
+  suspendRef.current = suspendAuto;
   qualityRef.current = quality;
   autoRef.current = autoQuality;
   notifyRef.current = onAutoDowngrade;
@@ -47,6 +49,7 @@ export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (qualit
       viewer.camera.moveStart.addEventListener(() => { moving = true; monitor.reset(); }),
       viewer.camera.moveEnd.addEventListener(() => { moving = false; }),
       viewer.scene.postRender.addEventListener(() => {
+        if (suspendRef.current) {monitor.reset(); return;}
         if (!moving || !autoRef.current) return;
         const now = performance.now();
         const fps = monitor.addFrame(now);
