@@ -2,7 +2,7 @@
 
 # TerraScope · 数字地球
 
-**A real-time 3D digital Earth in the browser — live sunlight, night lights, aurora, earthquakes, volcanoes, satellites and global geology, all from open data.**
+**A real-time 3D digital Earth in the browser — live sunlight, night lights, aurora, earthquakes, volcanoes, satellites, flights and global geology, all from open data.**
 
 English · [简体中文](README.zh-CN.md)
 
@@ -22,6 +22,7 @@ English · [简体中文](README.zh-CN.md)
 
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
+- **Live flights** — thousands of aircraft from volunteer ADS-B receivers (adsb.lol), drawn at their altitude and heading, updated every minute.
 - **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, pass predictions for your location, and a tracking camera with live telemetry beside the satellite.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
 - **Travel in time** — a timeline replays the past 24 hours, 7 or 30 days (and looks a day ahead): sunlight, earthquakes, satellite positions and daily satellite imagery all follow it.
@@ -38,6 +39,15 @@ English · [简体中文](README.zh-CN.md)
 <tr>
 <td><img src="docs/screenshots/tectonics.jpg" alt="Earthquakes, plate boundaries and volcanoes"><br><b>Earthquakes, plates and volcanoes</b><br>USGS real-time earthquakes (size = magnitude, colour = depth), Bird (2003) plate boundaries with subduction zones, and ~1,200 Holocene volcanoes. Click for details.</td>
 <td><img src="docs/screenshots/satellites.jpg" alt="Satellites and orbit paths"><br><b>Satellites</b><br>ISS, Tiangong, Hubble and Earth-observation satellites moving along SGP4-predicted orbits, with optional 60× / 300× time preview. <i>Track</i> (or click a satellite) locks the camera to it and shows live readouts beside it: sub-satellite point, altitude, speed, heading, sunlight, period, and its azimuth, elevation and range from your location. <i>Passes over me</i> lists the next 24 hours of passes over your location (or any picked point) — time, peak elevation, direction and whether it is visible to the naked eye — and jumps the timeline to one.</td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/starlink.jpg" alt="The Starlink constellation"><br><b>Starlink constellation</b><br>All ~11,000 Starlink satellites from CelesTrak, propagated with SGP4 in a Web Worker twice a second. Sunlit satellites are bright, those in Earth's shadow faint; the 53°, 43°, 70° and 97° shells and freshly launched "trains" are visible. Follows the timeline.</td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/solar-wind.jpg" alt="Solar wind and the magnetosphere"><br><b>Solar wind and the magnetosphere</b><br>Measured solar wind at the L1 point (NOAA SWPC real-time solar wind: speed, density, IMF Bz) sets the size of Earth's magnetopause through the Shue et al. (1998) model, shown with an approximate bow shock; particles stream from the Sun and flow around them. The particle paths are illustrative and sped up; the boundary sizes come from the measurements. Follows the timeline over the last ~24 hours.</td>
+</tr>
+<tr>
+<td colspan="2"><img src="docs/screenshots/flights.jpg" alt="Live flights over Europe"><br><b>Live flights</b><br>Aircraft positions broadcast over ADS-B and collected by adsb.lol's volunteer receivers (ODbL), with OpenSky as a fallback, served through the site's own Cloudflare Worker (the feeds cannot be called from a browser directly). Each aircraft is drawn at its altitude, pointing along its track and coloured by altitude; between the minute-by-minute updates it moves on at its reported speed (an estimate). Click one for callsign, type, altitude and speed. Coverage follows the receivers, so oceans and some countries are sparse; live only, as the feeds keep no history.</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/geology.jpg" alt="Geologic map and inspector"><br><b>Global geology</b><br>Macrostrat geologic map (raster, or experimental age / lithology vector views). Click the ground to list the mapped units, ages and rock types there.</td>
@@ -66,10 +76,13 @@ English · [简体中文](README.zh-CN.md)
 | City lights | NASA GIBS — VIIRS Black Marble 2016 | 2016 composite (not tonight's lights) |
 | Aurora | NOAA SWPC — OVATION aurora nowcast | every 10 min |
 | Kp index | NOAA SWPC — planetary K-index | every 10 min |
+| Solar wind | NOAA SWPC — real-time solar wind (RTSW) at L1 | 1-minute data, refreshed every 10 min |
+| Live flights | adsb.lol — ADS-B / MLAT from volunteer receivers (ODbL); OpenSky Network fallback, via the site's Worker | every minute (live only) |
 | Earthquakes | USGS — GeoJSON summary feeds | every 5 min |
 | Volcanoes | Smithsonian GVP — *Volcanoes of the World* | bundled, refreshed by workflow |
 | Plate boundaries | Bird (2003) PB2002, GeoJSON by Hugo Ahlenius / Nordpil (ODC-BY) | bundled |
 | Satellites | CelesTrak — GP elements (OMM JSON), SGP4 via `satellite.js` | cached ≥ 2 h |
+| Starlink constellation | CelesTrak — GP group `starlink` (OMM CSV, ~1.7 MB) | cached ≥ 2 h |
 | Clouds | SSEC / UW–Madison RealEarth — `globalir` | hourly |
 | Geology | Macrostrat (CC BY 4.0) | live tiles & queries |
 | Labels | Natural Earth (public domain) | bundled |
@@ -108,12 +121,13 @@ scripts/             data generators, live smoke tests, screenshot capture
 tests/               unit tests (node:test) and e2e tests (Playwright)
 ```
 
-Deployed as static assets on Cloudflare Workers (`wrangler.jsonc`). The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
+Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
 
 ## Scientific notes
 
 - Satellite positions are SGP4 **predictions** from public orbital elements, not live telemetry.
 - City lights are a 2016 annual composite; the aurora curtain shape and motion are stylised, while its position and brightness follow the NOAA forecast.
+- Flight coverage depends on volunteer receivers, so it is not every flight; between updates positions are extrapolated from speed and track.
 - Volcano colours reflect catalogued eruption years, not current alert levels.
 - Geologic units are mapped surface units; overlapping map results are shown as candidates.
 

@@ -112,6 +112,8 @@ Recommended Git-connected Worker build/deploy configuration (verify against your
 - Deploy assets: `./dist` as specified in `wrangler.jsonc`
 - Production branch: `main`
 
+`wrangler.jsonc` also names a small Worker script (`worker/index.ts`) with `run_worker_first: ["/api/*"]`: only `/api/*` requests run it (today just `/api/flights`, see *Live flights*); every other path is served from the assets as before. `npx wrangler deploy` bundles it automatically; `npx wrangler dev` runs both locally (the Vite dev server has no `/api`).
+
 If you use the Cloudflare console's default Git integration build flow, ensure its deploy command actually reads the repository's Wrangler configuration and uploads the entire `dist` tree. Avoid upload methods that only publish `index.html` or `dist/assets`.
 
 Browser smoke test after deployment:
@@ -140,6 +142,8 @@ The geologic map and unit queries are provided by [Macrostrat](https://macrostra
 - Documentation: https://macrostrat.org/docs/data-services
 - Raster tiles: https://tiles.macrostrat.org/carto/{z}/{x}/{y}.png
 - Point query: https://macrostrat.org/api/v2/geologic_units/map?lat=43&lng=-89.3
+
+Live aircraft positions come from [adsb.lol](https://adsb.lol/) (data under the [ODbL 1.0](https://opendatacommons.org/licenses/odbl/1-0/)), with the [OpenSky Network](https://opensky-network.org/) REST API as a fallback; the globe credits both while the layer is on.
 
 ## Lithology classification and era guide
 
@@ -212,3 +216,21 @@ The OVATION grid covers both hemispheres. `ovalProfile(grid, "north" | "south")`
 
 **Layer groups** in the left panel all start collapsed.
 
+## Starlink constellation
+
+The *Starlink* toggle downloads CelesTrak's GP group `starlink` as OMM CSV (about 1.7 MB for ~11,000 satellites; the JSON form is four times larger and does not fit in localStorage). It is kept in memory and in Cache Storage for two hours, CelesTrak's update interval. A module Web Worker (`src/constellationWorker.ts`) converts the rows with `satellite.js` `json2satrec` and propagates all of them with SGP4 (about 20 ms for 11,000), returning Earth-fixed positions and a sunlit/shadow flag (cylindrical shadow) in transferable typed arrays. The main thread updates one `PointPrimitive` per satellite: twice a second when live, or when the timeline moves. Satellites whose elements are more than 10 days from the scene time, or whose solution is below 100 km (decayed), are not drawn, and the panel says how many. Clicking a point shows its name, altitude and sunlight. Recording mode also waits for pending worker results (`src/pendingWork.ts`) before each frame.
+
+## Solar wind and the magnetosphere
+
+Data: NOAA SWPC real-time solar wind JSON (`/json/rtsw/rtsw_wind_1m.json` for proton speed and density, `rtsw_mag_1m.json` for the IMF in GSM), one-minute values over about the last 24 hours from the L1 monitors (currently SOLAR-1, IMAP and ACE). Per minute the row SWPC marks `active` is preferred; rows with unphysical values are dropped. The older `/products/solar-wind/*.json` tables now return 404. Live shows the latest sample; a timeline moment uses the nearest sample within 30 minutes, otherwise nothing is drawn and the panel says so.
+
+Model: dynamic pressure Pd = 1.6726×10⁻⁶ · n · v² nPa; magnetopause from Shue et al. (1998), r(θ) = r₀ (2 / (1 + cos θ))^α with r₀ = (10.22 + 1.29 tanh(0.184 (Bz + 8.14))) Pd^(−1/6.6) and α = (0.58 − 0.007 Bz)(1 + 0.024 ln Pd). The bow shock is an approximation: the same shape with a 1.3× standoff and slightly less flaring. Both are surfaces of revolution about the Sun–Earth line (dipole tilt and aberration ignored), built once in a local frame and rotated to the Sun direction for the scene time, drawn with a Fresnel rim shader up to 135° from the nose. The magnetopause turns pink for southward Bz ≤ −5 nT.
+
+Particles (2,200, each with a three-point trail) enter 26 Earth radii upstream and leave 30 downstream; inside the bow shock their radial distance is mapped between the shock and the magnetopause so none enter the magnetosphere. Their paths are illustrative; their speed is proportional to the measured speed (sped up about 100×), their colour follows the speed, and the number shown follows the density. In recording mode the animation phase is set by `setEffectsTime`. With this layer on, the camera may zoom out to 600,000 km.
+
+
+## Live flights
+
+Data: ADS-B and MLAT positions received by volunteer receivers and published by adsb.lol (`https://re-api.adsb.lol/?all_with_pos`, ODbL 1.0; typically 5,000–8,000 aircraft, about 3 MB of JSON). None of the open feeds can be called from the browser: adsb.lol and adsb.fi send no CORS headers, OpenSky only allows its own origin (and limits anonymous clients to 400 credits a day), and airplanes.live requires approval. So the site's Worker (`worker/index.ts`) serves `/api/flights`: it fetches adsb.lol with an identifying User-Agent (adsb.lol rejects generic ones), falls back to OpenSky `/api/states/all` if that fails or returns fewer than 100 aircraft, and keeps only what is drawn — ICAO hex, callsign, position, altitude (geometric, else barometric; metres; null on the ground), ground speed (m/s), track, type, registration, and the position's age. Positions older than 60 s and category C targets (airport vehicles, obstacles) are dropped. The result (about 400 KB of JSON before compression) is held in memory for 30 s per Worker isolate, so visitors share one upstream request; if a refresh fails the last snapshot is served for up to five minutes, otherwise the endpoint answers 502 and the panel says the data is unavailable.
+
+The browser polls every minute while the layer is on and the timeline is live. Each aircraft is a billboard at its altitude, rotated to its track and coloured by altitude band (ground, below 3,000 m, 3,000–9,000 m, above 9,000 m). Between polls airborne aircraft are moved along a great circle at their reported ground speed and track (dead reckoning, at most two minutes past the report) — an estimate, as the panel says. Coverage depends on where volunteers run receivers: dense over North America, Europe and parts of Asia, sparse over the oceans, Africa and some countries, so the layer does not show every flight. The feeds keep no history, so away from live nothing is drawn and the panel explains why. Clicking an aircraft shows its callsign, type, registration, altitude, ground speed, track and how old the position report is.

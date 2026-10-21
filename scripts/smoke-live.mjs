@@ -9,6 +9,9 @@ import { parseLithologyDictionary } from "../src/lithology.ts";
 import { OVATION_URL, northernProfile, parseOvation, southernProfile } from "../src/auroraData.ts";
 import { QUAKE_FEEDS, parseQuakeFeed } from "../src/earthquakeData.ts";
 import { CLOUD_METADATA_URL, cloudTileUrl, cloudTimes } from "../src/cloudData.ts";
+import { STARLINK, constellationUrl, parseOmmCsv, shellCounts, epochOf } from "../src/constellationData.ts";
+import { MAG_URL, WIND_URL, dynamicPressure, parseSolarWind, shueMagnetopause } from "../src/solarWindData.ts";
+import { ADSB_LOL_URL, FLIGHT_USER_AGENT, decodeFlights, parseAdsbLol } from "../src/flightData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { KP_HISTORY_URL, KP_NOW_URL, kpLevel, parseKpHistory, parseKpNow } from "../src/geomagnetic.ts";
 
@@ -201,6 +204,66 @@ try {
 } catch (error) {
   failed = true;
   console.error("LIVE_CLOUD_FAILURE:", error);
+}
+
+// Starlink constellation (CSV): size, count, element ages and CORS.
+try {
+  const started = Date.now();
+  const response = await fetch(constellationUrl(STARLINK), { signal: AbortSignal.timeout(30000), headers: { Origin: site } });
+  const text = await response.text();
+  const cors = response.headers.get("access-control-allow-origin") ?? "(missing)";
+  const records = parseOmmCsv(text);
+  const ages = records.map((r) => (Date.now() - epochOf(r).getTime()) / 86_400_000).sort((a, b) => a - b);
+  console.log("CelesTrak Starlink CSV HTTP", response.status, response.headers.get("content-type"), "CORS", cors, "bytes", text.length, "records", records.length, "in", Date.now() - started, "ms");
+  console.log("  header:", text.split("\n")[0].slice(0, 300));
+  console.log("  element age days: median", ages[Math.floor(ages.length / 2)].toFixed(1), "max", ages.at(-1).toFixed(1), "older than 10 d:", ages.filter((a) => a > 10).length);
+  console.log("  shells:", JSON.stringify(shellCounts(records).slice(0, 6)));
+  assert.ok(cors === "*" || cors === site, "CORS disallows deployed origin");
+  assert.ok(records.length > 1000, "too few Starlink records");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_CELESTRAK_STARLINK_FAILURE:", error);
+}
+
+// Solar wind (RTSW, ~24 h): CORS, size, coverage, latest values.
+try {
+  const responses = await Promise.all([WIND_URL, MAG_URL].map((url) => fetch(url, { signal: AbortSignal.timeout(30000), headers: { Origin: site } })));
+  const bodies = await Promise.all(responses.map((r) => r.text()));
+  responses.forEach((r, i) => console.log("SWPC solar wind", i ? "mag" : "wind", "HTTP", r.status, "CORS", r.headers.get("access-control-allow-origin") ?? "(missing)", "bytes", bodies[i].length, "start", bodies[i].slice(0, 110)));
+  const samples = parseSolarWind(JSON.parse(bodies[0]), JSON.parse(bodies[1]));
+  const latest = samples.at(-1);
+  const mp = shueMagnetopause(dynamicPressure(latest.density, latest.speed), latest.bz ?? 0);
+  console.log("  samples", samples.length, "range", new Date(samples[0].time).toISOString(), "..", new Date(latest.time).toISOString(), "with Bz", samples.filter((s) => s.bz !== null).length);
+  console.log("  sources", JSON.stringify(Object.fromEntries([...new Set(samples.map((x) => x.source))].map((src) => [src, samples.filter((x) => x.source === src).length]))));
+  console.log("  latest", JSON.stringify(latest), "Pd", dynamicPressure(latest.density, latest.speed).toFixed(2), "nPa  magnetopause r0", mp.r0.toFixed(2), "RE");
+  for (const r of responses) { const cors = r.headers.get("access-control-allow-origin"); assert.ok(cors === "*" || cors === site, "CORS disallows deployed origin"); }
+  assert.ok(samples.length > 1000, "fewer than 1000 solar wind samples");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_SWPC_SOLAR_WIND_FAILURE:", error);
+}
+
+// Live flights: the upstream feed the Worker uses, then the deployed proxy.
+try {
+  const started = Date.now();
+  const response = await fetch(ADSB_LOL_URL, { signal: AbortSignal.timeout(30000), headers: { "User-Agent": FLIGHT_USER_AGENT, Accept: "application/json" } });
+  const snapshot = parseAdsbLol(await response.json());
+  const compact = JSON.stringify(snapshot).length;
+  console.log("adsb.lol all_with_pos HTTP", response.status, "aircraft", snapshot.aircraft.length, "airborne", snapshot.aircraft.filter((a) => a[4] !== null).length, "compact bytes", compact, "in", Date.now() - started, "ms");
+  assert.ok(snapshot.aircraft.length > 1000, "too few aircraft from adsb.lol");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_ADSB_LOL_FAILURE:", error);
+}
+try {
+  const response = await fetch(site + "/api/flights", { signal: AbortSignal.timeout(30000) });
+  const { source, time, flights } = decodeFlights(await response.json());
+  console.log("Cloudflare /api/flights HTTP", response.status, "cache-control", response.headers.get("cache-control"), "source", source, "aircraft", flights.length, "data age", Math.round((Date.now() - time) / 1000), "s");
+  assert.ok(flights.length > 1000, "too few aircraft from the deployed proxy");
+  assert.ok(Date.now() - time < 10 * 60_000, "deployed flight data older than 10 minutes");
+} catch (error) {
+  failed = true;
+  console.error("LIVE_FLIGHTS_PROXY_FAILURE:", error);
 }
 
 for (const path of [

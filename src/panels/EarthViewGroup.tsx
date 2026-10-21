@@ -1,4 +1,7 @@
-import { Cloud, Globe, Image as ImageIcon, Layers2, Lightbulb, MapPin, Mountain, Sparkles, SunMoon } from "lucide-react";
+import { Cloud, Globe, Image as ImageIcon, Layers2, Lightbulb, MapPin, Mountain, Sparkles, SunMoon, Wind } from "lucide-react";
+import { EARTH_RADIUS_KM, solarWindLevel } from "../solarWindData";
+import { SOLAR_WIND_TIME_LAPSE, SOUTHWARD_TINT_BZ } from "../solarWindOverlay";
+import type { SolarWindState } from "../layers/useSolarWind";
 import { ATMOSPHERE_LAYERS, ATMOSPHERE_SCALES, formatHeight } from "../atmosphereLayers";
 import { kpLevel, type GeomagneticState } from "../geomagnetic";
 import type { Polled } from "../hooks/usePolledData";
@@ -17,9 +20,11 @@ interface Props {
   /** False while the timeline shows another moment. */
   live: boolean;
   trueColor: { date: string; source: string };
+  solarWind: SolarWindState;
+  onViewMagnetosphere: () => void;
 }
 
-export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, aurora, geomagnetic, live, trueColor }: Props) {
+export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, aurora, geomagnetic, live, trueColor, solarWind, onViewMagnetosphere }: Props) {
   return (
     <LayerGroup title="EARTH VIEW" subtitle="地球视图">
       <ToggleRow icon={<SunMoon {...ICON} />} title="实时昼夜光照" caption="按当前 UTC 时间计算太阳位置" checked={layers.dayNight} onChange={(v) => setLayer("dayNight", v)} />
@@ -67,6 +72,8 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
         </p>
       )}
       {layers.aurora && live && geomagnetic.status !== "idle" && <KpPanel geomagnetic={geomagnetic} />}
+      <ToggleRow icon={<Wind {...ICON} />} title="太阳风与磁层" caption="NOAA 实时太阳风 · 磁层顶模型 · 粒子示意" checked={layers.solarWind} onChange={(v) => setLayer("solarWind", v)} />
+      {layers.solarWind && <SolarWindPanel state={solarWind} live={live} onView={onViewMagnetosphere} />}
       <ToggleRow icon={<Mountain {...ICON} />} title="地理标注" caption="海洋、山脉、沙漠、平原、盆地与河流 · 自动避让" checked={layers.geoLabels} onChange={(v) => setLayer("geoLabels", v)} />
       <ToggleRow icon={<MapPin {...ICON} />} title="全球主要城市" caption="远景自动隐藏次要城市" checked={layers.cities} onChange={(v) => setLayer("cities", v)} />
     </LayerGroup>
@@ -102,3 +109,42 @@ function KpPanel({ geomagnetic }: { geomagnetic: Polled<GeomagneticState> }) {
     </div>
   );
 }
+
+const number = (value: number, digits = 0) => value.toLocaleString("zh-CN", { maximumFractionDigits: digits, minimumFractionDigits: digits });
+
+function SolarWindPanel({ state, live, onView }: { state: SolarWindState; live: boolean; onView: () => void }) {
+  const { status, sample, pressure, magnetopause } = state;
+  if (status !== "ready" || !sample || pressure === null || !magnetopause) {
+    return (
+      <p className="layer-status" role="status">
+        {status === "loading" ? "正在读取 NOAA 实时太阳风（约 4 MB）…" :
+         status === "nodata" ? (live ? "暂无实时太阳风数据，未绘制磁层。" : "这一时刻没有太阳风数据：NOAA 只提供最近约 24 小时，未绘制磁层。") :
+         "NOAA 太阳风数据暂不可用，未绘制磁层；不会绘制虚构的太阳风。"}
+      </p>
+    );
+  }
+  const level = solarWindLevel(sample);
+  const south = sample.bz !== null && sample.bz < 0;
+  const tinted = sample.bz !== null && sample.bz <= SOUTHWARD_TINT_BZ;
+  return (
+    <div className="layer-extra solar-wind-panel" role="status">
+      <div className="kp-head">
+        <span className="kp-value">{number(sample.speed)} km/s</span>
+        <span className={"kp-level" + (level.stormy ? " storm" : "")}>{level.label}</span>
+        <span className="kp-time">{sample.source} · {new Date(sample.time).toISOString().slice(11, 16)} UTC</span>
+      </div>
+      <p className="layer-status">
+        密度 {number(sample.density, 1)} /cm³ · Bz {sample.bz === null ? "—" : number(sample.bz, 1) + " nT" + (south ? "（南向）" : "（北向）")} · 动压 {number(pressure, 2)} nPa
+        <br />磁层顶距地心 {number(magnetopause.r0, 1)} 个地球半径（约 {number(magnetopause.r0 * EARTH_RADIUS_KM)} km）{south ? "，南向磁场时更易发生磁暴" : ""}
+      </p>
+      <div className="thematic-legend">
+        <span><i style={{ backgroundColor: tinted ? "#ff7ad9" : "#6fd3ff", height: 3, borderRadius: 2 }} />磁层顶（{tinted ? "粉色：Bz ≤ " + SOUTHWARD_TINT_BZ + " nT，明显南向" : "青色：Bz > " + SOUTHWARD_TINT_BZ + " nT"}）</span>
+        <span><i style={{ backgroundColor: "#ffb36b", height: 3, borderRadius: 2 }} />弓激波</span>
+        <span><i className="constellation-dot sunlit" style={{ background: "#ffd27a" }} />太阳风粒子</span>
+      </div>
+      <button type="button" className="track-locate" onClick={onView}>拉远查看磁层</button>
+      <p className="layer-note">磁层顶按 Shue 等 (1998) 经验模型由实测动压和 Bz 计算；弓激波为约 1.3 倍距离的近似。粒子流动轨迹为示意，速度按实测风速、加速约 {SOLAR_WIND_TIME_LAPSE} 倍。忽略地磁偶极倾斜。</p>
+    </div>
+  );
+}
+

@@ -56,6 +56,36 @@ function celestrak(url: URL) {
   return catalogue ? [make(Number(catalogue), 98, 40)] : [make(25544, 51.6, 10), make(48274, 41.5, 120)];
 }
 
+/** Synthetic Starlink-like constellation in CelesTrak's OMM CSV form (not real elements). */
+function constellationCsv() {
+  const epoch = new Date().toISOString().replace("Z", "");
+  const header = "OBJECT_NAME,OBJECT_ID,EPOCH,MEAN_MOTION,ECCENTRICITY,INCLINATION,RA_OF_ASC_NODE,ARG_OF_PERICENTER,MEAN_ANOMALY,EPHEMERIS_TYPE,CLASSIFICATION_TYPE,NORAD_CAT_ID,ELEMENT_SET_NO,REV_AT_EPOCH,BSTAR,MEAN_MOTION_DOT,MEAN_MOTION_DDOT";
+  const rows = Array.from({ length: 240 }, (_, i) => ["E2E-STARLINK-" + i, "E2E", epoch, 15.06, 0.0001, i % 2 ? 53 : 97.6, (i * 9) % 360, 90, (i * 23) % 360, 0, "U", 90000 + i, 999, 1, 0.0002, 0, 0].join(","));
+  return [header, ...rows].join("\n") + "\n";
+}
+
+/** Synthetic /api/flights snapshot (not real aircraft): one cruising over 0°N 0°E, one on the ground. */
+function flightSnapshot() {
+  const aircraft = [
+    ["e2e001", "E2E101", 0, 0, 10_973, 231.5, 90, "A20N", "B-E2E1", 2],
+    ["e2e002", "E2E202", 40, -73, null, 5, 180, "B738", "", 1],
+  ];
+  for (let i = 0; i < 40; i++) aircraft.push(["e2e1" + String(i).padStart(2, "0"), "", -30 + i, 60 + i, 2000 + i * 250, 200, (i * 37) % 360, "", "", 5]);
+  return { v: 1, source: "adsb.lol", time: Date.now(), aircraft };
+}
+
+/** Two hours of synthetic RTSW solar wind (not NOAA data), newest first. */
+function rtsw(kind: "wind" | "mag") {
+  const rows = [];
+  for (let i = 0; i < 120; i++) {
+    const time_tag = new Date(Date.now() - i * 60_000).toISOString().slice(0, 19);
+    rows.push(kind === "wind"
+      ? { time_tag, active: true, source: "E2E", proton_speed: 450, proton_density: 6 }
+      : { time_tag, active: true, source: "E2E", bz_gsm: -6, bt: 8 });
+  }
+  return rows;
+}
+
 function cloudProducts() {
   const stamp = new Date(Date.now() - 30 * 60_000).toISOString().replace(/[-:]/g, "").replace("T", ".").slice(0, 15);
   return [{ id: "globalir", times: [stamp] }];
@@ -64,6 +94,7 @@ function cloudProducts() {
 export async function mockNetwork(page: Page): Promise<void> {
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
+    if (url.hostname === "localhost" && url.pathname === "/api/flights") return json(route, flightSnapshot());
     if (url.hostname === "localhost" || url.protocol === "data:" || url.protocol === "blob:") return route.continue();
     if (url.hostname === "gibs.earthdata.nasa.gov") return png(route, url.pathname.includes("Black_Marble") ? TRANSPARENT_PNG : OCEAN_PNG);
     if (url.hostname === "tiles.macrostrat.org") return png(route, TRANSPARENT_PNG);
@@ -74,11 +105,14 @@ export async function mockNetwork(page: Page): Promise<void> {
       return json(route, { success: { v: 2, data: [{ lith_id: 7, name: "Sandstone", class: "sedimentary" }] } });
     }
     if (url.hostname === "earthquake.usgs.gov") return json(route, quakeFeed());
+    if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("rtsw_wind")) return json(route, rtsw("wind"));
+    if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("rtsw_mag")) return json(route, rtsw("mag"));
     if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("ovation")) return json(route, ovationGrid());
     if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("planetary_k_index_1m")) {
       return json(route, [{ time_tag: new Date().toISOString().slice(0, 19), kp_index: 2, estimated_kp: 2.33 }]);
     }
     if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("noaa-planetary-k-index")) return json(route, kpHistory());
+    if (url.hostname === "celestrak.org" && url.searchParams.get("FORMAT") === "csv") return route.fulfill({ status: 200, contentType: "text/plain", headers: { "access-control-allow-origin": "*" }, body: constellationCsv() });
     if (url.hostname === "celestrak.org") return json(route, celestrak(url));
     if (url.hostname === "realearth.ssec.wisc.edu" && url.pathname.includes("products")) return json(route, cloudProducts());
     if (url.hostname === "realearth.ssec.wisc.edu") return png(route, TRANSPARENT_PNG);

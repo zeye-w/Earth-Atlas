@@ -1,8 +1,9 @@
-import { Satellite } from "lucide-react";
+import { Network, Satellite } from "lucide-react";
 import type { OrbitRecord, SatelliteChoice } from "../satelliteOrbits";
 import type { Observer, SatellitePass } from "../satellitePasses";
 import { PassPredictions } from "./PassPredictions";
 import type { LocationState, UserLocation } from "../hooks/useUserLocation";
+import type { ConstellationStatus } from "../layers/useConstellation";
 import type { SatelliteSpeed } from "../satelliteOverlay";
 import type { LayerOptions, LayerToggles } from "../hooks/useLayerSettings";
 import type { SatelliteStatus } from "../layers/useSatellites";
@@ -30,9 +31,10 @@ interface Props {
   onStopTracking: () => void;
   location: LocationState;
   onLocate: () => Promise<UserLocation | null>;
+  starlink: ConstellationStatus;
 }
 
-export function SatellitesGroup({ layers, setLayer, options, setOption, status, catalog, selectedId, timeline, records, selectedPoint, onSelectPass, trackedId, onTrack, onStopTracking, location, onLocate }: Props) {
+export function SatellitesGroup({ layers, setLayer, options, setOption, status, catalog, selectedId, timeline, records, selectedPoint, onSelectPass, trackedId, onTrack, onStopTracking, location, onLocate, starlink }: Props) {
   const live = useTimeSelector(timeline, (state) => state.live);
   return (
     <LayerGroup title="SATELLITES" subtitle="在轨卫星">
@@ -70,6 +72,25 @@ export function SatellitesGroup({ layers, setLayer, options, setOption, status, 
           )}
           {status === "ready" && records.length > 0 && <PassPredictions records={records} selectedPoint={selectedPoint} onSelectPass={onSelectPass} location={location} onLocate={onLocate} />}
           <p className="satellite-disclaimer">数据：CelesTrak GP / SGP4。位置为轨道推算，并非实时遥测；轨迹表示地固坐标系下的预测路径。</p>
+        </div>
+      )}
+      <ToggleRow icon={<Network {...ICON} />} title="星链星座" caption="Starlink · CelesTrak 全部在轨根数 · SGP4" checked={layers.starlink} onChange={(v) => setLayer("starlink", v)} />
+      {layers.starlink && starlink.state !== "idle" && (
+        <div className="layer-extra">
+          <p className="layer-status" role="status">
+            {starlink.state === "loading" ? "正在下载 CelesTrak 星链轨道根数（约 1.7 MB）…" :
+             starlink.state === "error" ? "星链轨道数据暂不可用，未显示；不会绘制虚构卫星。" :
+             (starlink.shown ?? 0).toLocaleString("zh-CN") + " 颗卫星" + (starlink.stale ? " · " + starlink.stale + " 颗根数距所选时刻超过 10 天未显示" : "") + " · 根数获取于 " + (starlink.fetchedAt?.toISOString().slice(11, 16) ?? "—") + " UTC"}
+          </p>
+          {starlink.state === "ready" && (
+            <>
+              <div className="thematic-legend">
+                <span><i className="constellation-dot sunlit" />日照中</span>
+                <span><i className="constellation-dot" />地球阴影中</span>
+              </div>
+              <p className="layer-note">轨道壳层（按倾角）：{(starlink.shells ?? []).filter((s) => s.count >= 50).map((s) => s.inclination + "° " + s.count.toLocaleString("zh-CN") + " 颗").join(" · ")}。新发射的卫星还在爬升，会排成一串"火车"。位置为 SGP4 推算，每秒更新两次；点击亮点查看名称和高度。</p>
+            </>
+          )}
         </div>
       )}
     </LayerGroup>

@@ -146,6 +146,56 @@ test("clouds follow the timeline and say when a moment has no frame", async ({ p
   await expect(note).toContainText("这一时刻没有云图");
 });
 
+test("the Starlink constellation loads and follows the timeline", async ({ page }) => {
+  await page.goto(sceneUrl(0, 0, 17_000_000, { starlink: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "SATELLITES");
+  const status = layerPanel(page).locator(".layer-extra .layer-status").first();
+  await expect(status).toContainText("240 颗卫星");
+  await expect(layerPanel(page)).toContainText("53° 120 颗");
+  // Far beyond the elements' validity, nothing is drawn rather than guessed.
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  await page.getByRole("radio", { name: "30 天" }).click();
+  for (let i = 0; i < 12; i++) await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(status).toContainText("240 颗根数距所选时刻超过 10 天未显示");
+});
+
+test("live flights load, describe a clicked aircraft and hide away from live", async ({ page }) => {
+  await page.goto(sceneUrl(0, 0, 8_000_000, { flights: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "AVIATION");
+  const status = layerPanel(page).getByRole("status").filter({ hasText: "航空器" });
+  await expect(status).toContainText("42 架航空器 · 空中 41 架");
+  await expect(layerPanel(page)).toContainText("来源：adsb.lol（ODbL）");
+  // The cruising aircraft sits under the camera at the centre of the globe.
+  const canvas = page.locator(".cesium-widget canvas");
+  const box = (await canvas.boundingBox())!;
+  await expect(async () => {
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await expect(page.locator(".toast")).toContainText("E2E101 · A20N B-E2E1 · 高度 10,973 m · 地速 833 km/h · 航向 90°", { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  // No flight history: away from live the layer says so and draws nothing.
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(layerPanel(page)).toContainText("航班数据只有实时位置");
+});
+
+test("solar wind drives the magnetopause and says when there is no data", async ({ page }) => {
+  await page.goto(sceneUrl(0, 0, 17_000_000, { solarWind: true }));
+  await waitForGlobe(page);
+  await openGroup(page, "EARTH VIEW");
+  const panel = layerPanel(page).locator(".solar-wind-panel");
+  await expect(panel).toContainText("450 km/s");
+  await expect(panel).toContainText("Bz -6.0 nT（南向）");
+  // 6 cm^-3 at 450 km/s is 2.03 nPa; with Bz -6 nT the Shue standoff is ~9.2 Earth radii.
+  await expect(panel).toContainText(/磁层顶距地心 9\.\d 个地球半径/);
+  await panel.getByRole("button", { name: "拉远查看磁层" }).click();
+  // The mocked feed covers two hours: a day earlier there is nothing to draw.
+  await page.getByRole("button", { name: "打开时间轴" }).click();
+  for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "向前一步" }).click();
+  await expect(layerPanel(page)).toContainText("这一时刻没有太阳风数据");
+});
+
 test("clouds show the observation time", async ({ page }) => {
   await page.goto(sceneUrl(0, 0, 17_000_000, { clouds: true }));
   await waitForGlobe(page);

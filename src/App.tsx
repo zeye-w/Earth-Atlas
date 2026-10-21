@@ -20,6 +20,15 @@ import { useAtmosphereShells } from "./layers/useAtmosphereShells";
 import { useEarthquakes } from "./layers/useEarthquakes";
 import { useGeoLabels } from "./layers/useGeoLabels";
 import { useTrueColor } from "./layers/useTrueColor";
+import { useConstellation } from "./layers/useConstellation";
+import { useSolarWind } from "./layers/useSolarWind";
+import { useFlights } from "./layers/useFlights";
+import { FLIGHT_ID_PREFIX } from "./flightOverlay";
+import { describeFlight } from "./flightData";
+import { subsolarPoint } from "./solar";
+import { EARTH_RADIUS_KM } from "./solarWindData";
+import { STARLINK } from "./constellationData";
+import { CONSTELLATION_ID_PREFIX } from "./constellationOverlay";
 import { usePlateBoundaries, useVolcanoes } from "./layers/useTectonics";
 import { useSatellites } from "./layers/useSatellites";
 import { useGeologyMap } from "./layers/useGeologyMap";
@@ -29,6 +38,7 @@ import { LayerPanel, type Region } from "./panels/LayerPanel";
 import { EarthViewGroup } from "./panels/EarthViewGroup";
 import { TectonicsGroup } from "./panels/TectonicsGroup";
 import { SatellitesGroup } from "./panels/SatellitesGroup";
+import { FlightsGroup } from "./panels/FlightsGroup";
 import { GeologyGroup } from "./panels/GeologyGroup";
 import { Inspector } from "./panels/Inspector";
 import { SearchPanel, SharePanel } from "./panels/SceneTools";
@@ -82,7 +92,7 @@ function App() {
     geology.query(latitude, longitude);
   };
 
-  // Clicks pick, in order: volcanoes, earthquakes, satellites, then the ground.
+  // Clicks pick, in order: volcanoes, earthquakes, satellites, aircraft, then the ground.
   const handleClick = (viewer: Viewer, position: Cartesian2) => {
     const picked = viewer.scene.pick(position);
     const pickedId: unknown = picked && typeof picked === "object" && "id" in picked ? (picked as { id?: unknown }).id : undefined;
@@ -103,6 +113,16 @@ function App() {
         openDetails();
         return;
       }
+    }
+    if (typeof pickedId === "string" && pickedId.startsWith(CONSTELLATION_ID_PREFIX)) {
+      const satellite = starlink.describe(Number(pickedId.split(":").at(-1)));
+      if (satellite) setToast(satellite.name + " · 高度 " + Math.round(satellite.altitudeKm) + " km · " + (satellite.sunlit ? "日照中" : "地球阴影中"));
+      return;
+    }
+    if (typeof pickedId === "string" && pickedId.startsWith(FLIGHT_ID_PREFIX)) {
+      const flight = flights.describe(Number(pickedId.slice(FLIGHT_ID_PREFIX.length)));
+      if (flight) setToast(describeFlight(flight, Date.now()));
+      return;
     }
     const entityId = (pickedId as Entity | undefined)?.id;
     if (typeof entityId === "string" && entityId.startsWith("satellite:")) {
@@ -134,6 +154,16 @@ function App() {
   const volcanoes = useVolcanoes(viewer, layers.volcanoes);
   const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, followCamera: !RECORDING, timeline });
   useUserLocationMarker(viewer, userLocation.location);
+  const starlink = useConstellation(viewer, layers.starlink, STARLINK, timeline);
+  const solarWind = useSolarWind(viewer, layers.solarWind, timeline);
+  // Aircraft positions exist only for "now": hidden while viewing another moment.
+  const flights = useFlights(viewer, layers.flights && live);
+
+  // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
+  useEffect(() => {
+    if (!viewer) return;
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.solarWind ? 600_000_000 : 65_000_000;
+  }, [viewer, layers.solarWind]);
   const trackedSatellite = satellites.catalog.find(({ choice }) => choice.id === trackedSatelliteId)?.choice ?? null;
   const vectorState = useGeologyMap(viewer, { visible: layers.geology, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter });
 
@@ -225,6 +255,25 @@ function App() {
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(location.longitude, location.latitude, 2_500_000), duration: 1.6 });
   };
 
+  // Side view of the magnetosphere: Sun to one side, Earth in the middle.
+  const viewMagnetosphere = () => {
+    if (!viewer) return;
+    setTrackedSatelliteId(null);
+    const state = timeline.getState();
+    const sun = subsolarPoint(new Date(state.live ? Date.now() : state.time));
+    const toSun = Cartesian3.fromRadians(sun.longitude * Math.PI / 180, sun.latitude * Math.PI / 180, 0, undefined, new Cartesian3());
+    Cartesian3.normalize(toSun, toSun);
+    const side = Cartesian3.normalize(Cartesian3.cross(toSun, Cartesian3.UNIT_Z, new Cartesian3()), new Cartesian3());
+    const RE = EARTH_RADIUS_KM * 1000;
+    // Look at a point a few Earth radii sunward so the magnetopause nose is centred.
+    const target = Cartesian3.multiplyByScalar(toSun, 5 * RE, new Cartesian3());
+    const position = Cartesian3.add(Cartesian3.multiplyByScalar(side, 50 * RE, new Cartesian3()), Cartesian3.multiplyByScalar(Cartesian3.UNIT_Z, 12 * RE, new Cartesian3()), new Cartesian3());
+    Cartesian3.add(position, target, position);
+    const direction = Cartesian3.normalize(Cartesian3.subtract(target, position, new Cartesian3()), new Cartesian3());
+    const up = Cartesian3.normalize(Cartesian3.cross(Cartesian3.cross(direction, Cartesian3.UNIT_Z, new Cartesian3()), direction, new Cartesian3()), new Cartesian3());
+    viewer.camera.flyTo({ destination: position, orientation: { direction, up }, duration: 2.2 });
+  };
+
   const flyTo = (region: Region) => {
     setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000), duration: 1.8 });
@@ -273,12 +322,13 @@ function App() {
 
       <main className="workspace">
         <LayerPanel open={controlsOpen} onClose={() => setControlsOpen(false)} onFlyTo={flyTo}>
-          <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} />
+          <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} solarWind={solarWind} onViewMagnetosphere={viewMagnetosphere} />
           <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
-            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass}
+            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
             location={userLocation.state} onLocate={userLocation.locate} />
+          <FlightsGroup layers={layers} setLayer={setLayer} flights={flights.state} live={live} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
         </LayerPanel>
 
@@ -296,7 +346,7 @@ function App() {
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
             onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />
           {!timebarOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
-          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a> · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
