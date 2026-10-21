@@ -1,0 +1,77 @@
+name: Terrascope Continuous Camera Promo
+on:
+  push:
+    branches: [video/continuous-flight-20261021]
+    paths:
+      - "video/continuous-flight/**"
+      - "src/recording.ts"
+      - ".github/workflows/continuous-flight-promo.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout Terrascope source
+        uses: actions/checkout@v4
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install website dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Validate recording extension and app
+        run: |
+          node --check video/continuous-flight/capture.mjs
+          python3 -m py_compile video/continuous-flight/render.py
+          npm run typecheck
+          npm run build
+      - name: Install Chromium, FFmpeg, Python libraries
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python3 -m pip install --user --break-system-packages Pillow numpy
+          ffmpeg -version | head -1
+      - name: Start local Terrascope with capture-only camera API
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 --strictPort > /tmp/terrascope-vite.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
+          curl -fsSI http://127.0.0.1:4173/
+      - name: Capture continuous actual-data camera flight
+        env:
+          FLIGHT_OUT: video/continuous-flight/out
+          FLIGHT_LOCAL_SITE: http://127.0.0.1:4173/
+          FLIGHT_PRODUCTION_SITE: https://earth-atlas.edwardlab.workers.dev/
+          FLIGHT_SOURCE_FPS: "6"
+          FLIGHT_SECONDS: "27"
+        run: node --experimental-strip-types video/continuous-flight/capture.mjs
+      - name: Encode full 30s HD promotional video
+        run: python3 video/continuous-flight/render.py
+      - name: Validate container, frame rate, duration
+        run: |
+          ffprobe -v error -show_entries format=duration:stream=codec_name,width,height,r_frame_rate -of json video/continuous-flight/out/terrascope-continuous-flight-30s.mp4
+          test -s video/continuous-flight/out/terrascope-continuous-flight-30s.mp4
+          test -s video/continuous-flight/out/terrascope-continuous-flight-30s.srt
+      - name: Select review images
+        if: always()
+        run: |
+          mkdir -p video/continuous-flight/out/review
+          for n in 0000 0030 0060 0096 0132 0161; do
+            if [ -f "video/continuous-flight/out/frames/$n.png" ]; then cp "video/continuous-flight/out/frames/$n.png" "video/continuous-flight/out/review/$n.png"; fi
+          done
+      - name: Upload MP4, subtitles and source records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terrascope-continuous-camera-promo
+          path: |
+            video/continuous-flight/out/*.mp4
+            video/continuous-flight/out/*.srt
+            video/continuous-flight/out/*.json
+            video/continuous-flight/out/review/*.png
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 2
