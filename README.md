@@ -106,7 +106,7 @@ No API keys are needed. A network connection is required for the live imagery an
 
 ### Experimental iPhone Live Photo capture
 
-This branch adds a **实况图** toolbar action: record the current globe for about three seconds, preview it, select a key photo, and export a paired JPEG/MOV resource ZIP through a local media service. Original clip downloads work without the service. iPhone Photos recognition still requires device testing; this is not deployed to the live site. Setup and import instructions: [tools/live-photo/README.md](tools/live-photo/README.md).
+The **实况图** toolbar action records the current globe for about three seconds, previews it, and lets you select a key photo. A local media service exports a paired JPEG/MOV resource ZIP; original clip downloads work without that service. iPhone Photos recognition still requires device testing. The local encoder is not included in the hosted Workers site. Setup and import instructions: [tools/live-photo/README.md](tools/live-photo/README.md).
 
 ## Project structure
 
