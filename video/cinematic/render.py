@@ -2,7 +2,7 @@
 fades and the end card, then H.264 with the sound design.
 
 Every number on screen comes from plan.json (the data snapshot) or the
-capture records (camera, ISS and aircraft positions per frame).
+capture records (camera, station and aircraft positions per frame).
 
 usage: render.py --frames DIR --plan plan.json --out DIR [--audio sfx.wav] [--stills]
 """
@@ -195,15 +195,15 @@ def hud(t: float, rec: dict | None, fade: float) -> Image.Image:
                  f"FL{round(f['altitude'] / 0.3048 / 100):03d}  ·  {round((f.get('speed') or 0) * 3.6)} km/h  ·  {round(f.get('track') or 0):03d}°"]
         lock(d, t, 8.8, 10.2, f["x"], f["y"] + TOP, 46, lines)
 
-    # Take B: the ISS (real SGP4 position, approximate attitude).
-    i = rec.get("iss") if rec else None
+    # Take B: the station (real SGP4 position, approximate attitude).
+    i = rec.get("station") if rec else None
     if i and i.get("visible") and i.get("distance") and i.get("height") and i.get("speed"):
         fov = math.radians(cam["fov"]) if cam else math.radians(50)
-        apparent = 109 / i["distance"] / fov * W
-        lines = ["ISS  ·  INTERNATIONAL SPACE STATION",
+        apparent = plan.get("station", {}).get("spanM", 55) / i["distance"] / fov * W
+        lines = ["TIANGONG  ·  CHINA SPACE STATION",
                  f"{round(i['height'] / 1000)} km  ·  {i['speed'] / 1000:.2f} km/s  ·  SGP4 / CELESTRAK GP"]
         lock(d, t, 11.9, 14.4, i["x"], i["y"] + TOP, min(640, max(70, apparent * 1.15)), lines)
-        text(d, (W - 72, TOP + PIC_H + 69), "MODEL  ·  ATTITUDE APPROX.", EN_TINY, hud_on(12.0, 14.6) * 0.8, tracking=3, anchor="rm")
+        text(d, (W - 72, TOP + PIC_H + 69), "MODEL  ·  SCHEMATIC  ·  ATTITUDE APPROX.", EN_TINY, hud_on(12.0, 14.6) * 0.8, tracking=3, anchor="rm")
 
     # Take B: Starlink.
     a = hud_on(15.9, 18.9, 0.3, 0.2)
@@ -231,7 +231,7 @@ def hud(t: float, rec: dict | None, fade: float) -> Image.Image:
     text(d, (W / 2, TOP + PIC_H + 52), "earth-atlas.edwardlab.workers.dev", EN_LABEL, a, tracking=2, anchor="mm")
     text(d, (W / 2, TOP + PIC_H + 92), "打开浏览器即可探索 · 无需安装", ZH_SMALL, a * 0.85, tracking=4, anchor="mm")
     recorded = datetime.fromtimestamp(plan["T0"] / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    text(d, (W / 2, TOP / 2), f"RECORDED {recorded}   ·   DATA  NASA GIBS · NOAA SWPC · CELESTRAK · ADS-B (ADSB.LOL, ODBL)   ·   ISS MODEL  NASA",
+    text(d, (W / 2, TOP / 2), f"RECORDED {recorded}   ·   DATA  NASA GIBS · NOAA SWPC · CELESTRAK · ADS-B (ADSB.LOL, ODBL)   ·   STATION MODEL  SCHEMATIC",
          EN_TINY, a * 0.75, tracking=2, anchor="mm")
     return layer
 

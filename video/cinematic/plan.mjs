@@ -1,5 +1,5 @@
 /**
- * Plan the film: find the next moment the ISS passes sunlit over a dark
+ * Plan the film: find the next moment Tiangong passes sunlit over a dark
  * region with dense air traffic, wait for it (full mode), snapshot all live data at that moment,
  * pick the flight to lock onto, and write plan.json for the capture jobs.
  *
@@ -12,7 +12,7 @@ import { epochOf, parseOmmCsv } from "../../src/constellationData.ts";
 import { dynamicPressure, parseSolarWind, shueMagnetopause } from "../../src/solarWindData.ts";
 import { parseKpNow } from "../../src/geomagnetic.ts";
 import { parseOvation } from "../../src/auroraData.ts";
-import { FLIGHT_LOCK, contextFrom, frameAt, layersAt } from "./story.mjs";
+import { STATION, REGIONS, FLIGHT_LOCK, contextFrom, frameAt, layersAt } from "./story.mjs";
 import { RE, add, dot, geo, mul, norm, satelliteFromOmm, surfaceDistance } from "./geometry.mjs";
 import { findFilmWindow, upcomingWindows } from "./pass.mjs";
 import { openPage, recordData, waitForLayers } from "./browser.mjs";
@@ -21,25 +21,30 @@ const SITE = process.env.CINE_SITE || "http://127.0.0.1:4173/";
 const PRODUCTION = process.env.CINE_PRODUCTION || "https://earth-atlas.edwardlab.workers.dev/";
 const OUT = process.env.CINE_OUT || "video/cinematic/out/plan";
 const MODE = process.env.CINE_MODE || "preview";
+const REGION = process.env.CINE_REGION || "";
+if (REGION && !REGIONS.some(r => r.id === REGION)) throw new Error("Unknown CINE_REGION: " + REGION);
 const MAX_WAIT_MIN = Number(process.env.CINE_MAX_WAIT_MIN || "300");
+if (!Number.isFinite(MAX_WAIT_MIN) || MAX_WAIT_MIN <= 0 || MAX_WAIT_MIN > 300) throw new Error("CINE_MAX_WAIT_MIN must be within 0..300 minutes");
 mkdirSync(OUT, { recursive: true });
 
 const fmt = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC（北京时间 " + new Date(ms + 8 * 3_600_000).toISOString().slice(5, 16).replace("T", " ") + "）";
 
-// 1. The ISS elements and the upcoming windows.
-const response = await fetch("https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=json", { signal: AbortSignal.timeout(30_000) });
-const [issOmmFetched] = await response.json();
-const windows = upcomingWindows(satelliteFromOmm(issOmmFetched), Date.now() + 4 * 60_000, 10, 48);
-console.log("Upcoming windows (ISS sunlit over a dark, busy region):");
+// 1. The station elements and the upcoming windows.
+const response = await fetch("https://celestrak.org/NORAD/elements/gp.php?CATNR=48274&FORMAT=json", { signal: AbortSignal.timeout(30_000) });
+if (!response.ok) throw new Error("Tiangong elements HTTP " + response.status);
+const [stationOmmFetched] = await response.json();
+if (Number(stationOmmFetched?.NORAD_CAT_ID) !== STATION.noradId) throw new Error("Tiangong element identity mismatch");
+const windows = upcomingWindows(satelliteFromOmm(stationOmmFetched), Date.now() + 4 * 60_000, 10, 48, REGION);
+console.log("Upcoming windows (Tiangong sunlit over a dark, busy region):");
 for (const w of windows) console.log("  ", fmt(w.T0), " ", w.region.name, `(${w.region.lat.toFixed(1)}°, ${w.region.lon.toFixed(1)}°)`, " (", Math.round((w.last - w.first) / 1000), "s wide )");
 writeFileSync(OUT + "/windows.json", JSON.stringify(windows.map((w) => ({ ...w, utc: new Date(w.T0).toISOString() })), null, 2));
 let window = windows[0];
 if (!window && MODE !== "full") {
-  // Preview only checks framing: any pass over Europe will do.
-  window = findFilmWindow(satelliteFromOmm(issOmmFetched), Date.now() + 4 * 60_000, 48, 10_000, true);
-  console.log("::warning::No qualifying window in five days; preview uses a pass at " + (window && fmt(window.T0)) + " regardless of lighting.");
+  // Preview only checks framing: a pass in the requested region will do.
+  window = findFilmWindow(satelliteFromOmm(stationOmmFetched), Date.now() + 4 * 60_000, 48, 10_000, true, REGION);
+  console.log("::warning::No qualifying window in 48 hours; preview uses a pass at " + (window && fmt(window.T0)) + " regardless of lighting.");
 }
-if (!window) throw new Error("No qualifying ISS pass in the next five days; try again later.");
+if (!window) throw new Error("No qualifying Tiangong pass in the next 48 hours; try again later.");
 console.log("Filming over", window.region.name, `(${window.region.lat}°, ${window.region.lon}°) at`, fmt(window.T0));
 const waitMin = (window.T0 - Date.now()) / 60_000;
 if (MODE === "full") {
@@ -77,8 +82,8 @@ const body = (pattern) => {
 };
 // The request the satellite layer itself makes (src/satelliteOrbits.ts).
 const stations = JSON.parse(body(/GROUP=STATIONS&FORMAT=JSON$/));
-const issOmm = stations.find((r) => Number(r.NORAD_CAT_ID) === 25544);
-if (!issOmm) throw new Error("ISS elements missing from the snapshot");
+const stationOmm = stations.find((r) => Number(r.NORAD_CAT_ID) === STATION.noradId);
+if (!stationOmm) throw new Error("Tiangong elements missing from the snapshot");
 const flights = decodeFlights(JSON.parse(body(/\/api\/flights/)));
 const starlink = parseOmmCsv(body(/GROUP=starlink/i)).filter((r) => Math.abs(window.T0 - epochOf(r).getTime()) <= 10 * 86_400_000);
 const wind = parseSolarWind(JSON.parse(body(/rtsw_wind_1m/)), JSON.parse(body(/rtsw_mag_1m/)));
@@ -89,7 +94,7 @@ const ovation = parseOvation(JSON.parse(body(/ovation_aurora_latest/)));
 
 // 4. The flight to lock onto: airborne, with a callsign, nearest the point
 // the camera looks at in the middle of the lock.
-const ctx = contextFrom({ T0: window.T0, issOmm, region: window.region });
+const ctx = contextFrom({ T0: window.T0, stationOmm, region: window.region });
 const lockFrame = Math.round(((FLIGHT_LOCK.start + FLIGHT_LOCK.end) / 2) * 30);
 const { camera, virtualTime } = frameAt(lockFrame, ctx);
 // Where the view ray meets the ground (spherical Earth is enough here).
@@ -112,7 +117,7 @@ if (best.d > 250e3) {
 }
 
 const plan = {
-  mode: MODE, T0: window.T0, window, region: window.region, snapshotAt, issOmm,
+  station: STATION, requestedRegion: REGION || null, mode: MODE, T0: window.T0, window, region: window.region, snapshotAt, stationOmm,
   flight: { hex: best.f.hex, callsign: best.f.callsign, type: best.f.type, registration: best.f.registration, distanceFromAimKm: Math.round(best.d / 1000) },
   readings: {
     aircraft: flights.flights.length, airborne: flights.flights.filter((f) => f.altitude !== null).length, flightsTime: flights.time, flightsSource: flights.source,

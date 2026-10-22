@@ -3,7 +3,7 @@
  * 100 BPM grid (7.2 s, 19.2 s), one camera pose per output frame.
  *
  *   A  0.0– 7.2  "此刻"   orbital sunrise over the Atlantic limb, Europe's lights below
- *   B  7.2–19.2  "上升"   flights over Europe → chase and pass the ISS → Starlink shells
+ *   B  7.2–19.2  "上升"   flights over Europe → chase and pass the station → Starlink shells
  *   C 19.2–30.0  "风暴"   magnetosphere side view → dive to the Nordic aurora → farewell
  *
  * Everything is a pure function of (t, plan): any frame can be rendered by any
@@ -13,6 +13,8 @@ import {
   RE, add, clamp01, cross, dot, geo, inFrame, lerp, lookAt, monotone, monotone3, mul, norm, rad, satelliteFromOmm,
   slerp, smootherstep, smoothstep, sub, sunDirection, toGeo, unit,
 } from "./geometry.mjs";
+
+export const STATION = { id: "tiangong", noradId: 48274, name: "TIANGONG", spanM: 55 };
 
 export const FPS = 30;
 export const DURATION = 30;
@@ -31,8 +33,8 @@ export const takeAt = (t) => TAKES.find((take) => t >= take.start && t < take.en
 export const frameTime = (frame) => frame / FPS;
 
 /**
- * Regions with dense air traffic. The film is set wherever the ISS next
- * crosses one of them at the right light; the ground under the ISS at the
+ * Regions with dense air traffic. The film is set wherever the station next
+ * crosses one of them at the right light; the ground under the station at the
  * flight lock becomes the anchor of takes A and B.
  */
 export const REGIONS = [
@@ -66,8 +68,8 @@ export function ovalLatitude(lon, hemisphere) {
 }
 /** Moments of take B the plan is built around. */
 export const FLIGHT_LOCK = { start: 8.8, end: 10.2 };
-export const ISS_LOCK = { start: 11.8, end: 14.4 };
-export const ISS_CLOSEST = 13.1;
+export const STATION_LOCK = { start: 11.8, end: 14.4 };
+export const STATION_CLOSEST = 13.1;
 
 const Z = [0, 0, 1];
 
@@ -131,8 +133,8 @@ function takeA(t, ctx) {
 
 // ---------------------------------------------------------------- take B
 
-// Offsets in the ISS orbit frame (x along the velocity, y to the left, z up), metres.
-// The approach and the pull-away run along the line of sight to the ISS, so
+// Offsets in the station orbit frame (x along the velocity, y to the left, z up), metres.
+// The approach and the pull-away run along the line of sight to the station, so
 // it stays steady in frame; only the pass itself sweeps the view.
 const APPROACH = [-1.0, 0.45, 0.3];
 const RETREAT = [0.75, 0.5, 0.4];
@@ -141,28 +143,28 @@ const B_CAMERA = logRadial([
   { t: 9.6, v: [-220e3, -20e3, 70e3] },
   { t: 10.2, v: [-130e3, 20e3, 45e3] },
   { t: 10.9, v: APPROACH.map((c) => c * 35e3) },
-  { t: 11.9, v: APPROACH.map((c) => c * 1e3) },
-  { t: 13.1, v: [-0.15e3, 0.36e3, 0.18e3] },
-  { t: 14.4, v: RETREAT.map((c) => c * 1e3) },
+  { t: 11.9, v: APPROACH.map((c) => c * 0.5e3) },
+  { t: 13.1, v: [-0.075e3, 0.18e3, 0.09e3] },
+  { t: 14.4, v: RETREAT.map((c) => c * 0.5e3) },
   { t: 15.4, v: RETREAT.map((c) => c * 25e3) },
   { t: 17.0, v: [200e3, 500e3, 6_000e3] },
   { t: 19.2, v: [400e3, 2_000e3, 16_000e3] },
 ]);
-/** The ground point the camera watches during the flight lock, ahead of the ISS. */
+/** The ground point the camera watches during the flight lock, ahead of the station. */
 const B_GROUND_AHEAD = monotone([{ t: 7.2, v: 130e3 }, { t: 9.6, v: 60e3 }, { t: 11.8, v: 40e3 }]);
 
 function takeB(t, ctx) {
   const time = ctx.T0 + t * 1000;
-  const f = ctx.iss.frame(time);
+  const f = ctx.station.frame(time);
   const altitude = norm(f.origin) - RE;
   const position = inFrame(f, B_CAMERA(t));
   // Turn between view directions (not between look-at points, which would
-  // whip the view when the camera is close to the ISS): the ground ahead,
-  // then the ISS, then the Earth's centre.
+  // whip the view when the camera is close to the station): the ground ahead,
+  // then the station, then the Earth's centre.
   const toGround = unit(sub(inFrame(f, [B_GROUND_AHEAD(t), 0, -altitude]), position));
-  const toIss = unit(sub(f.origin, position));
+  const toStation = unit(sub(f.origin, position));
   const toCentre = unit(mul(position, -1));
-  const direction = slerp(slerp(toGround, toIss, smootherstep((t - 10.2) / 1.6)), toCentre, smootherstep((t - 15.0) / 2.0));
+  const direction = slerp(slerp(toGround, toStation, smootherstep((t - 10.2) / 1.6)), toCentre, smootherstep((t - 15.0) / 2.0));
   const fov = monotone([{ t: 7.2, v: 40 }, { t: 11.2, v: 40 }, { t: 12.4, v: 50 }, { t: 14.4, v: 50 }, { t: 16, v: 42 }, { t: 19.2, v: 45 }])(t);
   return pose(position, add(position, mul(direction, 1e6)), fov);
 }
@@ -243,7 +245,7 @@ export function frameAt(frame, ctx) {
     frame, t, take: take.id, virtualTime: ctx.T0 + t * 1000, camera,
     layers: layersAt(t),
     alpha: { flights: flightsAlpha(t), starlink: starlinkAlpha(t) },
-    issModel: take.id === "B",
+    stationModel: take.id === "B",
     effectsTime: t,
   };
 }
@@ -263,9 +265,9 @@ export function layersAt(t) {
 const flightsAlpha = (t) => 1 - smoothstep((t - 14.4) / 1.0);
 const starlinkAlpha = (t) => smoothstep((t - 15.0) / 1.0);
 
-/** Build the context from the plan (T0, ISS elements, region anchor). */
+/** Build the context from the plan (T0, station elements, region anchor). */
 export function contextFrom(plan) {
-  return { T0: plan.T0, iss: satelliteFromOmm(plan.issOmm), region: plan.region };
+  return { T0: plan.T0, station: satelliteFromOmm(plan.stationOmm), region: plan.region };
 }
 
 /** The camera's sub-point and height, for the HUD. */

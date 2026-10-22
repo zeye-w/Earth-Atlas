@@ -1,7 +1,7 @@
 name: Cinematic promo
 # The 30 s TerraScope film (video/cinematic/README.md).
-#   preview: stills every 0.8 s plus the ISS pass, for checking framing (no waiting).
-#   full:    waits for the next sunlit ISS pass over a dark, busy region, snapshots the live
+#   preview: stills every 0.8 s plus the Tiangong pass, for checking framing (no waiting).
+#   full:    waits for the next sunlit Tiangong pass over a dark, busy region, snapshots the live
 #            data, captures 900 frames in parallel chunks, grades, adds the HUD
 #            and sound design, encodes 1080p30 H.264.
 on:
@@ -16,11 +16,14 @@ on:
         description: "preview or full"
         default: preview
       max_wait_min:
-        description: "full mode: longest wait (minutes) for the next ISS window"
+        description: "full mode: longest wait (minutes) for the next Tiangong window"
         default: "300"
+      region:
+        description: "Region id (empty = unrestricted; middle-east for the Persian Gulf)"
+        default: ""
       model_rotation:
-        description: "ISS model axes correction, heading,pitch,roll in degrees"
-        default: "90,0,90"
+        description: "Tiangong model axes correction, heading,pitch,roll in degrees"
+        default: "0,0,0"
 permissions:
   contents: write
 concurrency:
@@ -28,7 +31,6 @@ concurrency:
   cancel-in-progress: true
 env:
   MODE: ${{ inputs.mode || 'preview' }}
-  ISS_MODEL: "https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/International%20Space%20Station%20(ISS)%20(B)/International%20Space%20Station%20(ISS)%20(B).glb"
 
 jobs:
   plan:
@@ -44,16 +46,18 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - name: Local site with the ISS model
+      - name: Local site with the Tiangong model
         run: |
           mkdir -p dist/record-assets
-          curl -fsSL "$ISS_MODEL" -o dist/record-assets/iss.glb
-          python3 video/cinematic/trim_model.py dist/record-assets/iss.glb
+          python3 -m pip install --user --break-system-packages numpy
+          python3 video/cinematic/tiangong_model.py dist/record-assets/tiangong.glb
+          python3 video/cinematic/check_station_model.py dist/record-assets/tiangong.glb
           ls -l dist/record-assets
           npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
       - name: Find the window, wait for it (full), snapshot live data
         env:
+          CINE_REGION: ${{ inputs.region || '' }}
           CINE_MODE: ${{ env.MODE }}
           CINE_MAX_WAIT_MIN: ${{ inputs.max_wait_min || '300' }}
           CINE_OUT: video/cinematic/out/plan
@@ -92,11 +96,12 @@ jobs:
         with:
           name: cine-plan
           path: video/cinematic/out/plan
-      - name: Local site with the ISS model
+      - name: Local site with the Tiangong model
         run: |
           mkdir -p dist/record-assets
-          curl -fsSL "$ISS_MODEL" -o dist/record-assets/iss.glb
-          python3 video/cinematic/trim_model.py dist/record-assets/iss.glb
+          python3 -m pip install --user --break-system-packages numpy
+          python3 video/cinematic/tiangong_model.py dist/record-assets/tiangong.glb
+          python3 video/cinematic/check_station_model.py dist/record-assets/tiangong.glb
           npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
       - name: Capture frames ${{ matrix.frames }}
@@ -104,7 +109,7 @@ jobs:
           CINE_PLAN: video/cinematic/out/plan
           CINE_OUT: video/cinematic/out/frames
           CINE_FRAMES: ${{ matrix.frames }}
-          CINE_MODEL_ROTATION: ${{ inputs.model_rotation || '90,0,90' }}
+          CINE_MODEL_ROTATION: ${{ inputs.model_rotation || '0,0,0' }}
         run: node --experimental-strip-types video/cinematic/capture.mjs
       - uses: actions/upload-artifact@v7
         if: always()

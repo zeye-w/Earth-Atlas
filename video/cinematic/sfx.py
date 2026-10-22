@@ -126,8 +126,8 @@ add(hum * np.interp(np.arange(len(hum)) / SR + 7.2, [7.2, 8, 15, 16.5, 18.9, 18.
 for k in range(14):                                   # aircraft counter
     add(tick(), 8.0 + k * 0.042, pan=-0.5, gain=0.16)
 add(blip(1250, 0.08, 1760), 8.8, pan=0.2, gain=0.22)  # flight lock
-add(whoosh(1.4, 300, 5000, 0.75), 10.5, pan=-0.3, gain=0.5)   # dive onto the ISS
-add(blip(1480, 0.08, 1980), 11.9, pan=0.2, gain=0.22) # ISS lock
+add(whoosh(1.4, 300, 5000, 0.75), 10.5, pan=-0.3, gain=0.5)   # dive onto the station
+add(blip(1480, 0.08, 1980), 11.9, pan=0.2, gain=0.22) # station lock
 pas = whoosh(1.8, 250, 7000, 0.45)                    # the pass: sweeps left to right
 for side, pan in ((0.0, -0.7), (0.35, 0.7)):
     add(pas * (0.6 if side else 0.5), 12.5 + side, pan=pan, gain=0.6)

@@ -2,7 +2,7 @@
  * Capture a range of frames of the film from the local build, replaying the
  * plan's data snapshot. Every frame: virtual clock at T0 + t, camera pose
  * from story.mjs, wait until tiles and layer work are done, screenshot, and
- * record what the HUD needs (camera height, where the ISS and the locked
+ * record what the HUD needs (camera height, where the station and the locked
  * flight are on screen, the flight's readings).
  *
  * Env: CINE_SITE, CINE_PLAN (directory with plan.json and data/), CINE_OUT,
@@ -11,7 +11,7 @@
  * to metres).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { FRAMES, PICTURE_HEIGHT, WIDTH, contextFrom, frameAt, layersAt } from "./story.mjs";
+import { STATION, FRAMES, PICTURE_HEIGHT, WIDTH, contextFrom, frameAt, layersAt } from "./story.mjs";
 import { norm, sub, toGeo } from "./geometry.mjs";
 import { openPage, replayData, waitForLayers } from "./browser.mjs";
 
@@ -19,12 +19,9 @@ const SITE = process.env.CINE_SITE || "http://127.0.0.1:4173/";
 const PLAN = process.env.CINE_PLAN || "video/cinematic/out/plan";
 const OUT = process.env.CINE_OUT || "video/cinematic/out/frames";
 const RANGE = process.env.CINE_FRAMES || "preview";
-const MODEL_URL = process.env.CINE_MODEL_URL || "/record-assets/iss.glb";
-// NASA's ISS (B): truss along the glTF z axis, modules and arrays along y, about
-// 45.5 units across the arrays (109 m). Turned so the truss runs across the
-// orbit and the modules along it, as on the real station.
-const MODEL_ROTATION = (process.env.CINE_MODEL_ROTATION || "90,0,90").split(",").map(Number);
-const MODEL_SCALE = Number(process.env.CINE_MODEL_SCALE || 2.4);
+const MODEL_URL = process.env.CINE_MODEL_URL || "/record-assets/tiangong.glb";
+const MODEL_ROTATION = (process.env.CINE_MODEL_ROTATION || "0,0,0").split(",").map(Number);
+const MODEL_SCALE = Number(process.env.CINE_MODEL_SCALE || 1);
 mkdirSync(OUT, { recursive: true });
 
 const plan = JSON.parse(readFileSync(PLAN + "/plan.json", "utf8"));
@@ -60,8 +57,8 @@ try {
   // Every layer this range uses must have its real data before any frame is taken.
   await page.evaluate((layers) => window.__terrascope.setLayers(layers), Object.fromEntries([...needs].map((k) => [k, true])));
   await waitForLayers(page, [...needs]);
-  if (uniqueFrames.some((f) => frameAt(f, ctx).issModel)) {
-    await page.evaluate((options) => window.__terrascope.satelliteModel({ id: "iss", ...options }), { url: MODEL_URL, rotation: MODEL_ROTATION, scale: MODEL_SCALE });
+  if (uniqueFrames.some((f) => frameAt(f, ctx).stationModel)) {
+    await page.evaluate((options) => window.__terrascope.satelliteModel({ ...options }), { id: STATION.id, url: MODEL_URL, rotation: MODEL_ROTATION, scale: MODEL_SCALE });
   }
 
   let layers = null;
@@ -69,7 +66,7 @@ try {
     const f = frameAt(frame, ctx);
     const layerChange = JSON.stringify(f.layers) !== JSON.stringify(layers);
     layers = f.layers;
-    return page.evaluate(async ({ f, layerChange, timeout, hex }) => {
+    return page.evaluate(async ({ f, layerChange, timeout, hex, stationId }) => {
       const api = window.__terrascope;
       if (layerChange) api.setLayers(f.layers);
       api.setVirtualNow(f.virtualTime);
@@ -80,15 +77,15 @@ try {
       const settled = await api.idle(timeout);
       api.render();
       // What the HUD draws over this frame.
-      const iss = api.satellitePosition("iss");
+      const station = api.satellitePosition(stationId);
       const flight = api.flight(hex);
-      const [issScreen, flightScreen] = api.project([iss ?? [0, 0, 0], flight?.position ?? [0, 0, 0]]);
+      const [stationScreen, flightScreen] = api.project([station ?? [0, 0, 0], flight?.position ?? [0, 0, 0]]);
       return {
         settled,
-        iss: iss ? { position: iss, ...issScreen } : null,
+        station: station ? { position: station, ...stationScreen } : null,
         flight: flight ? { ...flightScreen, altitude: flight.flight.altitude, speed: flight.flight.speed, track: flight.flight.track, position: flight.position } : null,
       };
-    }, { f, layerChange, timeout, hex: plan.flight.hex });
+    }, { f, layerChange, timeout, hex: plan.flight.hex, stationId: STATION.id });
   };
 
   // Warm-up: fly the range once quickly so the imagery tiles are cached.
@@ -104,8 +101,8 @@ try {
     const entry = {
       frame, t: f.t, take: f.take, file, settled: probe.settled,
       camera: { lon: cam.lon, lat: cam.lat, height: cam.h, fov: f.camera.fov },
-      iss: probe.iss && (() => {
-        return { x: probe.iss.x, y: probe.iss.y, visible: probe.iss.visible, distance: norm(sub(probe.iss.position, f.camera.position)), height: toGeo(probe.iss.position).h, speed: ctx.iss.inertialSpeed(f.virtualTime) };
+      station: probe.station && (() => {
+        return { x: probe.station.x, y: probe.station.y, visible: probe.station.visible, distance: norm(sub(probe.station.position, f.camera.position)), height: toGeo(probe.station.position).h, speed: ctx.station.inertialSpeed(f.virtualTime) };
       })(),
       flight: probe.flight && { x: probe.flight.x, y: probe.flight.y, visible: probe.flight.visible, altitude: probe.flight.altitude, speed: probe.flight.speed, track: probe.flight.track, distance: norm(sub(probe.flight.position, f.camera.position)) },
     };
