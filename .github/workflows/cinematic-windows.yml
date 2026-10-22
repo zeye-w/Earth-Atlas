@@ -1,0 +1,34 @@
+name: Cinematic windows
+# Lists upcoming film windows (sunlit spacecraft over a dark, busy region)
+# for a few crewed stations and telescopes, from live CelesTrak elements.
+on:
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths: [".github/workflows/cinematic-windows.yml"]
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - run: npm ci --no-audit --no-fund
+      - name: Windows in the next 72 h
+        run: |
+          cat > /tmp/windows.mjs <<'JS'
+          import { satelliteFromOmm } from "./video/cinematic/geometry.mjs";
+          import { upcomingWindows } from "./video/cinematic/pass.mjs";
+          const crafts = [["ISS", 25544], ["Tiangong (CSS)", 48274], ["Hubble", 20580]];
+          for (const [name, id] of crafts) {
+            const res = await fetch(`https://celestrak.org/NORAD/elements/gp.php?CATNR=${id}&FORMAT=json`);
+            const [omm] = await res.json();
+            console.log(`\n== ${name} (${id}) epoch ${omm.EPOCH} incl ${omm.INCLINATION}° mean motion ${omm.MEAN_MOTION}`);
+            for (const w of upcomingWindows(satelliteFromOmm(omm), Date.now(), 12, 72))
+              console.log(new Date(w.T0).toISOString(), w.region.id, w.region.lat, w.region.lon, `${(w.last - w.first) / 1000}s`);
+          }
+          JS
+          cp /tmp/windows.mjs ./windows-probe.mjs
+          node --experimental-strip-types ./windows-probe.mjs
