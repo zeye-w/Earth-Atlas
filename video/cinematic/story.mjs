@@ -36,15 +36,15 @@ export const frameTime = (frame) => frame / FPS;
  * flight lock becomes the anchor of takes A and B.
  */
 export const REGIONS = [
-  { id: "europe", name: "欧洲", west: -10, east: 30, south: 36, north: 60 },
-  { id: "na-east", name: "北美东部", west: -100, east: -65, south: 25, north: 50 },
-  { id: "na-west", name: "北美西部", west: -125, east: -100, south: 30, north: 50 },
-  { id: "east-asia", name: "东亚", west: 100, east: 145, south: 20, north: 42 },
-  { id: "middle-east", name: "中东", west: 35, east: 60, south: 20, north: 36 },
-  { id: "south-asia", name: "南亚", west: 68, east: 90, south: 8, north: 30 },
-  { id: "southeast-asia", name: "东南亚", west: 95, east: 125, south: -8, north: 20 },
-  { id: "australia", name: "澳大利亚东南", west: 138, east: 154, south: -38, north: -27 },
-  { id: "brazil", name: "巴西东南", west: -50, east: -40, south: -25, north: -15 },
+  { id: "europe", name: "欧洲", west: -6, east: 22, south: 40, north: 55 },
+  { id: "na-east", name: "北美东部", west: -95, east: -70, south: 28, north: 44 },
+  { id: "na-west", name: "北美西部", west: -123, east: -110, south: 32, north: 42 },
+  { id: "east-asia", name: "东亚", west: 105, east: 142, south: 22, north: 40 },
+  { id: "middle-east", name: "中东", west: 44, east: 58, south: 22, north: 30 },
+  { id: "south-asia", name: "南亚", west: 72, east: 88, south: 12, north: 29 },
+  { id: "southeast-asia", name: "东南亚", west: 98, east: 122, south: -8, north: 16 },
+  { id: "australia", name: "澳大利亚东南", west: 144, east: 154, south: -38, north: -27 },
+  { id: "brazil", name: "巴西东南", west: -50, east: -42, south: -24, north: -19 },
 ];
 
 /**
@@ -142,7 +142,7 @@ const B_CAMERA = logRadial([
   { t: 10.2, v: [-130e3, 20e3, 45e3] },
   { t: 10.9, v: APPROACH.map((c) => c * 35e3) },
   { t: 11.9, v: APPROACH.map((c) => c * 1e3) },
-  { t: 13.1, v: [-0.05e3, 0.42e3, 0.14e3] },
+  { t: 13.1, v: [-0.15e3, 0.36e3, 0.18e3] },
   { t: 14.4, v: RETREAT.map((c) => c * 1e3) },
   { t: 15.4, v: RETREAT.map((c) => c * 25e3) },
   { t: 17.0, v: [200e3, 500e3, 6_000e3] },
