@@ -24,6 +24,7 @@ import { useConstellation } from "./layers/useConstellation";
 import { useSolarWind } from "./layers/useSolarWind";
 import { useWeather } from "./layers/useWeather";
 import { WeatherGroup } from "./panels/WeatherGroup";
+import { useSelectedLocationMarker } from "./hooks/useSelectedLocationMarker";
 import { useFlights } from "./layers/useFlights";
 import { FLIGHT_ID_PREFIX } from "./flightOverlay";
 import { describeFlight } from "./flightData";
@@ -157,6 +158,7 @@ function App() {
   const volcanoes = useVolcanoes(viewer, layers.volcanoes);
   const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, followCamera: !RECORDING, timeline });
   useUserLocationMarker(viewer, userLocation.location);
+  useSelectedLocationMarker(viewer, selectedQuake || selectedVolcano ? null : geology.coordinates);
   const starlink = useConstellation(viewer, layers.starlink, STARLINK, timeline);
   const solarWind = useSolarWind(viewer, layers.solarWind, timeline);
   // Aircraft positions exist only for "now": hidden while viewing another moment.
@@ -360,7 +362,16 @@ function App() {
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
-        <Inspector live={live} open={detailsOpen} onClose={() => setDetailsOpen(false)} quake={selectedQuake} volcano={selectedVolcano} geology={geology} />
+        <Inspector live={live} onCenter={() => {
+          if (!geology.coordinates) return;
+          setTrackedSatelliteId(null);
+          viewer?.camera.flyTo({destination:Cartesian3.fromDegrees(geology.coordinates.longitude,geology.coordinates.latitude,1500000),duration:1.2});
+        }} onCopy={async () => {
+          if (!geology.coordinates) return;
+          const text=`${geology.coordinates.latitude.toFixed(6)}, ${geology.coordinates.longitude.toFixed(6)}`;
+          try { await navigator.clipboard.writeText(text); setToast("坐标已复制"); }
+          catch { setToast("请手动复制坐标："+text); }
+        }} onShare={() => void shareScene()} open={detailsOpen} onClose={() => setDetailsOpen(false)} quake={selectedQuake} volcano={selectedVolcano} geology={geology} />
       </main>
     </div>
   );
