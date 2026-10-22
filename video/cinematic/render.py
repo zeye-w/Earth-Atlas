@@ -12,6 +12,7 @@ import argparse
 import glob
 import json
 import math
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -293,7 +294,7 @@ else:
     missing = [f for f in range(len(timeline)) if f not in records]
     assert not missing, f"{len(missing)} frames missing, e.g. {missing[:5]}"
     target = out / "terrascope-cinematic-30s.mp4"
-    cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+    cmd = [os.environ.get("CINE_FFMPEG", "ffmpeg"), "-y", "-hide_banner", "-loglevel", "error",
            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-"]
     if args.audio:
         cmd += ["-i", args.audio, "-map", "0:v:0", "-map", "1:a:0",

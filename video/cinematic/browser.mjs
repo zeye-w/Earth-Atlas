@@ -64,7 +64,8 @@ export async function replayData(page, dir, missing) {
   await page.route("**/*", async (route) => {
     const url = new URL(route.request().url());
     if (!isLiveData(url)) return route.continue();
-    const entry = byUrl.get(url.toString()) ?? byPath.get(url.origin + url.pathname + "?" + [...url.searchParams.keys()].sort().join("&"));
+    const entry = byUrl.get(url.toString()) ?? byPath.get(url.origin + url.pathname + "?" + [...url.searchParams.keys()].sort().join("&"))
+      ?? (url.pathname === "/api/flights" && ["localhost", "127.0.0.1"].includes(url.hostname) ? index.find(e => { const source = new URL(e.url); return source.pathname === "/api/flights" && ["localhost", "127.0.0.1"].includes(source.hostname); }) : undefined);
     if (!entry || !existsSync(dir + "/" + entry.file)) { missing.push(url.toString()); return route.abort(); }
     await route.fulfill({ status: entry.status, headers: { "content-type": entry.contentType, "access-control-allow-origin": "*" }, body: readFileSync(dir + "/" + entry.file) });
   });

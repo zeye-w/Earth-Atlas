@@ -6,13 +6,15 @@
  * flight are on screen, the flight's readings).
  *
  * Env: CINE_SITE, CINE_PLAN (directory with plan.json and data/), CINE_OUT,
- * CINE_FRAMES ("first-last", or "preview" for stills every 0.8 s),
+ * CINE_FRAMES ("first-last", comma-separated frames/ranges, or "preview"),
+ * CINE_REQUIRE_SETTLED=1 fails before saving any unsettled recovery frame,
  * CINE_MODEL_URL, CINE_MODEL_ROTATION ("h,p,r" degrees), CINE_MODEL_SCALE (model units
  * to metres).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { STATION, FRAMES, PICTURE_HEIGHT, WIDTH, contextFrom, frameAt, layersAt } from "./story.mjs";
 import { norm, sub, toGeo } from "./geometry.mjs";
+import { selectedFrames, settleAfterTimeout } from "./capture-policy.mjs";
 import { openPage, replayData, waitForLayers } from "./browser.mjs";
 
 const SITE = process.env.CINE_SITE || "http://127.0.0.1:4173/";
@@ -26,10 +28,7 @@ mkdirSync(OUT, { recursive: true });
 
 const plan = JSON.parse(readFileSync(PLAN + "/plan.json", "utf8"));
 const ctx = contextFrom(plan);
-const frames = RANGE === "preview"
-  ? Array.from({ length: Math.ceil(FRAMES / 24) }, (_, i) => i * 24).concat([216, 380, 393, 410, 576, 648, 899]).sort((a, b) => a - b)
-  : (() => { const [a, b] = RANGE.split("-").map(Number); return Array.from({ length: b - a + 1 }, (_, i) => a + i); })();
-const uniqueFrames = [...new Set(frames)].filter((f) => f >= 0 && f < FRAMES);
+const uniqueFrames = selectedFrames(RANGE, FRAMES);
 
 const needs = new Set();
 for (const f of uniqueFrames) for (const [key, on] of Object.entries(layersAt(f / 30))) if (on && ["satellites", "starlink", "flights", "solarWind", "aurora"].includes(key)) needs.add(key);
@@ -95,11 +94,17 @@ try {
   for (const frame of uniqueFrames) {
     const f = frameAt(frame, ctx);
     const probe = await apply(frame, 45_000);
+    const readiness = await settleAfterTimeout(probe.settled,
+      timeout => page.evaluate(timeout => window.__terrascope.idle(timeout), timeout),
+      (attempt, budget) => console.log("waiting on same frame", frame, "retry", attempt, "budget", budget));
+    probe.settled = readiness.settled;
+    if (process.env.CINE_REQUIRE_SETTLED === "1" && !probe.settled) throw new Error("Recovery frame still not settled: " + frame);
+
     const file = String(frame).padStart(4, "0") + ".jpg";
     await page.screenshot({ path: OUT + "/" + file, type: "jpeg", quality: 95, clip: { x: 0, y: 0, width: WIDTH, height: PICTURE_HEIGHT } });
     const cam = toGeo(f.camera.position);
     const entry = {
-      frame, t: f.t, take: f.take, file, settled: probe.settled,
+      frame, t: f.t, take: f.take, file, settled: probe.settled, settleRetries: readiness.retries,
       camera: { lon: cam.lon, lat: cam.lat, height: cam.h, fov: f.camera.fov },
       station: probe.station && (() => {
         return { x: probe.station.x, y: probe.station.y, visible: probe.station.visible, distance: norm(sub(probe.station.position, f.camera.position)), height: toGeo(probe.station.position).h, speed: ctx.station.inertialSpeed(f.virtualTime) };
