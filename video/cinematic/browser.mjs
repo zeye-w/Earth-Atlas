@@ -37,7 +37,15 @@ export async function recordData(page, dir, production) {
     const url = new URL(route.request().url());
     if (!isLiveData(url)) return route.continue();
     const target = url.pathname === "/api/flights" ? new URL("/api/flights", production).toString() : url.toString();
-    const response = await route.fetch({ url: target, timeout: 120_000 });
+    // A feed can blip; retry a few times before the page sees a failure.
+    let response;
+    for (let attempt = 1; ; attempt++) {
+      response = await route.fetch({ url: target, timeout: 120_000 }).catch((error) => ({ error }));
+      if (!response.error && response.ok()) break;
+      if (attempt === 4) { if (response.error) throw response.error; break; }
+      console.log("retrying", target, response.error ? String(response.error) : "HTTP " + response.status());
+      await new Promise((r) => setTimeout(r, 5_000));
+    }
     const body = await response.body();
     const file = keyOf(url.toString()) + ".bin";
     writeFileSync(dir + "/" + file, body);
@@ -80,8 +88,12 @@ export async function waitForLayers(page, keys, timeout = 240_000) {
     for (;;) {
       const text = await page.locator("#earth-layer-panel").textContent();
       if (pattern.test(text)) break;
-      if (FAILED.test(text) && Date.now() - started > 20_000) throw new Error(key + ": live data unavailable (" + (text.match(/[^。]*(暂不可用|加载失败)[^。]*/)?.[0] ?? "") + ")");
-      if (Date.now() - started > timeout) throw new Error(key + ": not ready after " + timeout / 1000 + " s");
+      // A failed feed is retried by the page on its next refresh: keep waiting,
+      // and only give up (never film without the data) at the timeout.
+      if (Date.now() - started > timeout) {
+        const reason = FAILED.test(text) ? "live data unavailable (" + (text.match(/[^。]*(暂不可用|加载失败)[^。]*/)?.[0] ?? "") + ")" : "not ready";
+        throw new Error(key + ": " + reason + " after " + timeout / 1000 + " s");
+      }
       await page.waitForTimeout(500);
     }
   }
