@@ -1,10 +1,11 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { JulianDate, type Viewer } from "cesium";
 import { TimeController, type TimeSpan, type TimeState } from "../timeline";
+import { now } from "../clock";
 
 /** One TimeController for the app, started for the component's lifetime. */
 export function useTimeline(initial: { time?: number; span?: TimeSpan }) {
-  const [controller] = useState(() => new TimeController(initial));
+  const [controller] = useState(() => new TimeController(initial, now));
   useEffect(() => controller.start(), [controller]);
   return controller;
 }

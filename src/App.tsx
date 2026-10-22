@@ -47,6 +47,7 @@ import { TrackCard } from "./panels/TrackCard";
 import { RECORDING, installRecordingApi, type RecordUi } from "./recording";
 import type { LayerOptions, LayerToggles } from "./hooks/useLayerSettings";
 import "./styles.css";
+import { now } from "./clock";
 
 const isNarrow = () => window.innerWidth < 760;
 const LivePhotoPanel = lazy(() => import("./panels/LivePhotoPanel"));
@@ -121,7 +122,7 @@ function App() {
     }
     if (typeof pickedId === "string" && pickedId.startsWith(FLIGHT_ID_PREFIX)) {
       const flight = flights.describe(Number(pickedId.slice(FLIGHT_ID_PREFIX.length)));
-      if (flight) setToast(describeFlight(flight, Date.now()));
+      if (flight) setToast(describeFlight(flight, now()));
       return;
     }
     const entityId = (pickedId as Entity | undefined)?.id;
@@ -192,6 +193,8 @@ function App() {
   // Recording mode (?record): a scripted capture API, see src/recording.ts.
   const telemetryOf = useRef(satellites.telemetryOf);
   telemetryOf.current = satellites.telemetryOf;
+  const recordingLayers = useRef({ records: satellites.records, flights, starlink });
+  recordingLayers.current = { records: satellites.records, flights, starlink };
   useEffect(() => {
     if (!RECORDING || !viewer) return;
     return installRecordingApi({
@@ -202,6 +205,9 @@ function App() {
       setUi: (mode) => { setRecordUi(mode); setTimebarOpen(mode === "timebar"); },
       setTrackCard: setTrackedSatelliteId,
       satelliteTelemetry: (id) => telemetryOf.current(id),
+      satelliteRecord: (id) => recordingLayers.current.records.find((record) => record.choice.id === id) ?? null,
+      locateFlight: (hex) => recordingLayers.current.flights.locate(hex),
+      setLayerAlpha: (layer, alpha) => (layer === "flights" ? recordingLayers.current.flights : recordingLayers.current.starlink).setAlpha(alpha),
     });
   }, [viewer, timeline, setLayer, setOption]);
 
@@ -260,7 +266,7 @@ function App() {
     if (!viewer) return;
     setTrackedSatelliteId(null);
     const state = timeline.getState();
-    const sun = subsolarPoint(new Date(state.live ? Date.now() : state.time));
+    const sun = subsolarPoint(new Date(state.live ? now() : state.time));
     const toSun = Cartesian3.fromRadians(sun.longitude * Math.PI / 180, sun.latitude * Math.PI / 180, 0, undefined, new Cartesian3());
     Cartesian3.normalize(toSun, toSun);
     const side = Cartesian3.normalize(Cartesian3.cross(toSun, Cartesian3.UNIT_Z, new Cartesian3()), new Cartesian3());

@@ -4,11 +4,12 @@ import { QUAKE_REFRESH_MS, fetchQuakes, type Earthquake, type QuakeRange } from 
 import { EarthquakeOverlay } from "../earthquakes";
 import { usePolledData } from "../hooks/usePolledData";
 import type { TimeController, TimeState } from "../timeline";
+import { now } from "../clock";
 
 export type QuakeStatus = { state: "idle" | "loading" | "ready" | "error"; count?: number; largest?: Earthquake };
 
 // Live shows everything fetched so far; otherwise what had happened by the timeline moment.
-const sceneTime = (state: TimeState) => (state.live ? Date.now() : state.time);
+const sceneTime = (state: TimeState) => (state.live ? now() : state.time);
 
 /** USGS real-time earthquakes, refreshed while visible, replayable along the timeline. */
 export function useEarthquakes(viewer: Viewer | null, visible: boolean, range: QuakeRange, timeline: TimeController) {

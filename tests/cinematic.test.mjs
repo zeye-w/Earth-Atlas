@@ -1,0 +1,74 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { FRAMES, TAKES, contextFrom, frameAt, takeFrames, whiteAt } from "../video/cinematic/story.mjs";
+import { RE, dot, geo, monotone, norm, satelliteFromOmm, sub, sunElevationAt, toGeo } from "../video/cinematic/geometry.mjs";
+import { filmable, findFilmWindow } from "../video/cinematic/pass.mjs";
+
+// Synthetic ISS-like elements (not a real element set).
+const EPOCH = Date.UTC(2026, 9, 22, 12);
+const ISS_OMM = {
+  OBJECT_NAME: "ISS (SYNTHETIC)", OBJECT_ID: "1998-067A", EPOCH: new Date(EPOCH).toISOString().slice(0, 23),
+  MEAN_MOTION: 15.49, ECCENTRICITY: 0.0004, INCLINATION: 51.64, RA_OF_ASC_NODE: 240, ARG_OF_PERICENTER: 60, MEAN_ANOMALY: 300,
+  EPHEMERIS_TYPE: 0, CLASSIFICATION_TYPE: "U", NORAD_CAT_ID: 25544, ELEMENT_SET_NO: 999, REV_AT_EPOCH: 50000,
+  BSTAR: 0.0002, MEAN_MOTION_DOT: 0.0001, MEAN_MOTION_DDOT: 0,
+};
+const iss = satelliteFromOmm(ISS_OMM);
+
+test("geometry: WGS84 round trip and monotone keys without overshoot", () => {
+  const p = geo(9, 50, 400e3);
+  const g = toGeo(p);
+  assert.ok(Math.abs(g.lon - 9) < 1e-6 && Math.abs(g.lat - 50) < 1e-5 && Math.abs(g.h - 400e3) < 1);
+  const f = monotone([{ t: 0, v: 0 }, { t: 1, v: 10 }, { t: 2, v: 10 }, { t: 3, v: 100 }]);
+  for (let t = 0; t <= 3; t += 0.01) assert.ok(f(t) >= -1e-9 && f(t) <= 100 + 1e-9);
+  for (let t = 1; t <= 2; t += 0.01) assert.ok(Math.abs(f(t) - 10) < 1e-9, "flat between equal keys");
+  assert.ok(iss.at(EPOCH) && Math.abs(norm(iss.at(EPOCH)) - RE - 420e3) < 40e3);
+});
+
+test("the film window: dark Europe under the ISS, ISS in sunlight", () => {
+  const window = findFilmWindow(iss, EPOCH, 240);
+  assert.ok(window, "a synthetic ISS orbit passes over Europe at night within ten days");
+  assert.ok(filmable(iss, window.T0));
+  assert.ok(sunElevationAt(9, 50, window.T0) < -6);
+  assert.ok(iss.sunlit(window.T0 + 13_000));
+});
+
+test("camera: smooth within each take, the ISS passed at a few hundred metres", () => {
+  const window = findFilmWindow(iss, EPOCH, 240);
+  const ctx = contextFrom({ T0: window.T0, issOmm: ISS_OMM });
+  let previous = null;
+  let closest = Infinity;
+  for (let frame = 0; frame < FRAMES; frame++) {
+    const f = frameAt(frame, ctx);
+    const { position, direction, up, fov } = f.camera;
+    assert.ok([...position, ...direction, ...up, fov].every(Number.isFinite), "finite pose at frame " + frame);
+    assert.ok(Math.abs(norm(direction) - 1) < 1e-9 && Math.abs(norm(up) - 1) < 1e-9 && Math.abs(dot(direction, up)) < 1e-9);
+    assert.ok(norm(position) > RE + 100e3, "camera above 100 km at frame " + frame);
+    if (f.take === "B") {
+      const d = norm(sub(position, iss.at(f.virtualTime)));
+      closest = Math.min(closest, d);
+    }
+    if (previous && previous.take === f.take) {
+      // No jumps: the view turns less than 3° per frame (6° in the dive of
+      // take C); faster only under an opaque white flash.
+      const turn = Math.acos(Math.min(1, dot(previous.camera.direction, direction))) * 180 / Math.PI;
+      const limit = whiteAt(f.t) >= 0.8 ? 12 : f.take === "C" && f.t > 20 && f.t < 21.8 ? 6 : 3;
+      assert.ok(turn < limit, `view turns ${turn.toFixed(2)}° at frame ${frame} (take ${f.take})`);
+      assert.ok(Math.abs(fov - previous.camera.fov) < 1.2, "field of view jumps at frame " + frame);
+    }
+    previous = f;
+  }
+  assert.ok(closest > 150 && closest < 600, "closest approach to the ISS " + closest.toFixed(0) + " m");
+  assert.deepEqual(TAKES.map((t) => takeFrames(t.id)), [{ first: 0, last: 215 }, { first: 216, last: 575 }, { first: 576, last: 899 }]);
+});
+
+test("layers and fades follow the storyboard", () => {
+  const ctx = contextFrom({ T0: EPOCH, issOmm: ISS_OMM });
+  assert.equal(frameAt(100, ctx).layers.flights, false);
+  assert.equal(frameAt(300, ctx).layers.flights, true);
+  assert.equal(frameAt(300, ctx).alpha.starlink, 0);
+  assert.equal(frameAt(540, ctx).alpha.starlink, 1);
+  assert.equal(frameAt(600, ctx).layers.solarWind, true);
+  assert.equal(frameAt(700, ctx).layers.solarWind, false);
+  assert.equal(frameAt(700, ctx).layers.aurora, true);
+  assert.equal(frameAt(400, ctx).issModel, true);
+});

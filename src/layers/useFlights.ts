@@ -3,6 +3,7 @@ import type { Viewer } from "cesium";
 import { FLIGHT_REFRESH_MS, fetchFlights, type Flight, type FlightSource } from "../flightData";
 import { FlightOverlay } from "../flightOverlay";
 import { usePolledData } from "../hooks/usePolledData";
+import { now, onClockChange } from "../clock";
 
 export interface FlightState {
   status: "idle" | "loading" | "ready" | "error";
@@ -28,9 +29,12 @@ export function useFlights(viewer: Viewer | null, active: boolean) {
     const overlay = new FlightOverlay(viewer);
     overlayRef.current = overlay;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") overlay.advance(Date.now());
+      if (document.visibilityState === "visible") overlay.advance(now());
     }, ADVANCE_MS);
+    // Recording mode moves the clock frame by frame: follow at once.
+    const offClock = onClockChange(() => overlay.advance(now()));
     return () => {
+      offClock();
       window.clearInterval(timer);
       overlay.dispose();
       overlayRef.current = null;
@@ -38,7 +42,7 @@ export function useFlights(viewer: Viewer | null, active: boolean) {
   }, [viewer, active]);
 
   useEffect(() => {
-    if (poll.data) overlayRef.current?.setFlights(poll.data.flights, Date.now());
+    if (poll.data) overlayRef.current?.setFlights(poll.data.flights, now());
   }, [poll.data, viewer, active]);
 
   const state = useMemo<FlightState>(() => {
@@ -54,5 +58,7 @@ export function useFlights(viewer: Viewer | null, active: boolean) {
   }, [poll.data, poll.status, active]);
 
   const describe = (index: number): Flight | null => overlayRef.current?.flight(index) ?? null;
-  return { state, describe };
+  const setAlpha = (alpha: number) => overlayRef.current?.setAlpha(alpha);
+  const locate = (hex: string) => overlayRef.current?.locate(hex, now()) ?? null;
+  return { state, describe, setAlpha, locate };
 }

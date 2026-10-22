@@ -6,6 +6,7 @@ import { usePolledData } from "../hooks/usePolledData";
 import { useTimeSelector } from "../hooks/useTimeline";
 import { subsolarPoint } from "../solar";
 import type { TimeController } from "../timeline";
+import { now } from "../clock";
 
 export interface SolarWindState {
   status: "idle" | "loading" | "ready" | "error" | "nodata";
@@ -47,7 +48,7 @@ export function useSolarWind(viewer: Viewer | null, visible: boolean, timeline: 
     const overlay = new SolarWindOverlay(viewer);
     overlayRef.current = overlay;
     // Earth turns under the Sun: re-aim on every timeline change and each minute live.
-    const aim = () => overlay.setSunDirection(sunDirection(timeline.getState().live ? Date.now() : timeline.getState().time));
+    const aim = () => overlay.setSunDirection(sunDirection(timeline.getState().live ? now() : timeline.getState().time));
     aim();
     const unsubscribe = timeline.subscribe(aim);
     const timer = window.setInterval(aim, MINUTE);

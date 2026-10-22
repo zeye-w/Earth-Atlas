@@ -17,6 +17,7 @@ import {
 import { LABEL_FONT } from "./labelFont.ts";
 import { elementsValidAt, orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
 import { telemetryAt, type Observer, type Telemetry } from "./satelliteTelemetry.ts";
+import { now } from "./clock.ts";
 
 // Ground-fixed forecast path is recomputed after this much simulated time.
 export const SATELLITE_PATH_UPDATE_MS = 120_000;
@@ -83,8 +84,8 @@ export class SatelliteOverlay {
   private selectedId: string | null = null;
   private speed: SatelliteSpeed = 1;
   // Simulated clock: simMs = anchorSimMs + (realNow - anchorRealMs) * speed.
-  private anchorRealMs = Date.now();
-  private anchorSimMs = Date.now();
+  private anchorRealMs = now();
+  private anchorSimMs = now();
   // Set while the timeline shows a moment other than "live".
   private clock: (() => Date) | null = null;
   private frameHandle: number | null = null;
@@ -150,21 +151,21 @@ export class SatelliteOverlay {
   /** Current simulated instant (equals real time at 1x). */
   simulatedTime(): Date {
     if (this.clock) return this.clock();
-    return new Date(this.anchorSimMs + (Date.now() - this.anchorRealMs) * this.speed);
+    return new Date(this.anchorSimMs + (now() - this.anchorRealMs) * this.speed);
   }
 
   /** Follow the timeline (null: back to the live, speed-controlled clock). */
   setClock(clock: (() => Date) | null): void {
     this.clock = clock;
     if (!clock) {
-      this.anchorRealMs = Date.now();
+      this.anchorRealMs = now();
       this.anchorSimMs = this.speed === 1 ? this.anchorRealMs : this.anchorSimMs;
     }
     this.update(true);
   }
 
   setSpeed(speed: SatelliteSpeed): void {
-    const realNow = Date.now();
+    const realNow = now();
     // Returning to 1x snaps back to the true current position.
     this.anchorSimMs = speed === 1 ? realNow : this.simulatedTime().getTime();
     this.anchorRealMs = realNow;

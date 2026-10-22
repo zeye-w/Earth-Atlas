@@ -43,6 +43,7 @@ export class FlightOverlay {
   private readonly billboards: Billboard[] = [];
   private flights: Flight[] = [];
   private readonly icon = planeIcon();
+  private alpha = 1;
 
   constructor(viewer: Viewer) {
     this.viewer = viewer;
@@ -68,7 +69,7 @@ export class FlightOverlay {
       billboard.show = Boolean(flight);
       if (!flight) continue;
       billboard.id = FLIGHT_ID_PREFIX + i;
-      billboard.color = COLORS[altitudeBand(flight.altitude)];
+      billboard.color = this.alpha === 1 ? COLORS[altitudeBand(flight.altitude)] : COLORS[altitudeBand(flight.altitude)].withAlpha(this.alpha);
       billboard.rotation = -((flight.track ?? 0) * Math.PI) / 180;
     }
     this.advance(now);
@@ -83,6 +84,21 @@ export class FlightOverlay {
       this.billboards[i].position = Cartesian3.fromDegrees(longitude, latitude, flight.altitude ?? 30);
     }
     if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
+  }
+
+  /** Fade all aircraft (recording mode). */
+  setAlpha(alpha: number): void {
+    this.alpha = Math.max(0, Math.min(1, alpha));
+    this.flights.forEach((flight, i) => { this.billboards[i].color = COLORS[altitudeBand(flight.altitude)].withAlpha(this.alpha); });
+    if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
+  }
+
+  /** Where an aircraft (by ICAO hex) is estimated to be at `now`, Earth-fixed. */
+  locate(hex: string, now: number): { flight: Flight; position: Cartesian3 } | null {
+    const flight = this.flights.find((f) => f.hex === hex);
+    if (!flight) return null;
+    const { latitude, longitude } = extrapolate(flight, (now - flight.reportedAt) / 1000);
+    return { flight, position: Cartesian3.fromDegrees(longitude, latitude, flight.altitude ?? 30) };
   }
 
   flight(index: number): Flight | null {

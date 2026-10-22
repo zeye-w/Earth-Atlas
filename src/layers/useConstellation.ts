@@ -4,6 +4,7 @@ import { CONSTELLATION_ID_PREFIX, ConstellationOverlay } from "../constellationO
 import { epochOf, fetchConstellation, shellCounts, CONSTELLATION_MAX_ELEMENT_AGE_DAYS, type Constellation } from "../constellationData";
 import { beginWork } from "../pendingWork";
 import type { TimeController } from "../timeline";
+import { isVirtualClock, now } from "../clock";
 
 export interface ConstellationStatus {
   state: "idle" | "loading" | "ready" | "error";
@@ -45,7 +46,7 @@ export function useConstellation(viewer: Viewer | null, visible: boolean, conste
 
     const request = (time: number) => {
       if (!worker) return;
-      if (!timeline.getState().live) finishWork ??= beginWork();
+      if (!timeline.getState().live || isVirtualClock()) finishWork ??= beginWork();
       if (inFlight) { queued = time; return; }
       inFlight = true;
       worker.postMessage({ type: "positions", id: ++requestId, time });
@@ -61,7 +62,7 @@ export function useConstellation(viewer: Viewer | null, visible: boolean, conste
         const message = event.data as { type: string; positions?: Float64Array; flags?: Uint8Array; time?: number };
         if (!active) return;
         if (message.type === "ready") {
-          request(timeline.getState().live ? Date.now() : timeline.getState().time);
+          request(timeline.getState().live ? now() : timeline.getState().time);
           return;
         }
         if (message.type !== "positions" || !message.positions || !message.flags) return;
@@ -80,9 +81,9 @@ export function useConstellation(viewer: Viewer | null, visible: boolean, conste
       };
       worker.postMessage({ type: "init", records });
       liveTimer = window.setInterval(() => {
-        if (timeline.getState().live && document.visibilityState === "visible") request(Date.now());
+        if (timeline.getState().live && document.visibilityState === "visible") request(now());
       }, LIVE_UPDATE_MS);
-      unsubscribe = timeline.subscribe((state) => request(state.live ? Date.now() : state.time));
+      unsubscribe = timeline.subscribe((state) => request(state.live ? now() : state.time));
     }).catch((error: unknown) => {
       console.warn(constellation.title + " elements unavailable; nothing drawn.", error);
       if (active) setStatus({ state: "error" });
@@ -100,5 +101,6 @@ export function useConstellation(viewer: Viewer | null, visible: boolean, conste
   }, [viewer, visible, constellation, timeline]);
 
   const describe = (index: number) => overlayRef.current?.describe(index) ?? null;
-  return { status, describe };
+  const setAlpha = (alpha: number) => overlayRef.current?.setAlpha(alpha);
+  return { status, describe, setAlpha };
 }

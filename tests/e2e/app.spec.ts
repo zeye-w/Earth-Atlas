@@ -267,6 +267,49 @@ test("recording mode exposes the capture API only with ?record", async ({ page }
   await expect(page.locator("#earth-layer-panel")).toBeHidden();
 });
 
+test("recording: a virtual clock moves live layers in video time; camera pose and projection", async ({ page }) => {
+  await page.goto("/?record" + sceneUrl(0, 0, 8_000_000, { satellites: true, flights: true, starlink: true }).slice(1));
+  await page.waitForFunction(() => "__terrascope" in window);
+  type Api = {
+    ready(): Promise<void>; idle(ms?: number): Promise<boolean>; setVirtualNow(t: number | null): void;
+    satellitePosition(id: string): number[] | null; flight(hex: string): { position: number[]; flight: { callsign: string } } | null;
+    setCameraPose(p: object): void; project(points: number[][]): { x: number; y: number; visible: boolean }[];
+    setLayerAlpha(layer: string, a: number): void; version: number;
+  };
+  const result = await page.evaluate(async () => {
+    const api = (window as unknown as { __terrascope: Api }).__terrascope;
+    await api.ready();
+    for (let i = 0; i < 100 && (!api.satellitePosition("iss") || !api.flight("e2e001")); i++) await new Promise((r) => setTimeout(r, 300));
+    // Close to the snapshot time: aircraft are dead-reckoned for at most two minutes.
+    const t0 = Date.now() + 1_000;
+    api.setVirtualNow(t0);
+    const issA = api.satellitePosition("iss")!;
+    const planeA = api.flight("e2e001")!;
+    api.setVirtualNow(t0 + 10_000);
+    const issB = api.satellitePosition("iss")!;
+    const planeB = api.flight("e2e001")!;
+    const dist = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    // Straight down onto 0°N 0°E from 8,000 km: the origin of the map projects to the centre.
+    api.setCameraPose({ position: [6_378_137 + 8_000_000, 0, 0], direction: [-1, 0, 0], up: [0, 0, 1], fov: 40 });
+    api.setLayerAlpha("starlink", 0.3);
+    api.setLayerAlpha("flights", 0.5);
+    await api.idle(20_000);
+    const [centre, farSide] = api.project([[6_378_137, 0, 0], [-6_378_137, 0, 0]]);
+    return { version: api.version, issMoved: dist(issA, issB), planeMoved: dist(planeA.position, planeB.position), callsign: planeA.flight.callsign, centre, farSide, width: innerWidth, height: innerHeight };
+  });
+  expect(result.version).toBe(2);
+  // ~7.66 km/s for 10 s, and the mocked aircraft at 231.5 m/s.
+  expect(result.issMoved).toBeGreaterThan(70_000);
+  expect(result.issMoved).toBeLessThan(85_000);
+  expect(result.planeMoved).toBeGreaterThan(2_200);
+  expect(result.planeMoved).toBeLessThan(2_400);
+  expect(result.callsign).toBe("E2E101");
+  expect(Math.abs(result.centre.x - result.width / 2)).toBeLessThan(2);
+  expect(Math.abs(result.centre.y - result.height / 2)).toBeLessThan(2);
+  expect(result.centre.visible).toBe(true);
+  expect(result.farSide.visible).toBe(false);
+});
+
 test("manual quality choice turns off automatic quality", async ({ page }) => {
   await page.goto("/");
   await waitForGlobe(page);

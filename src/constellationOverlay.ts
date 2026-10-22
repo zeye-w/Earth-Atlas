@@ -19,6 +19,9 @@ export class ConstellationOverlay {
   private positions: Float64Array | null = null;
   private flags: Uint8Array | null = null;
   private readonly scratch = new Cartesian3();
+  private alpha = 1;
+  private sunlit = SUNLIT;
+  private shadow = SHADOW;
 
   constructor(viewer: Viewer, idPrefix: string, names: readonly string[]) {
     this.viewer = viewer;
@@ -44,7 +47,7 @@ export class ConstellationOverlay {
       point.show = flag !== 0;
       if (flag === 0) continue;
       point.position = Cartesian3.fromElements(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2], this.scratch);
-      point.color = flag === 2 ? SUNLIT : SHADOW;
+      point.color = flag === 2 ? this.sunlit : this.shadow;
     }
     if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
   }
@@ -59,6 +62,14 @@ export class ConstellationOverlay {
 
   get visibleCount(): number {
     return this.flags ? this.flags.reduce((n, flag) => n + (flag ? 1 : 0), 0) : 0;
+  }
+
+  /** Fade the whole constellation (recording mode). */
+  setAlpha(alpha: number): void {
+    this.alpha = Math.max(0, Math.min(1, alpha));
+    this.sunlit = SUNLIT.withAlpha(SUNLIT.alpha * this.alpha);
+    this.shadow = SHADOW.withAlpha(SHADOW.alpha * this.alpha);
+    if (this.positions && this.flags) this.setPositions(this.positions, this.flags);
   }
 
   setVisible(visible: boolean): void {
