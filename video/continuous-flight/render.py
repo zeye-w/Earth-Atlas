@@ -71,11 +71,15 @@ def endcard(background,t):
     im=Image.blend(background,Image.new("RGB",(W,H),(3,8,19)),min(0.91,p*0.91))
     d=ImageDraw.Draw(im)
     a=min(255,int(255*max(0,(t-27.2)/0.85)))
+    # Pillow RGB drawing only accepts RGB triplets; composite title opacity
+    # via real RGB gradients instead of passing invalid four-channel colors.
+    fade=a/255.0
+    ink=lambda rgb: tuple(round(smooth(bg,fg,fade)) for bg,fg in zip((8,13,24),rgb))
     d.ellipse((520,63,1398,941),outline=(37,65,98),width=2)
-    d.text((W/2,440),"TERRASCOPE",font=big,anchor="mm",fill=(242,247,250,a))
-    d.text((W/2,557),"从地球上空，到空间天气",font=head,anchor="mm",fill=(220,232,243,a))
-    d.text((W/2,649),"ONE EARTH · FIVE WAYS TO EXPLORE",font=label,anchor="mm",fill=(176,197,219,a))
-    d.text((W/2,925),"earth-atlas.edwardlab.workers.dev",font=label,anchor="mm",fill=(219,231,242,a))
+    d.text((W/2,440),"TERRASCOPE",font=big,anchor="mm",fill=ink((242,247,250)))
+    d.text((W/2,557),"从地球上空，到空间天气",font=head,anchor="mm",fill=ink((220,232,243)))
+    d.text((W/2,649),"ONE EARTH · FIVE WAYS TO EXPLORE",font=label,anchor="mm",fill=ink((176,197,219)))
+    d.text((W/2,925),"earth-atlas.edwardlab.workers.dev",font=label,anchor="mm",fill=ink((219,231,242)))
     return im
 audio=ROOT/"video/audio/terrascope-original.wav"
 if not audio.exists():
