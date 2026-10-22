@@ -1,0 +1,31 @@
+name: Cancel superseded video recordings
+on:
+  push:
+    branches: [video/continuous-flight-20261021]
+    paths:
+      - ".github/workflows/cancel-superseded-video-runs.yml"
+permissions:
+  contents: read
+  actions: write
+jobs:
+  cancel-old:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel only obsolete video runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for run_id in 39703116129 39703074484; do
+            status="$(gh api "/repos/$GH_REPO/actions/runs/$run_id" --jq '.status')"
+            echo "Old run $run_id currently: $status"
+            if [[ "$status" == "in_progress" || "$status" == "queued" || "$status" == "waiting" || "$status" == "pending" ]]; then
+              gh api -X POST "/repos/$GH_REPO/actions/runs/$run_id/cancel" >/dev/null
+              echo "Cancellation requested: $run_id"
+            else
+              echo "No action necessary: $run_id"
+            fi
+          done
+          echo "Preserved latest video run: 39703194353"
