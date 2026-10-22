@@ -1,4 +1,4 @@
-import { Thermometer, Wind } from "lucide-react";
+import { Thermometer } from "lucide-react";
 import { LayerGroup, ToggleRow } from "../ui/controls";
 import type { LayerToggles } from "../hooks/useLayerSettings";
 import type { useWeather } from "../layers/useWeather";
@@ -12,7 +12,7 @@ export function WeatherGroup({
   weather: ReturnType<typeof useWeather>;
 }) {
   return (
-    <LayerGroup title="WEATHER" subtitle="气温与风场">
+    <LayerGroup title="WEATHER" subtitle="全球气温">
       <ToggleRow
         icon={<Thermometer size={17} />}
         title="全球气温"
@@ -20,14 +20,7 @@ export function WeatherGroup({
         checked={layers.temperature}
         onChange={(v) => setLayer("temperature", v)}
       />
-      <ToggleRow
-        icon={<Wind size={17} />}
-        title="风向与风速"
-        caption="10 米风 · 箭头越长风越强"
-        checked={layers.windVectors}
-        onChange={(v) => setLayer("windVectors", v)}
-      />
-      {(layers.temperature || layers.windVectors) && (
+      {layers.temperature && (
         <div className="weather-info" role="status">
           <p>NOAA GFS 模式分析场 · 1° 展示网格</p>
           {weather.data && (
@@ -58,12 +51,6 @@ export function WeatherGroup({
                 </button>
               )}
             </>
-          )}
-          {layers.windVectors && (
-            <p>
-              箭头指向风吹去的方向；长度表示风速（0.5–30
-              m/s，超过上限等长）。小箭头自动避让；点击查看数值。
-            </p>
           )}
           <p>
             全球数值模式数据，并非逐点实时实测；每 6

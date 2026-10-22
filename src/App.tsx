@@ -22,7 +22,6 @@ import { useGeoLabels } from "./layers/useGeoLabels";
 import { useTrueColor } from "./layers/useTrueColor";
 import { useConstellation } from "./layers/useConstellation";
 import { useSolarWind } from "./layers/useSolarWind";
-import { sampleWeather } from "./weatherData";
 import { useWeather } from "./layers/useWeather";
 import { WeatherGroup } from "./panels/WeatherGroup";
 import { useFlights } from "./layers/useFlights";
@@ -128,12 +127,6 @@ function App() {
       if (flight) setToast(describeFlight(flight, now()));
       return;
     }
-    if (typeof pickedId === "string" && pickedId.startsWith("weather:") && weather.data) {
-      const [,lat,lon] = pickedId.split(":").map(Number);
-      const reading = sampleWeather(weather.data,lat,lon);
-      setToast(`${lat.toFixed(0)}° / ${lon.toFixed(0)}° · ${reading.temperature.toFixed(1)} °C · 风速 ${Math.hypot(reading.u,reading.v).toFixed(1)} m/s · GFS ${new Date(weather.data.validTime).toLocaleString()}`);
-      return;
-    }
     const entityId = (pickedId as Entity | undefined)?.id;
     if (typeof entityId === "string" && entityId.startsWith("satellite:")) {
       // Clicking a satellite starts tracking it.
@@ -168,7 +161,7 @@ function App() {
   const solarWind = useSolarWind(viewer, layers.solarWind, timeline);
   // Aircraft positions exist only for "now": hidden while viewing another moment.
   const flights = useFlights(viewer, layers.flights && live);
-  const weather = useWeather(viewer, layers.temperature, layers.windVectors, live);
+  const weather = useWeather(viewer, layers.temperature, live);
 
   // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
   useEffect(() => {

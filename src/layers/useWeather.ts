@@ -10,14 +10,13 @@ import { beginWork } from "../pendingWork";
 export function useWeather(
   viewer: Viewer | null,
   temperature: boolean,
-  wind: boolean,
   live: boolean,
 ) {
   const [state, setState] = useState<{ message: string; data?: WeatherGrid }>({
     message: "",
   });
   useEffect(() => {
-    if (!viewer || !(temperature || wind)) {
+    if (!viewer || !temperature) {
       setState({ message: "" });
       return;
     }
@@ -54,7 +53,6 @@ export function useWeather(
           viewer,
           data,
           temperature,
-          wind,
           () => cancelled,
         );
         if (cancelled) {
@@ -98,6 +96,6 @@ export function useWeather(
       clearTimeout(expiry);
       dispose?.();
     };
-  }, [viewer, temperature, wind, live]);
+  }, [viewer, temperature, live]);
   return state;
 }

@@ -21,7 +21,7 @@ test("weather stays lazy, renders, shares and hides during history", async ({
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(
-    sceneUrl(110, 22, 18_000_000, { dayNight: false }).replace(
+    sceneUrl(110, 22, 18_000_000, { dayNight: false, windVectors: true }).replace(
       "/#",
       "/?record#",
     ),
@@ -31,9 +31,8 @@ test("weather stays lazy, renders, shares and hides during history", async ({
     .poll(() => page.evaluate(() => !!(window as any).__terrascope))
     .toBe(true);
   expect(requests).toBe(0);
-  await page.getByText("气温与风场", { exact: true }).click();
+  await page.locator("summary").filter({ hasText: "全球气温" }).click();
   await page.getByRole("checkbox", { name: "全球气温", exact: true }).check();
-  await page.getByRole("checkbox", { name: "风向与风速", exact: true }).check();
   await expect(page.getByText(/有效时间：/)).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => (window as any).__terrascope.idle(1000)))
@@ -44,7 +43,7 @@ test("weather stays lazy, renders, shares and hides during history", async ({
     new URLSearchParams(shared.hash.slice(1)).get("scene")!,
   );
   expect(scene.layers.temperature).toBe(true);
-  expect(scene.layers.windVectors).toBe(true);
+  expect(scene.layers.windVectors).toBeUndefined();
   await page.getByRole("button", { name: "关闭分享", exact: true }).click();
   await page.screenshot({ path: ".cache/weather-browser.png" });
   await page.evaluate(() =>
@@ -65,9 +64,7 @@ test("weather stays lazy, renders, shares and hides during history", async ({
     page.getByText("仅提供最新分析场；历史回放中已隐藏"),
   ).toBeVisible();
   await page.getByRole("checkbox", { name: "全球气温", exact: true }).uncheck();
-  await page
-    .getByRole("checkbox", { name: "风向与风速", exact: true })
-    .uncheck();
+  await expect(page.getByRole("checkbox", { name: "风向与风速", exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 test("expired weather shows an explanation instead of drawing", async ({
@@ -79,6 +76,6 @@ test("expired weather shows an explanation instead of drawing", async ({
   );
   await page.goto(sceneUrl(0, 0, 18_000_000, { temperature: true }));
   await waitForGlobe(page);
-  await page.getByText("气温与风场", { exact: true }).click();
+  await page.locator("summary").filter({ hasText: "全球气温" }).click();
   await expect(page.getByText("气象数据已过期，等待下一次更新")).toBeVisible();
 });
