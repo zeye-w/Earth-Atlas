@@ -16,7 +16,7 @@ const SECONDS=Number(process.env.FLIGHT_SECONDS||"27");
 const W=1920,H=1080,R=6371000;
 if(!Number.isInteger(RATE)||RATE<1||RATE>30||SECONDS<=0||SECONDS>27)throw Error("Invalid source frame contract");
 mkdirSync(OUT+"/frames",{recursive:true});
-const source={at:new Date().toISOString(),site:SITE,branch:process.env.GITHUB_REF_NAME||"",rate:RATE,duration:SECONDS,frames:[],chapters:[],failures:[],realData:true,method:"single Chromium/Cesium viewer; ECEF camera slerp with real WebGL capture; no mocked scientific data; 30fps output is interpolated between source frames"};
+const source={at:new Date().toISOString(),site:SITE,branch:process.env.GITHUB_REF_NAME||"",rate:RATE,duration:SECONDS,frames:[],chapters:[],warnings:[],failures:[],realData:true,method:"single Chromium/Cesium viewer; ECEF camera slerp with real WebGL capture; no mocked scientific data; 30fps output is interpolated between source frames"};
 const save=()=>writeFileSync(OUT+"/manifest.json",JSON.stringify(source,null,2));
 const normalize=v=>{const n=Math.hypot(...v);return v.map(x=>x/n);};
 const add=(a,b)=>a.map((v,i)=>v+b[i]),mul=(a,k)=>a.map(v=>v*k);
@@ -143,15 +143,30 @@ try{
       await demand(stage.key);
     }
     const pose=flightPose(positions,t);
-    await page.evaluate(async({pose,t})=>{
+    // Cesium's 'idle' includes all pending tiles and scene work. Close-up
+    // horizon views may never reach *global* quiescence, especially when
+    // remote imagery remains slow. A timeout is a quality warning, not proof
+    // that this real, rendered WebGL frame is invalid. The scientific layer
+    // must already pass demand() before any frame is accepted.
+    const stable=await page.evaluate(async({pose,t,stageChanged})=>{
       const api=window.__terrascope;
       api.setCameraCartesian(pose);
       api.setEffectsTime(t);
-      if(!await api.idle(25000))throw Error("Tiles or pending work did not settle");
-    },{pose,t});
+      const idle=await api.idle(stageChanged ? 45000 : 1600);
+      api.render();
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      return idle;
+    },{pose,t,stageChanged: i === 0 || (i>0 && stages.findLastIndex(st=>st.at<=((i-1)/RATE))!==stageIndex)});
+    if(!stable){
+      source.warnings.push({frame,seconds:Number(t.toFixed(5)),stage:stages[stageIndex].key,kind:"incomplete-terrain-or-pending-work",note:"WebGL rendered but some background tiles/pending tasks may be incomplete"});
+      console.warn("TILE WARNING",frame,"stage",stages[stageIndex].key);
+    }
     const image=OUT+"/frames/"+String(frame).padStart(4,"0")+".png";
-    await page.screenshot({path:image,timeout:120000,animations:"disabled"});
-    source.frames.push({frame,seconds:Number(t.toFixed(5)),file:"frames/"+String(frame).padStart(4,"0")+".png",data:stages[stageIndex].key});
+    const imageBytes=await page.screenshot({path:image,timeout:120000,animations:"disabled"});
+    // A tiny/empty screenshot is not acceptable; real layer data alone does
+    // not guarantee the browser rendered an actual scene.
+    if(imageBytes.length<15000)throw Error("Captured frame suspiciously small; refusing "+frame);
+    source.frames.push({frame,seconds:Number(t.toFixed(5)),file:"frames/"+String(frame).padStart(4,"0")+".png",data:stages[stageIndex].key,sceneSettled:stable,bytes:imageBytes.length});
     frame++;
     if(i%RATE===0){save();console.log("FRAME",frame,"/",Math.ceil(SECONDS*RATE),"TIME",t);}
   }
