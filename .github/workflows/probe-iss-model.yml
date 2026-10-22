@@ -1,0 +1,19 @@
+name: Probe ISS model
+on:
+  push:
+    branches: [probe/flights]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List ISS models in nasa/NASA-3D-Resources
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/nasa/NASA-3D-Resources/git/trees/master?recursive=1" --jq '.truncated, (.tree[] | select(.type=="blob") | select(.path | test("(?i)(iss|space station)")) | "\(.size)\t\(.path)")' | head -80
+      - name: Licence text
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api repos/nasa/NASA-3D-Resources/contents/README.md --jq .content | base64 -d | head -60
