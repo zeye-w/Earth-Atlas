@@ -33,7 +33,7 @@ const needs = new Set();
 for (const f of uniqueFrames) for (const [key, on] of Object.entries(layersAt(f / 30))) if (on && ["satellites", "starlink", "flights", "solarWind", "aurora"].includes(key)) needs.add(key);
 const first = frameAt(uniqueFrames[0], ctx);
 const scene = {
-  v: 1, camera: [9, 50, 17_000_000, 0, -Math.PI / 2 + 1e-6, 0], layers: first.layers,
+  v: 1, camera: [plan.region?.lon ?? 0, plan.region?.lat ?? 0, 17_000_000, 0, -Math.PI / 2 + 1e-6, 0], layers: first.layers,
   options: { cloudOpacity: 65, opacity: 90, mapMode: "raster", ageFilter: "all", rockFilter: "all", quakeRange: "week", atmosphereShells: 0 },
 };
 const { browser, page, errors, url } = await openPage({ site: SITE, scene });

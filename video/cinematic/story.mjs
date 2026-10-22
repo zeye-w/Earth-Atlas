@@ -30,8 +30,40 @@ export const TAKES = [
 export const takeAt = (t) => TAKES.find((take) => t >= take.start && t < take.end) ?? TAKES[TAKES.length - 1];
 export const frameTime = (frame) => frame / FPS;
 
-/** Region the film is set over; the flight is locked near the ISS ground track inside it. */
-export const EUROPE = { lon: 9, lat: 50, box: { west: -10, east: 30, south: 37, north: 60 } };
+/**
+ * Regions with dense air traffic. The film is set wherever the ISS next
+ * crosses one of them at the right light; the ground under the ISS at the
+ * flight lock becomes the anchor of takes A and B.
+ */
+export const REGIONS = [
+  { id: "europe", name: "欧洲", west: -10, east: 30, south: 36, north: 60 },
+  { id: "na-east", name: "北美东部", west: -100, east: -65, south: 25, north: 50 },
+  { id: "na-west", name: "北美西部", west: -125, east: -100, south: 30, north: 50 },
+  { id: "east-asia", name: "东亚", west: 100, east: 145, south: 20, north: 42 },
+  { id: "middle-east", name: "中东", west: 35, east: 60, south: 20, north: 36 },
+  { id: "south-asia", name: "南亚", west: 68, east: 90, south: 8, north: 30 },
+  { id: "southeast-asia", name: "东南亚", west: 95, east: 125, south: -8, north: 20 },
+  { id: "australia", name: "澳大利亚东南", west: 138, east: 154, south: -38, north: -27 },
+  { id: "brazil", name: "巴西东南", west: -50, east: -40, south: -25, north: -15 },
+];
+
+/**
+ * Geographic latitude of the auroral oval (about 66° magnetic latitude) at a
+ * longitude, in the given hemisphere (1 north, -1 south), from a centred
+ * dipole: where the OVATION forecast puts the aurora on average.
+ */
+export function ovalLatitude(lon, hemisphere) {
+  const pole = hemisphere > 0 ? { lat: 80.7, lon: -72.7 } : { lat: -80.7, lon: 107.3 };
+  const target = Math.sin(rad(66));
+  let best = 0, err = Infinity;
+  for (let lat = 40; lat <= 88; lat += 0.25) {
+    const φ = rad(lat * hemisphere);
+    const m = Math.sin(φ) * Math.sin(rad(pole.lat)) + Math.cos(φ) * Math.cos(rad(pole.lat)) * Math.cos(rad(lon - pole.lon));
+    const e = Math.abs(m - target);
+    if (e < err) { err = e; best = lat * hemisphere; }
+  }
+  return best;
+}
 /** Moments of take B the plan is built around. */
 export const FLIGHT_LOCK = { start: 8.8, end: 10.2 };
 export const ISS_LOCK = { start: 11.8, end: 14.4 };
@@ -70,9 +102,9 @@ const dip = (h) => Math.acos(RE / (RE + h));
 function takeA(t, ctx) {
   const time = ctx.T0 + t * 1000;
   const sun = sunDirection(time);
-  const base = geo(EUROPE.lon, EUROPE.lat, 0);
+  const base = geo(ctx.region.lon, ctx.region.lat, 0);
   const upE = unit(base);
-  // The Sun's azimuth seen from Europe: west-ish in the evening.
+  // The Sun's azimuth seen from the region: west in the evening, east before dawn.
   const toSun = unit(sub(sun, mul(upE, dot(sun, upE))));
   const elevation = 90 - Math.acos(dot(sun, upE)) * 180 / Math.PI;
   const hr = riseHeight(elevation);
@@ -137,6 +169,19 @@ function takeB(t, ctx) {
 
 // ---------------------------------------------------------------- take C
 
+/** The aurora part of take C: over the night-side oval nearest the region, drifting east. */
+export function auroraKeys(ctx) {
+  const h = ctx.region.lat >= 0 ? 1 : -1;
+  const lon = ctx.region.lon - 4;
+  const oval = (dl) => ovalLatitude(lon + dl, h);
+  return [
+    { t: 21.6, p: geo(lon, oval(0) - h * 11, 1.25e6), look: geo(lon + 6, oval(6) + h * 1, 120e3) },
+    { t: 24.0, p: geo(lon + 13, oval(13) - h * 10, 1.15e6), look: geo(lon + 19, oval(19) + h * 1.5, 120e3) },
+    { t: 26.4, p: geo(lon + 16, oval(16) - h * 16, 3.5e6), look: geo(lon + 13, oval(13) - h * 4, 0) },
+    { t: 30.0, p: geo(lon + 10, oval(10) - h * 29, 9.0e6), look: geo(lon + 6, oval(6) - h * 12, 0) },
+  ];
+}
+
 function takeC(t, ctx) {
   const time = ctx.T0 + t * 1000;
   const sun = sunDirection(time);
@@ -149,10 +194,7 @@ function takeC(t, ctx) {
     { t: 19.2, p: magnet, look: magnetTarget },
     { t: 20.0, p: mul(magnet, 0.94), look: magnetTarget },
     { t: 21.0, p: null, look: null },
-    { t: 21.6, p: geo(11, 59.5, 1.25e6), look: geo(17, 71, 120e3) },
-    { t: 24.0, p: geo(24, 60.5, 1.15e6), look: geo(30, 71.5, 120e3) },
-    { t: 26.4, p: geo(27, 54, 3.5e6), look: geo(24, 66, 0) },
-    { t: 30.0, p: geo(21, 41, 9.0e6), look: geo(17, 58, 0) },
+    ...auroraKeys(ctx),
   ];
   // The dive: halfway in direction, already close to the Earth.
   keys[2].p = mul(unit(add(mul(unit(magnet), 0.35), mul(unit(keys[3].p), 0.65))), 3.2 * RE);
@@ -221,9 +263,9 @@ export function layersAt(t) {
 const flightsAlpha = (t) => 1 - smoothstep((t - 14.4) / 1.0);
 const starlinkAlpha = (t) => smoothstep((t - 15.0) / 1.0);
 
-/** Build the context from the plan (T0, ISS elements). */
+/** Build the context from the plan (T0, ISS elements, region anchor). */
 export function contextFrom(plan) {
-  return { T0: plan.T0, iss: satelliteFromOmm(plan.issOmm) };
+  return { T0: plan.T0, iss: satelliteFromOmm(plan.issOmm), region: plan.region };
 }
 
 /** The camera's sub-point and height, for the HUD. */

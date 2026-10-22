@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { FRAMES, TAKES, contextFrom, frameAt, takeFrames, whiteAt } from "../video/cinematic/story.mjs";
+import { FRAMES, REGIONS, TAKES, contextFrom, frameAt, ovalLatitude, takeFrames, whiteAt } from "../video/cinematic/story.mjs";
 import { RE, dot, geo, monotone, norm, satelliteFromOmm, sub, sunElevationAt, toGeo } from "../video/cinematic/geometry.mjs";
 import { filmable, findFilmWindow } from "../video/cinematic/pass.mjs";
 
@@ -24,17 +24,27 @@ test("geometry: WGS84 round trip and monotone keys without overshoot", () => {
   assert.ok(iss.at(EPOCH) && Math.abs(norm(iss.at(EPOCH)) - RE - 420e3) < 40e3);
 });
 
-test("the film window: dark Europe under the ISS, ISS in sunlight", () => {
-  const window = findFilmWindow(iss, EPOCH, 240);
-  assert.ok(window, "a synthetic ISS orbit passes over Europe at night within ten days");
-  assert.ok(filmable(iss, window.T0));
-  assert.ok(sunElevationAt(9, 50, window.T0) < -6);
+test("the film window: a dark, busy region under a sunlit ISS, soon", () => {
+  const window = findFilmWindow(iss, EPOCH, 48);
+  assert.ok(window, "a synthetic ISS orbit finds a window somewhere within two days");
+  assert.ok(window.T0 - EPOCH < 12 * 3_600_000, "usually within hours, not days");
+  const { region } = window;
+  assert.ok(REGIONS.some((r) => r.id === region.id));
+  assert.deepEqual(filmable(iss, window.T0), region);
+  assert.ok(sunElevationAt(region.lon, region.lat, window.T0) < -6);
   assert.ok(iss.sunlit(window.T0 + 13_000));
 });
 
+test("aurora oval latitude follows the magnetic pole", () => {
+  // Over Canada the oval sits further south than over Siberia; mirrored in the south.
+  assert.ok(ovalLatitude(-95, 1) < ovalLatitude(100, 1) - 5);
+  assert.ok(ovalLatitude(15, 1) > 60 && ovalLatitude(15, 1) < 72);
+  assert.ok(ovalLatitude(140, -1) < -55 && ovalLatitude(140, -1) > -72);
+});
+
 test("camera: smooth within each take, the ISS passed at a few hundred metres", () => {
-  const window = findFilmWindow(iss, EPOCH, 240);
-  const ctx = contextFrom({ T0: window.T0, issOmm: ISS_OMM });
+  const window = findFilmWindow(iss, EPOCH, 48);
+  const ctx = contextFrom({ T0: window.T0, issOmm: ISS_OMM, region: window.region });
   let previous = null;
   let closest = Infinity;
   for (let frame = 0; frame < FRAMES; frame++) {
@@ -62,7 +72,7 @@ test("camera: smooth within each take, the ISS passed at a few hundred metres", 
 });
 
 test("layers and fades follow the storyboard", () => {
-  const ctx = contextFrom({ T0: EPOCH, issOmm: ISS_OMM });
+  const ctx = contextFrom({ T0: EPOCH, issOmm: ISS_OMM, region: { id: "europe", lon: 9, lat: 50 } });
   assert.equal(frameAt(100, ctx).layers.flights, false);
   assert.equal(frameAt(300, ctx).layers.flights, true);
   assert.equal(frameAt(300, ctx).alpha.starlink, 0);

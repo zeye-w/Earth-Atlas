@@ -1,6 +1,6 @@
 /**
  * Plan the film: find the next moment the ISS passes sunlit over a dark
- * Europe, wait for it (full mode), snapshot all live data at that moment,
+ * region with dense air traffic, wait for it (full mode), snapshot all live data at that moment,
  * pick the flight to lock onto, and write plan.json for the capture jobs.
  *
  * Env: CINE_SITE (local build, recording mode), CINE_PRODUCTION (for the
@@ -29,17 +29,18 @@ const fmt = (ms) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + 
 // 1. The ISS elements and the upcoming windows.
 const response = await fetch("https://celestrak.org/NORAD/elements/gp.php?CATNR=25544&FORMAT=json", { signal: AbortSignal.timeout(30_000) });
 const [issOmmFetched] = await response.json();
-const windows = upcomingWindows(satelliteFromOmm(issOmmFetched), Date.now() + 4 * 60_000, 8, 120);
-console.log("Upcoming windows (ISS sunlit over dark Europe):");
-for (const w of windows) console.log("  ", fmt(w.T0), " (", Math.round((w.last - w.first) / 1000), "s wide )");
+const windows = upcomingWindows(satelliteFromOmm(issOmmFetched), Date.now() + 4 * 60_000, 10, 48);
+console.log("Upcoming windows (ISS sunlit over a dark, busy region):");
+for (const w of windows) console.log("  ", fmt(w.T0), " ", w.region.name, `(${w.region.lat.toFixed(1)}°, ${w.region.lon.toFixed(1)}°)`, " (", Math.round((w.last - w.first) / 1000), "s wide )");
 writeFileSync(OUT + "/windows.json", JSON.stringify(windows.map((w) => ({ ...w, utc: new Date(w.T0).toISOString() })), null, 2));
 let window = windows[0];
 if (!window && MODE !== "full") {
   // Preview only checks framing: any pass over Europe will do.
   window = findFilmWindow(satelliteFromOmm(issOmmFetched), Date.now() + 4 * 60_000, 48, 10_000, true);
-  console.log("::warning::No dark-Europe window in five days; preview uses a pass at " + (window && fmt(window.T0)) + " regardless of lighting.");
+  console.log("::warning::No qualifying window in five days; preview uses a pass at " + (window && fmt(window.T0)) + " regardless of lighting.");
 }
-if (!window) throw new Error("No ISS pass over a dark Europe in the next five days; try again later.");
+if (!window) throw new Error("No qualifying ISS pass in the next five days; try again later.");
+console.log("Filming over", window.region.name, `(${window.region.lat}°, ${window.region.lon}°) at`, fmt(window.T0));
 const waitMin = (window.T0 - Date.now()) / 60_000;
 if (MODE === "full") {
   if (waitMin > MAX_WAIT_MIN) {
@@ -54,7 +55,7 @@ if (MODE === "full") {
 
 // 2. Snapshot every live feed the film uses, as the page requests them.
 const scene = {
-  v: 1, camera: [9, 50, 17_000_000, 0, -Math.PI / 2 + 1e-6, 0],
+  v: 1, camera: [window.region.lon, window.region.lat, 17_000_000, 0, -Math.PI / 2 + 1e-6, 0],
   layers: { ...layersAt(0), satellites: true, paths: true, starlink: true, flights: true, solarWind: true, aurora: true },
   options: { cloudOpacity: 65, opacity: 90, mapMode: "raster", ageFilter: "all", rockFilter: "all", quakeRange: "week", atmosphereShells: 0 },
 };
@@ -88,7 +89,7 @@ const ovation = parseOvation(JSON.parse(body(/ovation_aurora_latest/)));
 
 // 4. The flight to lock onto: airborne, with a callsign, nearest the point
 // the camera looks at in the middle of the lock.
-const ctx = contextFrom({ T0: window.T0, issOmm });
+const ctx = contextFrom({ T0: window.T0, issOmm, region: window.region });
 const lockFrame = Math.round(((FLIGHT_LOCK.start + FLIGHT_LOCK.end) / 2) * 30);
 const { camera, virtualTime } = frameAt(lockFrame, ctx);
 // Where the view ray meets the ground (spherical Earth is enough here).
@@ -103,6 +104,7 @@ for (const f of flights.flights) {
   if (!best || d < best.d) best = { d, f };
 }
 if (!best) throw new Error("No airborne aircraft with a callsign in the snapshot");
+console.log("Locking", best.f.callsign, Math.round(best.d / 1000), "km from the aim point");
 if (best.d > 250e3) {
   const message = "Nearest airborne flight is " + Math.round(best.d / 1000) + " km from the lock point";
   if (MODE === "full") throw new Error(message);
@@ -110,7 +112,7 @@ if (best.d > 250e3) {
 }
 
 const plan = {
-  mode: MODE, T0: window.T0, window, snapshotAt, issOmm,
+  mode: MODE, T0: window.T0, window, region: window.region, snapshotAt, issOmm,
   flight: { hex: best.f.hex, callsign: best.f.callsign, type: best.f.type, registration: best.f.registration, distanceFromAimKm: Math.round(best.d / 1000) },
   readings: {
     aircraft: flights.flights.length, airborne: flights.flights.filter((f) => f.altitude !== null).length, flightsTime: flights.time, flightsSource: flights.source,
