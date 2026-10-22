@@ -7,7 +7,8 @@
  *
  * Env: CINE_SITE, CINE_PLAN (directory with plan.json and data/), CINE_OUT,
  * CINE_FRAMES ("first-last", or "preview" for stills every 0.8 s),
- * CINE_MODEL_URL, CINE_MODEL_ROTATION ("h,p,r" degrees).
+ * CINE_MODEL_URL, CINE_MODEL_ROTATION ("h,p,r" degrees), CINE_MODEL_SCALE (model units
+ * to metres).
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { FRAMES, PICTURE_HEIGHT, WIDTH, contextFrom, frameAt, layersAt } from "./story.mjs";
@@ -19,7 +20,11 @@ const PLAN = process.env.CINE_PLAN || "video/cinematic/out/plan";
 const OUT = process.env.CINE_OUT || "video/cinematic/out/frames";
 const RANGE = process.env.CINE_FRAMES || "preview";
 const MODEL_URL = process.env.CINE_MODEL_URL || "/record-assets/iss.glb";
-const MODEL_ROTATION = (process.env.CINE_MODEL_ROTATION || "0,0,0").split(",").map(Number);
+// NASA's ISS (B): truss along the glTF z axis, modules and arrays along y, about
+// 45.5 units across the arrays (109 m). Turned so the truss runs across the
+// orbit and the modules along it, as on the real station.
+const MODEL_ROTATION = (process.env.CINE_MODEL_ROTATION || "90,0,90").split(",").map(Number);
+const MODEL_SCALE = Number(process.env.CINE_MODEL_SCALE || 2.4);
 mkdirSync(OUT, { recursive: true });
 
 const plan = JSON.parse(readFileSync(PLAN + "/plan.json", "utf8"));
@@ -33,7 +38,7 @@ const needs = new Set();
 for (const f of uniqueFrames) for (const [key, on] of Object.entries(layersAt(f / 30))) if (on && ["satellites", "starlink", "flights", "solarWind", "aurora"].includes(key)) needs.add(key);
 const first = frameAt(uniqueFrames[0], ctx);
 const scene = {
-  v: 1, camera: [9, 50, 17_000_000, 0, -Math.PI / 2 + 1e-6, 0], layers: first.layers,
+  v: 1, camera: [plan.region?.lon ?? 0, plan.region?.lat ?? 0, 17_000_000, 0, -Math.PI / 2 + 1e-6, 0], layers: first.layers,
   options: { cloudOpacity: 65, opacity: 90, mapMode: "raster", ageFilter: "all", rockFilter: "all", quakeRange: "week", atmosphereShells: 0 },
 };
 const { browser, page, errors, url } = await openPage({ site: SITE, scene });
@@ -56,7 +61,7 @@ try {
   await page.evaluate((layers) => window.__terrascope.setLayers(layers), Object.fromEntries([...needs].map((k) => [k, true])));
   await waitForLayers(page, [...needs]);
   if (uniqueFrames.some((f) => frameAt(f, ctx).issModel)) {
-    await page.evaluate(({ url, rotation }) => window.__terrascope.satelliteModel({ id: "iss", url, rotation }), { url: MODEL_URL, rotation: MODEL_ROTATION });
+    await page.evaluate((options) => window.__terrascope.satelliteModel({ id: "iss", ...options }), { url: MODEL_URL, rotation: MODEL_ROTATION, scale: MODEL_SCALE });
   }
 
   let layers = null;

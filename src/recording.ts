@@ -86,9 +86,10 @@ export interface RecordingApi {
   /**
    * Show a 3D model at a satellite's SGP4 position, its forward axis along the
    * velocity and up away from the Earth (an approximation of the attitude).
-   * rotation: extra heading/pitch/roll in degrees to align the model's own axes.
+   * rotation: extra heading/pitch/roll in degrees to align the model's own axes;
+   * scale: model units to metres.
    */
-  satelliteModel(options: { id: string; url: string; rotation?: [number, number, number] } | null): Promise<void>;
+  satelliteModel(options: { id: string; url: string; rotation?: [number, number, number]; scale?: number } | null): Promise<void>;
   /** Renders until all tiles are loaded (true) or the timeout passes (false). */
   idle(timeoutMs?: number): Promise<boolean>;
   render(): void;
@@ -216,7 +217,7 @@ export function installRecordingApi(deps: Dependencies): () => void {
       if (!options) return;
       const record = deps.satelliteRecord(options.id);
       if (!record) throw new Error("Satellite not loaded: " + options.id);
-      const loaded = await Model.fromGltfAsync({ url: options.url, color: Color.WHITE });
+      const loaded = await Model.fromGltfAsync({ url: options.url, color: Color.WHITE, scale: options.scale ?? 1 });
       if (viewer.isDestroyed()) return;
       model = scene.primitives.add(loaded);
       const [h, p, r] = (options.rotation ?? [0, 0, 0]).map(CesiumMath.toRadians);
