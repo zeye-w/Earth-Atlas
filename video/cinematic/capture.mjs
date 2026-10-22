@@ -11,7 +11,9 @@
  * CINE_MODEL_URL, CINE_MODEL_ROTATION ("h,p,r" degrees), CINE_MODEL_SCALE (model units
  * to metres).
  */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, existsSync, renameSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { atomicJson, reusableFrame, sha256, treeHash } from "./checkpoint.mjs";
 import { STATION, FRAMES, PICTURE_HEIGHT, WIDTH, contextFrom, frameAt, layersAt } from "./story.mjs";
 import { norm, sub, toGeo } from "./geometry.mjs";
 import { selectedFrames, settleAfterTimeout } from "./capture-policy.mjs";
@@ -30,6 +32,20 @@ const plan = JSON.parse(readFileSync(PLAN + "/plan.json", "utf8"));
 const ctx = contextFrom(plan);
 const uniqueFrames = selectedFrames(RANGE, FRAMES);
 
+// Fingerprint file contents, including uncommitted changes; never mix different builds.
+const sourceFiles = execFileSync("git", ["ls-files", "src", "video/cinematic", "package-lock.json", "vite.config.ts"], {encoding:"utf8"}).trim().split(/\r?\n/).filter(file => !file.includes("/out/"));
+const contract = sha256(JSON.stringify({
+  build: treeHash("dist"), plan: treeHash(PLAN), source: sourceFiles.map(file => [file,sha256(readFileSync(file))]),
+  site: SITE, model: [MODEL_URL,MODEL_ROTATION,MODEL_SCALE], range:RANGE,
+  modelBytes: existsSync("dist"+MODEL_URL) ? sha256(readFileSync("dist"+MODEL_URL)) : null,
+}));
+const reportFile = OUT + "/capture-" + RANGE + ".json";
+const previous = existsSync(reportFile) ? JSON.parse(readFileSync(reportFile,"utf8")) : null;
+if(previous && previous.contract !== contract) throw new Error("Capture inputs changed or checkpoint is legacy; use a new CINE_OUT directory");
+const retained = (previous?.missing?.length ? [] : previous?.frames ?? []).filter(entry => uniqueFrames.includes(entry.frame) && reusableFrame(entry,OUT));
+const pending = uniqueFrames.filter(frame => !retained.some(entry=>entry.frame===frame));
+if(!pending.length && !previous?.missing?.length) { console.log("All selected frames verified; nothing to capture"); process.exit(0); }
+console.log("Resume:",retained.length,"verified frames;",pending.length,"to capture");
 const needs = new Set();
 for (const f of uniqueFrames) for (const [key, on] of Object.entries(layersAt(f / 30))) if (on && ["satellites", "starlink", "flights", "solarWind", "aurora"].includes(key)) needs.add(key);
 const first = frameAt(uniqueFrames[0], ctx);
@@ -40,9 +56,10 @@ const scene = {
 const { browser, page, errors, url } = await openPage({ site: SITE, scene });
 const missing = [];
 await replayData(page, PLAN + "/data", missing);
-const log = [];
-const report = { plan: { T0: plan.T0, mode: plan.mode }, range: RANGE, frames: log, errors, missing, unsettled: 0, started: new Date().toISOString() };
-const save = () => writeFileSync(OUT + "/capture-" + RANGE + ".json", JSON.stringify(report, null, 1));
+const log = [...retained];
+const report = { contract, previousAttempts: previous ? [...(previous.previousAttempts ?? []), {errors:previous.errors, missing:previous.missing, failure:previous.failure, started:previous.started}] : [], plan: { T0: plan.T0, mode: plan.mode }, range: RANGE, frames: log, errors, missing, unsettled: 0, started: new Date().toISOString() };
+const save = () => { log.sort((a,b)=>a.frame-b.frame); report.unsettled=log.filter(entry=>!entry.settled).length; atomicJson(reportFile,report); };
+save();
 
 try {
   await page.goto(url, { waitUntil: "domcontentloaded" });
@@ -88,10 +105,10 @@ try {
   };
 
   // Warm-up: fly the range once quickly so the imagery tiles are cached.
-  for (let i = 0; i < uniqueFrames.length; i += 8) await apply(uniqueFrames[i], 6_000);
+  for (let i = 0; i < pending.length; i += 8) await apply(pending[i], 6_000);
   layers = null;
 
-  for (const frame of uniqueFrames) {
+  for (const frame of pending) {
     const f = frameAt(frame, ctx);
     const probe = await apply(frame, 45_000);
     const readiness = await settleAfterTimeout(probe.settled,
@@ -101,10 +118,11 @@ try {
     if (process.env.CINE_REQUIRE_SETTLED === "1" && !probe.settled) throw new Error("Recovery frame still not settled: " + frame);
 
     const file = String(frame).padStart(4, "0") + ".jpg";
-    await page.screenshot({ path: OUT + "/" + file, type: "jpeg", quality: 95, clip: { x: 0, y: 0, width: WIDTH, height: PICTURE_HEIGHT } });
+    await page.screenshot({ path: OUT + "/" + file + ".tmp", type: "jpeg", quality: 95, clip: { x: 0, y: 0, width: WIDTH, height: PICTURE_HEIGHT } });
+    renameSync(OUT + "/" + file + ".tmp", OUT + "/" + file);
     const cam = toGeo(f.camera.position);
     const entry = {
-      frame, t: f.t, take: f.take, file, settled: probe.settled, settleRetries: readiness.retries,
+      frame, t: f.t, take: f.take, file, sha256: sha256(readFileSync(OUT + "/" + file)), settled: probe.settled, settleRetries: readiness.retries,
       camera: { lon: cam.lon, lat: cam.lat, height: cam.h, fov: f.camera.fov },
       station: probe.station && (() => {
         return { x: probe.station.x, y: probe.station.y, visible: probe.station.visible, distance: norm(sub(probe.station.position, f.camera.position)), height: toGeo(probe.station.position).h, speed: ctx.station.inertialSpeed(f.virtualTime) };
@@ -112,7 +130,7 @@ try {
       flight: probe.flight && { x: probe.flight.x, y: probe.flight.y, visible: probe.flight.visible, altitude: probe.flight.altitude, speed: probe.flight.speed, track: probe.flight.track, distance: norm(sub(probe.flight.position, f.camera.position)) },
     };
     log.push(entry);
-    if (!probe.settled) report.unsettled++;
+    save();
     if (log.length % 10 === 1) { console.log("frame", frame, "t", f.t.toFixed(2), "settled", probe.settled); save(); }
   }
   if (missing.length) throw new Error("Live-data requests missing from the snapshot: " + missing.slice(0, 5).join(", "));

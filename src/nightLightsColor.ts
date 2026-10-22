@@ -12,7 +12,9 @@ const smoothstep = (edge0: number, edge1: number, x: number) => {
 
 export function lightPixel(r: number, g: number, b: number): [number, number, number, number] {
   const warmth = 0.62 * r + 0.48 * g - 0.55 * b;
-  const alpha = smoothstep(6, 95, warmth) ** 0.8;
+  // Reject cool reflected terrain before boosting small warm settlements.
+  const emission = Math.max(smoothstep(0, 0.22, (r - b) / Math.max(16, r)), smoothstep(170, 235, 0.2126 * r + 0.7152 * g + 0.0722 * b));
+  const alpha = smoothstep(10, 110, warmth) ** 0.9 * emission;
   // Sodium-amber for dim lights, whitening toward bright city cores.
   const hot = smoothstep(70, 200, warmth);
   return [255, Math.round(184 + 62 * hot), Math.round(108 + 120 * hot), Math.round(alpha * 255)];
@@ -25,6 +27,6 @@ export function extractLights(data: Uint8ClampedArray): void {
     data[i] = r;
     data[i + 1] = g;
     data[i + 2] = b;
-    data[i + 3] = a;
+    data[i + 3] = Math.round(a * data[i + 3] / 255);
   }
 }

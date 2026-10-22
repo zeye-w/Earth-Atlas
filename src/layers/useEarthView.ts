@@ -42,7 +42,7 @@ function darkenForNight(layer: ImageryLayer, show: boolean): ImageryLayer {
 function createLightsLayer(show: boolean, skipDaylit: boolean): ImageryLayer {
   const provider = new NightLightsImageryProvider({
     url: BLACK_MARBLE_URL,
-    maximumLevel: 6,
+    maximumLevel: 7,
     credit: new Credit('<a href="https://earthobservatory.nasa.gov/features/NightLights" target="_blank" rel="noopener noreferrer">Night lights: NASA Black Marble 2016 (VIIRS)</a>'),
   });
   provider.skipDaylit = skipDaylit;

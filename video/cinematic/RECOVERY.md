@@ -21,3 +21,9 @@
 原 651–725 段的 5 条 `console ... net::ERR_FAILED` 警告会保留到 provenance 和合并后的 capture 记录，不认定为无害或清空。缺失快照、不同拍摄时刻、未捕获 JavaScript 错误，以及补录中的任何错误都会阻止合并；原网络警告对应的画面另做人工审查。
 
 代码验证：`node --test tests/cinematic-recovery.test.mjs`，覆盖稀疏选帧、有界等待、相机/时刻一致性及零未就绪约束。恢复素材与成片存入 `.cache/`，不提交 Git。
+
+## Automatic local resume
+
+Run the same capture command again with the same CINE_PLAN, CINE_OUT and CINE_FRAMES. Each completed JPEG is atomically renamed and its SHA-256 and HUD metadata are atomically checkpointed immediately. Only settled JPEGs with matching hashes are skipped; missing, changed, partial and unsettled frames are recaptured. Interrupted writes can leave a .tmp file, which is never reused. Earlier attempt warnings are preserved in previousAttempts. A snapshot replay miss invalidates the earlier attempt's frames.
+
+The checkpoint binds the full plan/snapshot, built dist files, tracked source contents, site and model parameters. Changed inputs or legacy reports require a fresh output directory; do not bypass this guard. Complete verified ranges exit before launching Chromium. GitHub Actions: dispatch cinematic-promo.yml at the original commit with resume_run set to the completed source run ID, and identical mode/model_rotation parameters. It restores the original cine-plan and available per-range artifacts; absent chunks are captured from the same frozen plan. It never searches for a new window in resume mode. Changed commits, expired/missing plans, incompatible checkpoints or changed model parameters fail safely. Full/preview jobs are queued rather than cancelling an existing recording, and chunk failures no longer cancel sibling chunks. Legacy captures without checkpoints need a new output or the documented recovery tool. This only works while source artifacts remain available (7 days). Keep the original plan directory and build. Use separate output directories when comparing night-light changes.

@@ -22,3 +22,11 @@ test("extractLights rewrites RGBA data in place", () => {
   assert.equal(data[3], 0);
   assert.equal(data[7], 255);
 });
+
+test("cool terrain is rejected and transparent source pixels stay transparent", () => {
+  assert.equal(lightPixel(120, 135, 150)[3],0);
+  assert.equal(lightPixel(150, 150, 150)[3],0);
+  const data=new Uint8ClampedArray([255,250,230,0,255,250,230,128]);
+  extractLights(data);
+  assert.equal(data[3],0);assert.equal(data[7],128);
+});

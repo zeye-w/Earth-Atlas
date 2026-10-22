@@ -12,8 +12,8 @@ export const NIGHT_LIGHTS_REFRESH_MS = 24 * 60 * 1000;
 const MIN_SKIP_LEVEL = 2;
 
 // Soft halo drawn under the sharp lights so cities read as glowing.
-const GLOW_BLUR_PX = 2;
-const GLOW_OPACITY = 0.5;
+const GLOW_BLUR_PX = 1.2;
+const GLOW_OPACITY = 0.28;
 
 let blankTile: HTMLCanvasElement | null = null;
 function transparentTile(): HTMLCanvasElement {

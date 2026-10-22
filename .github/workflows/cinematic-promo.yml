@@ -24,11 +24,15 @@ on:
       model_rotation:
         description: "Tiangong model axes correction, heading,pitch,roll in degrees"
         default: "0,0,0"
+      resume_run:
+        description: "Resume a completed run at the same commit, using its saved plan and frames (empty = new recording)"
+        default: ""
 permissions:
   contents: write
+  actions: read
 concurrency:
   group: cinematic-${{ github.ref }}-${{ inputs.mode || 'preview' }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 env:
   MODE: ${{ inputs.mode || 'preview' }}
 
@@ -55,7 +59,28 @@ jobs:
           ls -l dist/record-assets
           npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
+      - name: Validate resume source
+        if: inputs.resume_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.resume_run }}
+        run: |
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]] || { echo "Invalid source run ID"; exit 1; }
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > /tmp/source-run.json
+          node --input-type=module -e 'import fs from "node:fs"; const run=JSON.parse(fs.readFileSync("/tmp/source-run.json")); if(run.head_sha!==process.env.GITHUB_SHA || run.status!=="completed" || run.path!==".github/workflows/cinematic-promo.yml") throw Error("Resume requires a completed cinematic run at exactly the same commit");'
+      - name: Restore original plan and frozen data
+        if: inputs.resume_run != ''
+        uses: actions/download-artifact@v7
+        with:
+          name: cine-plan
+          path: video/cinematic/out/plan
+          run-id: ${{ inputs.resume_run }}
+          github-token: ${{ github.token }}
+      - name: Validate restored mode
+        if: inputs.resume_run != ''
+        run: node --input-type=module -e 'import fs from "node:fs"; const plan=JSON.parse(fs.readFileSync("video/cinematic/out/plan/plan.json")); if(plan.mode!==process.env.MODE) throw Error("Resume mode must match original plan");'
       - name: Find the window, wait for it (full), snapshot live data
+        if: inputs.resume_run == ''
         env:
           CINE_REGION: ${{ inputs.region || '' }}
           CINE_MODE: ${{ env.MODE }}
@@ -81,7 +106,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 200
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         frames: ${{ fromJSON(needs.plan.outputs.chunks) }}
     steps:
@@ -104,6 +129,18 @@ jobs:
           python3 video/cinematic/check_station_model.py dist/record-assets/tiangong.glb
           npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
+      - name: Restore saved chunk when available
+        if: inputs.resume_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.resume_run }}
+        run: |
+          available=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/artifacts?per_page=100" --jq '[.artifacts[] | select(.expired == false) | .name] | index("cine-frames-${{ matrix.frames }}") != null')
+          if [ "$available" = true ]; then
+            gh run download "$SOURCE_RUN" --repo "$GITHUB_REPOSITORY" --name "cine-frames-${{ matrix.frames }}" --dir video/cinematic/out/frames
+          else
+            echo "No saved chunk; capture this range from the original plan"
+          fi
       - name: Capture frames ${{ matrix.frames }}
         env:
           CINE_PLAN: video/cinematic/out/plan
