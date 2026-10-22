@@ -3,17 +3,19 @@ import { DEPTH_CLASSES, type Earthquake } from "../earthquakeData";
 import { ERA_GUIDE } from "../geologicTime";
 import { formatEruptionYear, gvpUrl, isRecentlyActive, type Volcano } from "../volcanoData";
 import type { useGeologyQuery } from "../layers/useGeologyQuery";
+import { LocationOverview } from "./LocationOverview";
 import { coordinateLabel } from "../ui/controls";
 
 interface Props {
   open: boolean;
+  live: boolean;
   onClose: () => void;
   quake: Earthquake | null;
   volcano: Volcano | null;
   geology: ReturnType<typeof useGeologyQuery>;
 }
 
-export function Inspector({ open, onClose, quake, volcano, geology }: Props) {
+export function Inspector({ open, live, onClose, quake, volcano, geology }: Props) {
   const { status } = geology;
   const footer = volcano
     ? "火山数据来自 Smithsonian GVP《Volcanoes of the World》全新世火山名录。"
@@ -27,7 +29,7 @@ export function Inspector({ open, onClose, quake, volcano, geology }: Props) {
         <div className="section-caption">LOCATION INSPECTOR <span>地点信息</span></div>
         <span className="inspect-status">{volcano ? "VOLCANO" : quake ? "EARTHQUAKE" : status === "loading" ? "QUERYING" : status === "success" ? "RECORD FOUND" : "AWAITING POINT"}</span>
       </div>
-      {volcano ? <VolcanoDetails volcano={volcano} /> : quake ? <QuakeDetails quake={quake} /> : <GeologyDetails geology={geology} />}
+      {volcano ? <VolcanoDetails volcano={volcano} /> : quake ? <QuakeDetails quake={quake} /> : <GeologyDetails geology={geology} live={live} active={open} />}
       <div className="details-footer">
         <span className="details-footer-dot" />
         <span>{footer}</span>
@@ -70,14 +72,14 @@ function VolcanoDetails({ volcano }: { volcano: Volcano }) {
   );
 }
 
-function GeologyDetails({ geology }: { geology: ReturnType<typeof useGeologyQuery> }) {
+function GeologyDetails({ geology, live, active }: { geology: ReturnType<typeof useGeologyQuery>; live: boolean; active: boolean }) {
   const { status, coordinates, units, unit, selectedIndex, setSelectedIndex, lexiconStatus, rockInfo, eraInfo } = geology;
   if (status === "idle" || !coordinates) {
     return (
       <div className="empty-inspector">
         <div className="empty-emblem"><MousePointerClick size={34} strokeWidth={1.4} aria-hidden="true" /></div>
         <h2>点击地球上的<br />任意位置</h2>
-        <p>查看该点的经纬度，以及已编绘的地表地质年代与岩石类型。</p>
+        <p>查看附近城市、地点环境，以及已编绘的地表地质年代与岩石类型。</p>
         <span className="empty-hint">CLICK THE GLOBE TO BEGIN</span>
       </div>
     );
@@ -88,6 +90,8 @@ function GeologyDetails({ geology }: { geology: ReturnType<typeof useGeologyQuer
         <div className="metric-label">SELECTED COORDINATES</div>
         <div className="coordinate-values"><span>{coordinateLabel(coordinates.latitude, "N", "S")}</span><span>{coordinateLabel(coordinates.longitude, "E", "W")}</span></div>
       </div>
+
+      {active && <LocationOverview coordinates={coordinates} live={live} />}
 
       {status === "loading" && <div className="query-message"><span className="loading-ring" />正在查询 Macrostrat 地质数据库…</div>}
       {status === "error" && <div className="message-card error" role="alert"><strong>地质查询暂时不可用</strong><p>请检查网络连接或稍后重试。不会使用模拟数据替代查询结果。</p></div>}

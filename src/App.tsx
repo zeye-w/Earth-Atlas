@@ -360,7 +360,7 @@ function App() {
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
-        <Inspector open={detailsOpen} onClose={() => setDetailsOpen(false)} quake={selectedQuake} volcano={selectedVolcano} geology={geology} />
+        <Inspector live={live} open={detailsOpen} onClose={() => setDetailsOpen(false)} quake={selectedQuake} volcano={selectedVolcano} geology={geology} />
       </main>
     </div>
   );

@@ -472,3 +472,12 @@ h1 em { font-style:normal; color:var(--text-2); }
 .weather-ticks span:nth-child(3) { left:77.273%; }
 .weather-ticks span:nth-child(4) { right:0; transform:none; }
 .weather-info button { color: #a9e2ed; background: #16323b; border: 1px solid #315361; border-radius:5px; padding:6px; cursor:pointer; }
+
+.location-overview { margin:18px 0 24px; padding:16px 0; border-top:1px solid rgba(255,255,255,.12); border-bottom:1px solid rgba(255,255,255,.12); }
+.location-overview p { color:#a8b9c2; font-size:11px; line-height:1.7; }
+.location-overview a { color:#a9e2ed; }
+.location-weather-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0; }
+.location-weather-heading span { font-size:26px; font-weight:600; }
+.location-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 10px; margin:16px 0; }
+.location-metrics dt { color:#a8b9c2; font-size:10px; }
+.location-metrics dd { margin:5px 0 0; font-size:13px; overflow-wrap:anywhere; }
