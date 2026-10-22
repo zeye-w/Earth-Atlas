@@ -1,0 +1,75 @@
+{
+  "station": {
+    "id": "tiangong",
+    "noradId": 48274,
+    "name": "TIANGONG",
+    "spanM": 55
+  },
+  "requestedRegion": "middle-east",
+  "mode": "preview",
+  "T0": 1792679864176,
+  "window": {
+    "T0": 1792679864176,
+    "first": 1792679789176,
+    "last": 1792679939176,
+    "region": {
+      "id": "middle-east",
+      "name": "中东",
+      "lon": 52.754,
+      "lat": 27.186
+    }
+  },
+  "region": {
+    "id": "middle-east",
+    "name": "中东",
+    "lon": 52.754,
+    "lat": 27.186
+  },
+  "snapshotAt": 1792674569460,
+  "stationOmm": {
+    "OBJECT_NAME": "CSS (TIANHE)",
+    "OBJECT_ID": "2021-035A",
+    "EPOCH": "2026-10-21T06:12:11.347488",
+    "MEAN_MOTION": 15.61026916,
+    "ECCENTRICITY": 0.00020312,
+    "INCLINATION": 41.4687,
+    "RA_OF_ASC_NODE": 276.1937,
+    "ARG_OF_PERICENTER": 190.5094,
+    "MEAN_ANOMALY": 169.5703,
+    "EPHEMERIS_TYPE": 0,
+    "CLASSIFICATION_TYPE": "U",
+    "NORAD_CAT_ID": 48274,
+    "ELEMENT_SET_NO": 999,
+    "REV_AT_EPOCH": 31285,
+    "BSTAR": 0.00035037653,
+    "MEAN_MOTION_DOT": 0.00030091,
+    "MEAN_MOTION_DDOT": 0
+  },
+  "flight": {
+    "hex": "896450",
+    "callsign": "UAE902",
+    "type": "B77W",
+    "registration": "A6-EQA",
+    "distanceFromAimKm": 173
+  },
+  "readings": {
+    "aircraft": 11496,
+    "airborne": 10354,
+    "flightsTime": 1792674570501,
+    "flightsSource": "adsb.lol",
+    "starlink": 11121,
+    "solarWind": {
+      "speed": 418,
+      "density": 5.2,
+      "bz": 0.2,
+      "time": 1792674240000,
+      "source": "IMAP"
+    },
+    "pressure": 1.52,
+    "magnetopause": 10.7,
+    "kp": 3.33,
+    "kpTime": "2026-10-22T13:05:00.000Z",
+    "ovationForecast": "2026-10-22T14:02:00.000Z"
+  },
+  "pageErrors": []
+}
