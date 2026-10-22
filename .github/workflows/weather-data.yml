@@ -1,0 +1,28 @@
+name: Update GFS weather data
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "20 4,10,16,22 * * *"
+permissions:
+  contents: write
+concurrency:
+  group: weather-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: scripts/weather-requirements.txt
+      - run: pip install -r scripts/weather-requirements.txt
+      - run: python scripts/build-weather.py
+      - name: Publish data asset without changing application branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view weather-data >/dev/null 2>&1 || gh release create weather-data --title 'GFS weather data' --notes 'Processed NOAA GFS 1 degree display grids. Not point observations.' --latest=false
+          gh release upload weather-data public/data/weather/latest.json --clobber

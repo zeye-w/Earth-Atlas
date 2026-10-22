@@ -462,3 +462,13 @@ h1 em { font-style:normal; color:var(--text-2); }
 .record-ui-timebar .globe-dock { bottom:48px; }
 .constellation-dot { width:6px!important; height:6px!important; border-radius:50%; background:#6c89a8; opacity:.7; }
 .constellation-dot.sunlit { background:#e4f4ff; opacity:1; box-shadow:0 0 6px rgba(228,244,255,.7); }
+
+.weather-info { padding: 0 16px 14px; font-size: 11px; line-height: 1.6; color: #a8b9c2; }
+.weather-ramp { height: 9px; border-radius: 5px; background: linear-gradient(to right,#5e318f 0%,#315cb4 27%,#43bacc 55%,#6fc177 68%,#f5d957 77%,#ee843a 86%,#ba2d41 100%); }
+.weather-ticks { position:relative; height:18px; font-size:10px; }
+.weather-ticks span { position:absolute; transform:translateX(-50%); }
+.weather-ticks span:nth-child(1) { left:0; transform:none; }
+.weather-ticks span:nth-child(2) { left:54.545%; }
+.weather-ticks span:nth-child(3) { left:77.273%; }
+.weather-ticks span:nth-child(4) { right:0; transform:none; }
+.weather-info button { color: #a9e2ed; background: #16323b; border: 1px solid #315361; border-radius:5px; padding:6px; cursor:pointer; }
