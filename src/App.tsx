@@ -53,6 +53,7 @@ import "./styles.css";
 import { now } from "./clock";
 
 const isNarrow = () => window.innerWidth < 760;
+const TerminatorTour = lazy(() => import("./panels/TerminatorTour"));
 const LivePhotoPanel = lazy(() => import("./panels/LivePhotoPanel"));
 
 function App() {
@@ -68,6 +69,17 @@ function App() {
   const shellRef = useRef<HTMLDivElement>(null);
   const mountRef = useRef<HTMLDivElement>(null);
 
+  const [tourOpen, setTourOpen] = useState(false);
+  const previousTourLayers = useRef<{dayNight:boolean;temperature:boolean}|null>(null);
+  const closeTour = useCallback(() => {
+    setTourOpen(false);
+    const previous = previousTourLayers.current;
+    if (previous) {
+      setLayer("dayNight", previous.dayNight);
+      setLayer("temperature", previous.temperature);
+      previousTourLayers.current = null;
+    }
+  }, [setLayer]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [livePhotoOpen, setLivePhotoOpen] = useState(false);
   const [livePhotoRecording, setLivePhotoRecording] = useState(false);
@@ -98,6 +110,7 @@ function App() {
 
   // Clicks pick, in order: volcanoes, earthquakes, satellites, aircraft, then the ground.
   const handleClick = (viewer: Viewer, position: Cartesian2) => {
+    if (tourOpen) return;
     const picked = viewer.scene.pick(position);
     const pickedId: unknown = picked && typeof picked === "object" && "id" in picked ? (picked as { id?: unknown }).id : undefined;
     if (typeof pickedId === "string" && pickedId.startsWith(VOLCANO_ID_PREFIX)) {
@@ -251,6 +264,7 @@ function App() {
   // A predicted pass: highlight that satellite, move the timeline to its
   // highest point and look down on the observer.
   const showPass = (pass: SatellitePass, observer: Observer) => {
+    closeTour();
     setSelectedSatelliteId(pass.id);
     setTrackedSatelliteId(null);
     timeline.setTime(pass.peak.getTime());
@@ -260,6 +274,7 @@ function App() {
 
   // Show (asking for permission the first time) and fly to the user's position.
   const locateMe = async () => {
+    closeTour();
     setTrackedSatelliteId(null);
     const location = userLocation.location ?? await userLocation.locate();
     if (!location) return;
@@ -268,6 +283,7 @@ function App() {
 
   // Side view of the magnetosphere: Sun to one side, Earth in the middle.
   const viewMagnetosphere = () => {
+    closeTour();
     if (!viewer) return;
     setTrackedSatelliteId(null);
     const state = timeline.getState();
@@ -286,21 +302,25 @@ function App() {
   };
 
   const flyTo = (region: Region) => {
+    closeTour();
     setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000), duration: 1.8 });
   };
 
   const resetCamera = () => {
+    closeTour();
     setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: HOME_VIEW, duration: 1.6 });
   };
 
+  useEffect(() => { if (trackedSatelliteId || livePhotoRecording) closeTour(); }, [trackedSatelliteId, livePhotoRecording, closeTour]);
   const groupProps = { layers, setLayer, options, setOption };
 
   return (
     <div ref={shellRef} className={"app-shell quality-" + render.quality + (RECORDING ? " recording record-ui-" + recordUi : "")}>
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={(place) => {
         if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
+        closeTour();
         setTrackedSatelliteId(null);
         viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(place.longitude, place.latitude, place.height), duration: 1.5 });
         selectLocation(place.latitude, place.longitude);
@@ -315,12 +335,26 @@ function App() {
           clouds, aurora: aurora.status, trueColor,
         })}/></Suspense>}
       <TopBar
+        tourOpen={tourOpen}
+        tourDisabled={!viewer || livePhotoRecording}
+        onTour={() => {
+          if (tourOpen) { closeTour(); return; }
+          if (!viewer || livePhotoRecording) return;
+          setTrackedSatelliteId(null);
+          setLivePhotoOpen(false);
+          previousTourLayers.current={dayNight:layers.dayNight,temperature:layers.temperature};
+          setLayer("dayNight",true);
+          setLayer("temperature",false);
+          setControlsOpen(false);
+          setDetailsOpen(false);
+          setTourOpen(true);
+        }}
         clock={<TimeIndicator timeline={timeline} />}
         searchOpen={searchOpen}
         onToggleSearch={() => setSearchOpen((open) => !open)}
         onShare={() => void shareScene()}
         livePhotoOpen={livePhotoOpen}
-        onLivePhoto={() => {setLivePhotoOpen(open => !open); setSearchOpen(false); setShareUrl(null);}}
+        onLivePhoto={() => {closeTour();setLivePhotoOpen(open => !open); setSearchOpen(false); setShareUrl(null);}}
         controlsOpen={controlsOpen}
         onToggleControls={() => { setControlsOpen((open) => !open); if (isNarrow()) setDetailsOpen(false); }}
         detailsOpen={detailsOpen}
@@ -350,6 +384,7 @@ function App() {
             <span className="map-tag"><span className="tag-dot" /> 3D DIGITAL EARTH</span>
             <SceneSubtitle timeline={timeline} dayNight={layers.dayNight} />
           </div>
+          {tourOpen && viewer && <Suspense fallback={null}><TerminatorTour viewer={viewer} timeline={timeline} timebarOpen={timebarOpen} onClose={closeTour} /></Suspense>}
           {toast && <div className="toast" role="status">{toast}<button type="button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={13} aria-hidden="true" /></button></div>}
           {viewer && trackedSatellite && satellites.status === "ready" && (
             <TrackCard viewer={viewer} title={trackedSatellite.title} live={live} tracking={satellites.tracking}
@@ -357,13 +392,14 @@ function App() {
           )}
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
             onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />
-          {!timebarOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
+          {!timebarOpen && !tourOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
           <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 
         <Inspector live={live} onCenter={() => {
           if (!geology.coordinates) return;
+          closeTour();
           setTrackedSatelliteId(null);
           viewer?.camera.flyTo({destination:Cartesian3.fromDegrees(geology.coordinates.longitude,geology.coordinates.latitude,1500000),duration:1.2});
         }} onCopy={async () => {

@@ -489,3 +489,12 @@ h1 em { font-style:normal; color:var(--text-2); }
 .location-actions button:focus-visible, .location-tabs button:focus-visible { outline:2px solid #a9e2ed; outline-offset:2px; }
 
 .location-tabs { position:sticky; top:0; z-index:2; background:rgba(20,30,39,.92); padding:6px; border-radius:9px; }
+
+.terminator-tour { position:absolute; z-index:25; bottom:100px; left:50%; transform:translateX(-50%); width:min(470px,calc(100% - 28px)); padding:18px; border-radius:18px; }
+.tour-heading, .tour-controls { display:flex; align-items:center; gap:8px; justify-content:space-between; }
+.terminator-tour p { font-size:11px; color:#b9c9d2; line-height:1.7; }
+.terminator-tour button, .terminator-tour select { background:rgba(255,255,255,.08); color:inherit; border:1px solid rgba(255,255,255,.2); border-radius:7px; padding:7px 9px; cursor:pointer; font-size:12px; }
+.terminator-tour button[aria-pressed="true"] { background:rgba(244,173,87,.2); border-color:#b98950; }
+.terminator-tour label, .terminator-tour summary { font-size:11px; }
+.terminator-tour select option { color:#18232c; }
+@media (max-width:480px) { .tour-controls { flex-wrap:wrap; justify-content:flex-start; } .terminator-tour { bottom:115px; padding:13px; } }
