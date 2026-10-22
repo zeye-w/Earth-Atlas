@@ -50,3 +50,15 @@ test("global MVT provider is bounded to a small eager tile hierarchy", () => {
   assert.equal(GLOBAL_VECTOR_TILE_NODES, 1365);
   assert.equal(GLOBAL_VECTOR_TILE_NODES * 4, 5460); // ~75% fewer than z0..6=5461
 });
+
+test("interaction budget reduces high-DPI pixels and restores full selected quality", () => {
+  for(const quality of RENDER_QUALITY_ORDER) {
+    const rest=renderSettings(quality,2), moving=renderSettings(quality,2,true);
+    assert.ok(moving.resolutionScale<=rest.resolutionScale);
+    assert.ok(moving.maximumScreenSpaceError>rest.maximumScreenSpaceError);
+    assert.deepEqual(renderSettings(quality,2,false),rest);
+  }
+  assert.equal(renderSettings("balanced",2,true).resolutionScale,1);
+  assert.equal(renderSettings("high",2,true).resolutionScale,1.25);
+  assert.equal(renderSettings("high",1,true).resolutionScale,1);
+});

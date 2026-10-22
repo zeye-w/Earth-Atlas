@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Viewer } from "cesium";
 import { AUTO_QUALITY_MIN_FPS, FrameRateMonitor, initialRenderQuality, lowerRenderQuality, renderSettings, type RenderQuality } from "../performance";
 
-function applyRenderQuality(viewer: Viewer, quality: RenderQuality) {
-  const settings = renderSettings(quality, window.devicePixelRatio);
+function applyRenderQuality(viewer: Viewer, quality: RenderQuality, moving = false) {
+  const settings = renderSettings(quality, window.devicePixelRatio, moving);
   viewer.resolutionScale = settings.resolutionScale;
   viewer.targetFrameRate = settings.targetFrameRate;
   viewer.scene.globe.maximumScreenSpaceError = settings.maximumScreenSpaceError;
@@ -34,11 +34,47 @@ export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (qualit
   // different pixel ratio or the page is zoomed.
   useEffect(() => {
     if (!viewer) return;
-    applyRenderQuality(viewer, quality);
-    const onResize = () => { if (!viewer.isDestroyed()) applyRenderQuality(viewer, quality); };
+    let moving = false;
+    let settleTimer = 0;
+    let resizeFrame = 0;
+    const apply = () => {
+      if (!viewer.isDestroyed()) applyRenderQuality(viewer, quality, moving && autoQuality && !suspendAuto);
+    };
+    apply();
+    const removeStart = viewer.camera.moveStart.addEventListener(() => {
+      window.clearTimeout(settleTimer); moving = true; apply();
+    });
+    const removeEnd = viewer.camera.moveEnd.addEventListener(() => {
+      window.clearTimeout(settleTimer);
+      settleTimer = window.setTimeout(() => { moving = false; apply(); }, 180);
+    });
+    const onResize = () => {
+      if (resizeFrame) return;
+      resizeFrame = requestAnimationFrame(() => { resizeFrame = 0; apply(); });
+    };
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [viewer, quality]);
+    return () => {
+      removeStart(); removeEnd(); window.clearTimeout(settleTimer);
+      cancelAnimationFrame(resizeFrame); window.removeEventListener("resize", onResize);
+    };
+  }, [viewer, quality, autoQuality, suspendAuto]);
+
+  // Stop Cesium's update loop as well as rendering when this tab is hidden.
+  // Recording/capture keeps its own fixed clock and rendering requirements.
+  useEffect(() => {
+    if (!viewer || suspendAuto) return;
+    const original = viewer.useDefaultRenderLoop;
+    const update = () => {
+      if (viewer.isDestroyed()) return;
+      viewer.useDefaultRenderLoop = document.visibilityState === "visible" && original;
+      if (viewer.useDefaultRenderLoop) viewer.scene.requestRender();
+    };
+    document.addEventListener("visibilitychange", update); update();
+    return () => {
+      document.removeEventListener("visibilitychange", update);
+      if (!viewer.isDestroyed()) { viewer.useDefaultRenderLoop = original; viewer.scene.requestRender(); }
+    };
+  }, [viewer, suspendAuto]);
 
   useEffect(() => {
     if (!viewer) return;

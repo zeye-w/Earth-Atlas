@@ -158,7 +158,7 @@ function App() {
   const { viewer, globeError } = useViewer(mountRef, shellRef, initialScene, handleClick);
   useSceneClock(viewer, timeline);
   const render = useRenderQuality(viewer, (quality, fps) =>
-    setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), livePhotoRecording);
+    setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording);
   useEarthView(viewer, layers, timeline);
   const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
   const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity, timeline);

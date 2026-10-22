@@ -384,3 +384,45 @@ test("clouds retain displayed observation when replacement tiles fail", async ({
   release();
   await expect(note).toContainText("云图更新失败 · 保留观测 "+shown);
 });
+
+test("high-DPI interaction lowers pixel budget then restores clarity", async ({ browser }) => {
+  const context=await browser.newContext({viewport:{width:1440,height:860},deviceScaleFactor:2});
+  const p=await context.newPage(); await mockNetwork(p);
+  try {
+    await p.goto("http://localhost:4173/"); await waitForGlobe(p);
+    const canvas=p.locator(".cesium-widget canvas");
+    await expect.poll(()=>canvas.evaluate(el=>(el as HTMLCanvasElement).width)).toBe(1800);
+    await p.mouse.move(900,430); await p.mouse.down();
+    for(let i=0;i<6;i++) {await p.mouse.move(900+i*35,430+i*5);await p.waitForTimeout(70);}
+    await expect.poll(()=>canvas.evaluate(el=>(el as HTMLCanvasElement).width)).toBe(1440);
+    await p.mouse.up();
+    await expect.poll(()=>canvas.evaluate(el=>(el as HTMLCanvasElement).width),{timeout:15000}).toBe(1800);
+  } finally {await context.close();}
+});
+
+test("recording keeps its pixel budget during camera motion", async ({ browser }) => {
+  const context=await browser.newContext({viewport:{width:1440,height:860},deviceScaleFactor:2});
+  const p=await context.newPage(); await mockNetwork(p);
+  try {
+    await p.goto("http://localhost:4173/?record"); await waitForGlobe(p);
+    const canvas=p.locator(".cesium-widget canvas");
+    await expect.poll(()=>canvas.evaluate(el=>(el as HTMLCanvasElement).width)).toBe(1800);
+    await p.mouse.move(900,430);await p.mouse.down();
+    for(let i=0;i<6;i++){await p.mouse.move(900+i*35,430+i*5);await p.waitForTimeout(70);}
+    await expect.poll(()=>canvas.evaluate(el=>(el as HTMLCanvasElement).width)).toBe(1800);
+    await p.mouse.up();
+  } finally {await context.close();}
+});
+test("hidden browsing pauses its animation loop and resumes on return", async ({ page }) => {
+  await page.addInitScript(()=>{
+    const target=window as unknown as {__scheduledFrames:number};target.__scheduledFrames=0;
+    const original=window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame=(callback)=>{if(callback.toString().includes("_useDefaultRenderLoop")) target.__scheduledFrames++;return original(callback);};
+  });
+  await page.goto(sceneUrl(0,0,17_000_000,{aurora:false}));await waitForGlobe(page);await page.waitForTimeout(2000);
+  const count=()=>page.evaluate(()=>(window as unknown as {__scheduledFrames:number}).__scheduledFrames);
+  await page.evaluate(()=>{Object.defineProperty(document,"visibilityState",{configurable:true,value:"hidden"});document.dispatchEvent(new Event("visibilitychange"));});
+  await page.waitForTimeout(300);const paused=await count();expect(paused).toBeGreaterThan(0);await page.waitForTimeout(400);expect(await count()).toBe(paused);
+  await page.evaluate(()=>{Object.defineProperty(document,"visibilityState",{configurable:true,value:"visible"});document.dispatchEvent(new Event("visibilitychange"));});
+  await expect.poll(count).toBeGreaterThan(paused+2);
+});

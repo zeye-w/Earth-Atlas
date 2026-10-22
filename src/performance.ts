@@ -25,14 +25,16 @@ export interface RenderSettings {
   maximumScreenSpaceError: number;
   fxaa: boolean;
 }
-export function renderSettings(quality: RenderQuality, devicePixelRatio: number): RenderSettings {
+export function renderSettings(quality: RenderQuality, devicePixelRatio: number, moving = false): RenderSettings {
   const profile = RENDER_PROFILES[quality];
   const dpr = Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1;
-  const resolutionScale = Math.min(dpr, profile.maxPixelRatio);
+  // Reduce fill-rate only during interaction; restore the selected profile at rest.
+  const motionCap = quality === "high" ? 1.25 : 1;
+  const resolutionScale = Math.min(dpr, profile.maxPixelRatio, moving ? motionCap : Infinity);
   return {
     resolutionScale,
     targetFrameRate: profile.targetFrameRate,
-    maximumScreenSpaceError: profile.maximumScreenSpaceError,
+    maximumScreenSpaceError: profile.maximumScreenSpaceError * (moving ? 1.5 : 1),
     fxaa: resolutionScale < FXAA_MAX_PIXEL_RATIO,
   };
 }
