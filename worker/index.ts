@@ -1,3 +1,4 @@
+import { weatherResponse } from "./weather.ts";
 /**
  * Cloudflare Worker in front of the static site. Only /api/* reaches it
  * (see run_worker_first in wrangler.jsonc); everything else is served
@@ -64,6 +65,7 @@ async function flights(): Promise<Response> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/data/weather/latest.json") return weatherResponse(request, env.ASSETS);
     if (url.pathname === "/api/flights") {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { Allow: "GET, HEAD" } });
       return flights();

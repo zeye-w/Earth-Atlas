@@ -462,3 +462,39 @@ h1 em { font-style:normal; color:var(--text-2); }
 .record-ui-timebar .globe-dock { bottom:48px; }
 .constellation-dot { width:6px!important; height:6px!important; border-radius:50%; background:#6c89a8; opacity:.7; }
 .constellation-dot.sunlit { background:#e4f4ff; opacity:1; box-shadow:0 0 6px rgba(228,244,255,.7); }
+
+.weather-info { padding: 0 16px 14px; font-size: 11px; line-height: 1.6; color: #a8b9c2; }
+.weather-ramp { height: 9px; border-radius: 5px; background: linear-gradient(to right,#5e318f 0%,#315cb4 27%,#43bacc 55%,#6fc177 68%,#f5d957 77%,#ee843a 86%,#ba2d41 100%); }
+.weather-ticks { position:relative; height:18px; font-size:10px; }
+.weather-ticks span { position:absolute; transform:translateX(-50%); }
+.weather-ticks span:nth-child(1) { left:0; transform:none; }
+.weather-ticks span:nth-child(2) { left:54.545%; }
+.weather-ticks span:nth-child(3) { left:77.273%; }
+.weather-ticks span:nth-child(4) { right:0; transform:none; }
+.weather-info button { color: #a9e2ed; background: #16323b; border: 1px solid #315361; border-radius:5px; padding:6px; cursor:pointer; }
+
+.location-overview { margin:18px 0 24px; padding:16px 0; border-top:1px solid rgba(255,255,255,.12); border-bottom:1px solid rgba(255,255,255,.12); }
+.location-overview p { color:#a8b9c2; font-size:11px; line-height:1.7; }
+.location-overview a { color:#a9e2ed; }
+.location-weather-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0; }
+.location-weather-heading span { font-size:26px; font-weight:600; }
+.location-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px 10px; margin:16px 0; }
+.location-metrics dt { color:#a8b9c2; font-size:10px; }
+.location-metrics dd { margin:5px 0 0; font-size:13px; overflow-wrap:anywhere; }
+
+.location-actions, .location-tabs { display:flex; gap:6px; margin:14px 0; }
+.location-actions button, .location-tabs button { flex:1; padding:8px 4px; border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.04); color:inherit; border-radius:7px; cursor:pointer; font-size:12px; }
+.location-tabs button[aria-selected="true"] { background:rgba(115,206,225,.18); border-color:rgba(115,206,225,.5); }
+.location-source summary { cursor:pointer; color:#a9e2ed; font-size:11px; }
+.location-actions button:focus-visible, .location-tabs button:focus-visible { outline:2px solid #a9e2ed; outline-offset:2px; }
+
+.location-tabs { position:sticky; top:0; z-index:2; background:rgba(20,30,39,.92); padding:6px; border-radius:9px; }
+
+.terminator-tour { position:absolute; z-index:25; bottom:100px; left:50%; transform:translateX(-50%); width:min(470px,calc(100% - 28px)); padding:18px; border-radius:18px; }
+.tour-heading, .tour-controls { display:flex; align-items:center; gap:8px; justify-content:space-between; }
+.terminator-tour p { font-size:11px; color:#b9c9d2; line-height:1.7; }
+.terminator-tour button, .terminator-tour select { background:rgba(255,255,255,.08); color:inherit; border:1px solid rgba(255,255,255,.2); border-radius:7px; padding:7px 9px; cursor:pointer; font-size:12px; }
+.terminator-tour button[aria-pressed="true"] { background:rgba(244,173,87,.2); border-color:#b98950; }
+.terminator-tour label, .terminator-tour summary { font-size:11px; }
+.terminator-tour select option { color:#18232c; }
+@media (max-width:480px) { .tour-controls { flex-wrap:wrap; justify-content:flex-start; } .terminator-tour { bottom:115px; padding:13px; } }

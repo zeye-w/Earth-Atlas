@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, SlidersHorizontal } from "lucide-react";
+import { Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, Sunrise, SlidersHorizontal } from "lucide-react";
 import { AUTO_QUALITY_MIN_FPS, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, type RenderQuality } from "../performance";
 import { ICON, Segmented } from "../ui/controls";
 
 interface Props {
+  tourOpen: boolean;
+  tourDisabled: boolean;
+  onTour: () => void;
   clock: ReactNode;
   searchOpen: boolean;
   onToggleSearch: () => void;
@@ -42,6 +45,7 @@ export function TopBar(props: Props) {
           <button type="button" className={"header-action" + (detailsOpen ? " active" : "")} onClick={onToggleDetails} aria-label="地点" aria-expanded={detailsOpen} aria-controls="earth-inspector-panel">
             <Crosshair {...ICON} aria-hidden="true" /><span className="action-caption">地点</span>
           </button>
+          <button type="button" className={"header-action"+(props.tourOpen?" active":"")} aria-label="晨昏线旅行" aria-expanded={props.tourOpen} disabled={props.tourDisabled} onClick={props.onTour}><Sunrise {...ICON}/><span className="action-caption">旅行</span></button>
           <SettingsMenu {...props} />
         </div>
       </div>
