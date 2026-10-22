@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Credit, UrlTemplateImageryProvider, type ImageryLayer, type Viewer } from "cesium";
-import { CLOUD_MAX_AGE_MS, CLOUD_REFRESH_MS, cloudFrameAt, cloudTileUrl, fetchCloudCatalog } from "../cloudData";
+import { CLOUD_MAX_AGE_MS, CLOUD_REFRESH_MS, cloudBlend, cloudFrameAt, cloudTileUrl, fetchCloudCatalog } from "../cloudData";
 import { usePolledData } from "../hooks/usePolledData";
 import { useTimeSelector } from "../hooks/useTimeline";
+import { beginWork } from "../pendingWork";
 import type { TimeController } from "../timeline";
 
-const HOUR = 3_600_000;
 // Coarser tiles while the timeline replays: a new frame every second would
 // otherwise pull a full set of detailed tiles each time.
 const MAX_LEVEL = 5;
@@ -25,20 +25,24 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
   const opacityRef = useRef(opacity);
   opacityRef.current = opacity;
   const [tileError, setTileError] = useState(false);
+  const [displayedTime, setDisplayedTime] = useState<number | null>(null);
+  const [tilesLoading, setTilesLoading] = useState(false);
   const poll = usePolledData(fetchCloudCatalog, { enabled: visible && viewer !== null, intervalMs: CLOUD_REFRESH_MS, refreshOnVisible: true, keepDataOnError: true });
   const live = useTimeSelector(timeline, (s) => s.live);
   const playing = useTimeSelector(timeline, (s) => s.playing);
-  const hour = useTimeSelector(timeline, (s) => Math.floor(s.time / HOUR));
+  const selectedTime = useTimeSelector(timeline, (s) => cloudFrameAt(poll.data ?? [], s.time)?.getTime() ?? null);
+  const minute = useTimeSelector(timeline, (s) => Math.floor(s.time / 60_000));
 
-  const frame = useMemo(() => {
+  const frameTimestamp = useMemo(() => {
     const times = poll.data;
     if (!times || times.length === 0) return null;
     if (live) {
       const latest = times[times.length - 1];
-      return Date.now() - latest.getTime() <= CLOUD_MAX_AGE_MS ? latest : null;
+      return Date.now() - latest.getTime() <= CLOUD_MAX_AGE_MS ? latest.getTime() : null;
     }
-    return cloudFrameAt(times, hour * HOUR + HOUR - 1);
-  }, [poll.data, live, hour]);
+    return selectedTime;
+  }, [poll.data, live, selectedTime, minute]);
+  const frame = useMemo(() => frameTimestamp === null ? null : new Date(frameTimestamp), [frameTimestamp]);
 
   useEffect(() => {
     if (!viewer) return;
@@ -47,7 +51,7 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
       layersRef.current = [];
       if (!viewer.isDestroyed()) viewer.scene.requestRender();
     };
-    if (!visible || !frame) { clear(); return; }
+    if (!visible || !frame) { clear(); setDisplayedTime(null); setTilesLoading(false); setTileError(false); return; }
     const maxLevel = playing ? PLAYING_MAX_LEVEL : MAX_LEVEL;
     const key = frame.getTime() + "@" + maxLevel;
     const layers = layersRef.current;
@@ -62,29 +66,52 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
       url: cloudTileUrl(frame), maximumLevel: maxLevel,
       credit: new Credit('<a href="https://www.ssec.wisc.edu/realearth/" target="_blank" rel="noopener noreferrer">Cloud imagery: SSEC / UW–Madison RealEarth</a>'),
     });
-    // Fail visibly on tile errors instead of claiming an empty map is clear sky.
-    provider.errorEvent.addEventListener(() => {
-      if (viewer.isDestroyed() || layersRef.current.at(-1)?.layer.imageryProvider !== provider) return;
-      clear();
-      setTileError(true);
-    });
     const layer = viewer.imageryLayers.addImageryProvider(provider);
-    layer.alpha = opacityRef.current / 100;
+    // Gentle display contrast only; retain original infrared pixels and alpha.
+    layer.contrast = 1.12;
+    layer.gamma = 0.95;
+    const previous = layersRef.current.at(-1)?.layer;
+    const applyOpacity = () => {
+      const blend = cloudBlend(opacityRef.current, Boolean(previous));
+      layer.alpha = previous ? blend.incoming : blend.shown;
+      if (previous && !previous.isDestroyed()) previous.alpha = blend.shown;
+    };
+    applyOpacity();
     layersRef.current = [...layersRef.current, { layer, key }];
     setTileError(false);
-    viewer.scene.requestRender();
-    if (layersRef.current.length === 1) return;
-    // Retire the previous frame once the new one has loaded.
-    const removeListener = viewer.scene.postRender.addEventListener(() => {
-      if (!viewer.scene.globe.tilesLoaded) return;
-      removeListener();
+    setTilesLoading(true);
+    const done = beginWork();
+    let active = true;
+    let removeListener = () => {};
+    const retire = () => { active = false; removeListener(); window.clearTimeout(timer); done(); };
+    const fail = () => {
+      if (!active || viewer.isDestroyed()) return;
+      retire();
+      if (layersRef.current.at(-1)?.layer !== layer) return;
+      viewer.imageryLayers.remove(layer, true);
+      layersRef.current = layersRef.current.filter(item => item.layer !== layer);
+      if (previous && !previous.isDestroyed()) previous.alpha = opacityRef.current / 100;
+      setTileError(true);
+      setTilesLoading(false);
+      viewer.scene.requestRender();
+    };
+    const removeError = provider.errorEvent.addEventListener(fail);
+    const timer = window.setTimeout(fail, 60_000);
+    removeListener = viewer.scene.postRender.addEventListener(() => {
+      if (!active || !viewer.scene.globe.tilesLoaded) return;
+      retire();
+      if (layersRef.current.at(-1)?.layer !== layer) return;
       const current = layersRef.current;
-      if (current.at(-1)?.layer !== layer) return;
+      layer.alpha = opacityRef.current / 100;
       for (const old of current.slice(0, -1)) viewer.imageryLayers.remove(old.layer, true);
       layersRef.current = current.slice(-1);
+      setDisplayedTime(frame.getTime());
+      setTilesLoading(false);
       viewer.scene.requestRender();
     });
-    return removeListener;
+    viewer.scene.requestRender();
+    return () => { retire(); removeError(); };
+
   }, [viewer, visible, frame, playing]);
 
   useEffect(() => () => {
@@ -93,11 +120,13 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
   }, [viewer]);
 
   useEffect(() => {
-    for (const { layer } of layersRef.current) layer.alpha = opacity / 100;
+    const layers = layersRef.current;
+    const blend = cloudBlend(opacity, layers.length > 1);
+    layers.forEach(({ layer }, index) => { layer.alpha = index === 0 ? blend.shown : blend.incoming; });
     viewer?.scene.requestRender();
   }, [viewer, opacity]);
 
-  const status: CloudStatus = tileError ? "error" : poll.status === "ready" && !frame ? "nodata" : poll.status;
-  const time = frame ? frame.toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
+  const status: CloudStatus = tileError ? "error" : tilesLoading ? "loading" : poll.status === "ready" && !frame ? "nodata" : poll.status;
+  const time = displayedTime !== null ? new Date(displayedTime).toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
   return { status, time };
 }

@@ -51,8 +51,8 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
       )}
       <ToggleRow icon={<Cloud {...ICON} />} title="卫星云图（红外）" caption="SSEC 多卫星全球合成 · 逐小时观测" checked={layers.clouds} onChange={(v) => setLayer("clouds", v)} />
       {layers.clouds && <div className="cloud-controls">
-        <p className="thematic-note" role="status">{clouds.status === "loading" ? "正在读取卫星云图…" :
-          clouds.status === "error" ? "云图加载失败；如保留上一时次，请以观测时间为准。" :
+        <p className="thematic-note" role="status">{clouds.status === "loading" ? (clouds.time ? "正在更新云图 · 当前显示 " + clouds.time : "正在读取卫星云图…") :
+          clouds.status === "error" ? (clouds.time ? "云图更新失败 · 保留观测 " + clouds.time : "云图加载失败，请稍后重试。") :
           clouds.status === "nodata" ? (live ? "暂无 6 小时内的云图观测。" : "这一时刻没有云图：只保留最近约 30 天的逐小时观测，未来时刻也没有。") :
           "观测时间 " + (clouds.time ?? "—") + (live ? "" : " · 跟随时间轴")}</p>
         <label className="opacity-head" htmlFor="cloud-opacity"><span>云图不透明度</span><span>{options.cloudOpacity}%</span></label>

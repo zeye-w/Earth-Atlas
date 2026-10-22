@@ -55,3 +55,10 @@ export async function fetchCloudCatalog(signal: AbortSignal): Promise<Date[]> {
   latestCloudObservation(payload);
   return cloudTimes(payload);
 }
+
+/** Nonzero preload alpha lets Cesium request tiles without double-brightening the scene. */
+export function cloudBlend(opacity: number, pending: boolean): { shown: number; incoming: number } {
+  const target = Math.min(1, Math.max(0, opacity / 100));
+  const incoming = pending ? Math.min(0.001, target) : target;
+  return { shown: pending ? (target - incoming) / (1 - incoming) : target, incoming };
+}

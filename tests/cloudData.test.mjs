@@ -21,3 +21,18 @@ test('timeline frames: latest observation not after the moment, within tolerance
   assert.equal(cloudFrameAt(times, Date.parse('2026-10-19T00:30:00Z')), null, 'before the archive');
   assert.equal(cloudFrameAt(times, Date.parse('2026-10-19T08:00:00Z')), null, 'more than 2 h after the newest frame');
 });
+
+test('preloading preserves total cloud opacity instead of doubling brightness', async () => {
+  const { cloudBlend } = await import('../src/cloudData.ts');
+  for (const opacity of [0,10,65,100]) {
+    const {shown,incoming}=cloudBlend(opacity,true);
+    assert.ok(Math.abs(incoming + shown * (1-incoming) - opacity/100)<1e-12);
+    assert.ok(incoming<=0.001);
+    assert.equal(cloudBlend(opacity,false).shown,opacity/100);
+  }
+});
+test('sub-hour observations never come from later in the selected hour', async () => {
+  const {cloudFrameAt}=await import('../src/cloudData.ts');
+  const dates=['2026-10-19T02:00:00Z','2026-10-19T02:30:00Z'].map(x=>new Date(x));
+  assert.equal(cloudFrameAt(dates,Date.parse('2026-10-19T02:05:00Z')).toISOString(),dates[0].toISOString());
+});

@@ -360,3 +360,27 @@ test("Live Photo: without an H.264 encoder the panel says so, also on a phone", 
   await expect(panel).toHaveCount(0);
   await expect(opener).toBeFocused();
 });
+
+// Synthetic tiles verify lifecycle only; these are not observation screenshots.
+test("clouds retain displayed observation when replacement tiles fail", async ({ page }) => {
+  const newest=Math.floor(Date.now()/3_600_000)*3_600_000;
+  const older=newest-3_600_000;
+  const stamp=(time:number)=>new Date(time).toISOString().replace(/[-:]/g, "").replace("T", ".").slice(0,15);
+  await page.route("**/api/products?**",route=>route.fulfill({json:[{id:"globalir",times:[stamp(older),stamp(newest)]}]}));
+  let release:()=>void=()=>{};
+  const held=new Promise<void>(resolve=>{release=resolve;});
+  await page.route("**/api/image?**",async route=>{
+    if(new URL(route.request().url()).searchParams.get("products")?.includes(stamp(older).replace(".","_"))) {
+      await held; await route.abort();
+    } else await route.fallback();
+  });
+  await page.goto(sceneUrl(0,0,17_000_000,{clouds:true}).replace("/#","/?record#"));
+  await waitForGlobe(page); await openGroup(page,"EARTH VIEW");
+  const note=layerPanel(page).locator(".cloud-controls .thematic-note").first();
+  const shown=new Date(newest).toISOString().slice(0,16).replace("T"," ");
+  await expect(note).toContainText("观测时间 "+shown);
+  await page.evaluate(time=>(window as unknown as {__terrascope:{setTime:(t:number)=>void}}).__terrascope.setTime(time),older);
+  await expect(note).toContainText("正在更新云图 · 当前显示 "+shown);
+  release();
+  await expect(note).toContainText("云图更新失败 · 保留观测 "+shown);
+});
