@@ -79,6 +79,7 @@ test("clicking the ground queries geology", async ({ page }) => {
   await page.getByRole("button", { name: "收起图层面板" }).click();
   await page.mouse.click(720, 430);
   await expect(inspector(page).locator(".inspect-status")).toHaveText("RECORD FOUND");
+  await inspector(page).getByRole("tab", { name: "地质", exact: true }).click();
   await expect(inspector(page)).toContainText("E2E Synthetic Formation");
   await expect(inspector(page)).toContainText("沉积岩");
 });
