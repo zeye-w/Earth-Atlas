@@ -9,21 +9,20 @@ export function publicationAllowed(env = process.env) {
   return env.INTERNET_DATA_PUBLICATION_APPROVED === 'true' && Boolean(env.INTERNET_DATA_PERMISSION_REFERENCE?.trim());
 }
 
-export async function build() {
-  const args = process.argv.slice(2);
+export async function build({ builders = [buildRoots, buildPeering, buildCables], args = process.argv.slice(2) } = {}) {
   if (args.length && (args.length !== 2 || args[0] !== '--output-dir')) throw new Error('Usage: build.mjs [--output-dir .cache/internet-preview]');
   const output = resolve(root, args[1] || 'public/data/internet');
   const preview = output.startsWith(resolve(root, '.cache') + (process.platform === 'win32' ? '\\' : '/'));
   if (!preview && !publicationAllowed()) throw new Error('Publication withheld: obtain/record TeleGeography data reuse, PeeringDB bulk redistribution and root-servers.org reuse permission. Set INTERNET_DATA_PUBLICATION_APPROVED=true and INTERNET_DATA_PERMISSION_REFERENCE to the documented approvals. For local research use --output-dir .cache/internet-preview.');
   const bundle = {}, quality = {};
   // Deliberately serial: one source failure prevents publication of every file.
-  for (const builder of [buildRoots, buildPeering, buildCables]) {
+  for (const builder of builders) {
     const result = await builder(); Object.assign(bundle, result.datasets); Object.assign(quality, result.quality);
   }
   validateBundle(bundle);
   const report = {};
   for (const [name, dataset] of Object.entries(bundle)) {
-    const content = rows => JSON.stringify(Object.fromEntries(Object.entries(rows).filter(([key]) => key !== 'generatedAt' && key !== 'sources')));
+    const content = rows => JSON.stringify({ ...Object.fromEntries(Object.entries(rows).filter(([key]) => key !== 'generatedAt' && key !== 'sources')), sources: rows.sources.map(({ retrievedAt, ...source }) => source) });
     try {
       const old = JSON.parse(await readFile(resolve(output, name), 'utf8'));
       // Preserve provenance/time when upstream content did not change.

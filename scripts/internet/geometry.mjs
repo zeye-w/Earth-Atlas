@@ -31,8 +31,9 @@ export function splitAntimeridian(points) {
     if (previous && Math.abs(p[0] - previous[0]) > 180) {
       const adjusted = p[0] + (p[0] > previous[0] ? -360 : 360);
       const edge = previous[0] >= 0 ? 180 : -180;
-      const latitude = round(previous[1] + (p[1] - previous[1]) * (edge - previous[0]) / (adjusted - previous[0]));
-      path.push([edge, latitude]); finish(); path = [[-edge, latitude]];
+      const latitude = adjusted === previous[0] ? previous[1] : round(previous[1] + (p[1] - previous[1]) * (edge - previous[0]) / (adjusted - previous[0]));
+      if (previous[0] !== edge || previous[1] !== latitude) path.push([edge, latitude]);
+      finish(); path = [[-edge, latitude]];
     }
     if (!path.length || p.some((v, i) => v !== path.at(-1)[i])) path.push(p);
   }

@@ -12,7 +12,7 @@ permissions:
   contents: write
 concurrency:
   group: internet-data-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   refresh:
     runs-on: ubuntu-latest

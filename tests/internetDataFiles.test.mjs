@@ -2,9 +2,50 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { contracts, validateBundle } from '../scripts/internet/validate.mjs';
 import { centroid, simplify, splitAntimeridian, position } from '../scripts/internet/geometry.mjs';
-import { publicationAllowed } from '../scripts/internet/build.mjs';
+import { build, publicationAllowed } from '../scripts/internet/build.mjs';
+import { getJson, peeringList, USER_AGENT } from '../scripts/internet/http.mjs';
+
+test('an upstream failure preserves every old output and prevents later requests', async () => {
+  const cache = fileURLToPath(new URL('../.cache/', import.meta.url));
+  await mkdir(cache, { recursive: true });
+  const folder = await mkdtemp(resolve(cache, 'internet-failure-'));
+  try {
+    for (const name of Object.keys(contracts)) await writeFile(resolve(folder, name), 'old data');
+    let laterCalled = false;
+    await assert.rejects(build({ args: ['--output-dir', folder], builders: [
+      async () => ({ datasets: { 'cables.json': { cables: [] } }, quality: {} }),
+      async () => { throw new Error('upstream failed'); },
+      async () => { laterCalled = true; },
+    ] }), /upstream failed/);
+    assert.equal(laterCalled, false);
+    for (const name of Object.keys(contracts)) assert.equal(await readFile(resolve(folder, name), 'utf8'), 'old data');
+  } finally { await rm(folder, { recursive: true, force: true }); }
+});
+
+test('HTTP requests identify the project and never retry permanent errors', async () => {
+  const original = globalThis.fetch; let calls = 0;
+  try {
+    globalThis.fetch = async (url, options) => {
+      calls++; assert.equal(options.headers['User-Agent'], USER_AGENT);
+      return new Response('forbidden', { status: 403 });
+    };
+    await assert.rejects(getJson('https://example.com/source'), /HTTP 403/);
+    assert.equal(calls, 1);
+  } finally { globalThis.fetch = original; }
+});
+
+test('PeeringDB pagination rejects foreign next links before forwarding API credentials', async () => {
+  const original = globalThis.fetch; let calls = 0;
+  try {
+    globalThis.fetch = async () => { calls++; return Response.json({ data: [{ id: 1, status: 'ok' }], meta: { next: 'https://example.com/steal' } }); };
+    await assert.rejects(peeringList('fac'), /Unexpected pagination origin/);
+    assert.equal(calls, 1);
+  } finally { globalThis.fetch = original; }
+});
 
 test('internet data publication requires explicit recorded permissions', () => {
   assert.equal(publicationAllowed({}), false);
@@ -18,6 +59,7 @@ test('cable simplification preserves turns and splits the dateline in both direc
   assert.deepEqual(simplify([[-170, 0], [0, 0], [170, 0]]), [[-170, 0], [0, 0], [170, 0]]);
   assert.deepEqual(splitAntimeridian([[179, 0], [-179, 2]]), [[[179, 0], [180, 1]], [[-180, 1], [-179, 2]]]);
   assert.deepEqual(splitAntimeridian([[-179, 0], [179, 2]]), [[[-179, 0], [-180, 1]], [[180, 1], [179, 2]]]);
+  assert.deepEqual(splitAntimeridian([[179, 0], [180, 1], [-180, 1], [-179, 2]]), [[[179, 0], [180, 1]], [[-180, 1], [-179, 2]]]);
   assert.equal(Math.abs(centroid([[179, 0], [-179, 0]])[0]), 180);
   assert.equal(position(null, 1), null);
   assert.equal(position(181, 1), null);
