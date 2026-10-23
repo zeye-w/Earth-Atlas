@@ -1,41 +1,33 @@
 {
-  "ASN": 5927,
-  "BGP Community Convention": "",
-  "BGP Extended Community Convention": "",
-  "BGP Large Community Convention": "",
-  "Contact Email": "disa.columbus.ns.mbx.hostmaster-dod-nic@mail.mil",
-  "Homepage": "https://www.disa.mil/G-Root",
-  "IPv4": "192.112.36.4",
-  "IPv6": "2001:500:12::d0d",
-  "Identifier Naming Convention": "groot-{theatre}{site}-{node}",
-  "Operator": "Defense Information Systems Agency",
-  "Peering Policy": "",
-  "RSSAC001": "https://www.disa.mil/G-Root/G-Root-Stats",
-  "RSSAC002": "https://www.disa.mil/G-Root/G-Root-Stats",
+  "Operator": "SYNTHETIC TEST OPERATOR G",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
   "Sites": [
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "US",
-      "Created": "2024-02-15T14:59:55Z",
-      "ID": "disa-cmh",
+      "ID": "synthetic-g-01",
+      "Town": "Example City G",
+      "Country": "ZZ",
+      "Longitude": 16,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
       "IPv4": true,
       "IPv6": true,
       "Identifiers": [
-        "groot-con1-1",
-        "groot-con1-2",
-        "groot-con1-3"
-      ],
-      "Instances": 1,
-      "Latitude": 39.9611755,
-      "Longitude": -82.9987942,
-      "Status": "operational",
-      "Town": "Columbus",
-      "Type": "Global",
-      "Updated": "2024-02-21T19:27:23Z"
+        "g.synthetic.invalid"
+      ]
+    },
+    {
+      "ID": "synthetic-g-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
+      "Type": "Local",
+      "Status": "",
+      "IPv4": true,
+      "IPv6": false,
+      "Identifiers": []
     }
-  ],
-  "Statistics": "https://www.disa.mil/G-Root/G-Root-Stats",
-  "Updated": "2025-06-09T14:59:44Z"
+  ]
 }

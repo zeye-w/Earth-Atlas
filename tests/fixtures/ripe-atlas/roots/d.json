@@ -1,94 +1,33 @@
 {
-  "ASN": 10886,
-  "BGP Community Convention": "",
-  "BGP Extended Community Convention": "",
-  "BGP Large Community Convention": "",
-  "Contact Email": "",
-  "Homepage": "http://www.droot.maxgigapop.net/",
-  "IPv4": "199.7.91.13",
-  "IPv6": "2001:500:2d::d",
-  "Identifier Naming Convention": "",
-  "Operator": "University of Maryland",
-  "Peering Policy": "",
-  "RSSAC001": "",
-  "RSSAC002": "http://www.droot.maxgigapop.net/rssac002",
+  "Operator": "SYNTHETIC TEST OPERATOR D",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
   "Sites": [
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "CI",
-      "Created": "2024-07-21T22:09:24Z",
-      "ID": "LCI-Abidjan",
+      "ID": "synthetic-d-01",
+      "Town": "Example City D",
+      "Country": "ZZ",
+      "Longitude": 13,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
       "IPv4": true,
       "IPv6": true,
       "Identifiers": [
-        "ajci1.droot.maxgigapop.net",
-        "ajci2.droot.maxgigapop.net"
-      ],
-      "Instances": 1,
-      "Latitude": 5.3599517,
-      "Longitude": -4.0082563,
-      "Status": "",
-      "Town": "Abidjan",
+        "d.synthetic.invalid"
+      ]
+    },
+    {
+      "ID": "synthetic-d-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
       "Type": "Local",
-      "Updated": "2024-07-21T22:09:26Z"
-    },
-    {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "NL",
-      "Created": "2024-07-21T22:09:25Z",
-      "ID": "GNL-Amsterdam",
-      "IPv4": true,
-      "IPv6": true,
-      "Identifiers": [
-        "amnl1.droot.maxgigapop.net",
-        "amnl2.droot.maxgigapop.net",
-        "amnl3.droot.maxgigapop.net",
-        "amnl4.droot.maxgigapop.net",
-        "amnl5.droot.maxgigapop.net",
-        "amnl6.droot.maxgigapop.net",
-        "amnl7.droot.maxgigapop.net",
-        "amnl8.droot.maxgigapop.net"
-      ],
-      "Instances": 1,
-      "Latitude": 52.3702157,
-      "Longitude": 4.8951679,
       "Status": "",
-      "Town": "Amsterdam",
-      "Type": "Global",
-      "Updated": "2024-07-21T22:09:26Z"
-    },
-    {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "GB",
-      "Created": "2024-07-21T22:09:24Z",
-      "ID": "GGB-London",
       "IPv4": true,
-      "IPv6": true,
-      "Identifiers": [
-        "louk1.droot.maxgigapop.net",
-        "louk2.droot.maxgigapop.net",
-        "louk3.droot.maxgigapop.net",
-        "louk4.droot.maxgigapop.net",
-        "louk5.droot.maxgigapop.net",
-        "louk6.droot.maxgigapop.net",
-        "louk7.droot.maxgigapop.net",
-        "louk8.droot.maxgigapop.net"
-      ],
-      "Instances": 1,
-      "Latitude": 51.508515,
-      "Longitude": -0.1254872,
-      "Status": "",
-      "Town": "London",
-      "Type": "Global",
-      "Updated": "2024-07-21T22:09:26Z"
+      "IPv6": false,
+      "Identifiers": []
     }
-  ],
-  "Statistics": "",
-  "Updated": "2025-09-02T03:55:27Z"
+  ]
 }

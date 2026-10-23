@@ -1,37 +1,33 @@
 {
-  "ASN": 2149,
-  "BGP Community Convention": "",
-  "BGP Extended Community Convention": "",
-  "BGP Large Community Convention": "",
-  "Contact Email": "",
-  "Homepage": "http://c.root-servers.org/",
-  "IPv4": "192.33.4.12",
-  "IPv6": "2001:500:2::c",
-  "Identifier Naming Convention": "",
-  "Operator": "Cogent Communications",
-  "Peering Policy": "",
-  "RSSAC001": "",
-  "RSSAC002": "https://c.root-servers.org/rssac002-metrics/",
+  "Operator": "SYNTHETIC TEST OPERATOR C",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
   "Sites": [
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "SK",
-      "Created": "2020-09-16T11:47:33Z",
-      "ID": "LD6KWX",
+      "ID": "synthetic-c-01",
+      "Town": "Example City C",
+      "Country": "ZZ",
+      "Longitude": 12,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
       "IPv4": true,
       "IPv6": true,
-      "Identifiers": [],
-      "Instances": 1,
-      "Latitude": 48.1458923,
-      "Longitude": 17.1071373,
-      "Status": "operational",
-      "Town": "Bratislava",
-      "Type": "Global",
-      "Updated": "2020-09-16T11:47:33Z"
+      "Identifiers": [
+        "c.synthetic.invalid"
+      ]
+    },
+    {
+      "ID": "synthetic-c-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
+      "Type": "Local",
+      "Status": "",
+      "IPv4": true,
+      "IPv6": false,
+      "Identifiers": []
     }
-  ],
-  "Statistics": "http://c.root-servers.org/dsc/dsc-grapher.pl",
-  "Updated": "2025-05-18T18:27:20Z"
+  ]
 }

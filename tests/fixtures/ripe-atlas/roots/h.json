@@ -1,59 +1,33 @@
 {
-  "ASN": 1508,
-  "BGP Community Convention": "",
-  "BGP Extended Community Convention": "",
-  "BGP Large Community Convention": "",
-  "Contact Email": "hroot@arl.army.mil",
-  "Homepage": "https://h.root-servers.org/",
-  "IPv4": "198.97.190.53",
-  "IPv6": "2001:500:1::53",
-  "Identifier Naming Convention": "<NODE>.<IATA Code>.h.root-servers.org",
-  "Operator": "U.S. Army DEVCOM Army Research Lab",
-  "Peering Policy": "",
-  "RSSAC001": "https://h.root-servers.org/RSSAC001_responses.html",
-  "RSSAC002": "https://h.root-servers.org/rssac.html",
+  "Operator": "SYNTHETIC TEST OPERATOR H",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
   "Sites": [
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "US",
-      "Created": "2020-09-16T11:47:34Z",
-      "ID": "HTmvpn",
+      "ID": "synthetic-h-01",
+      "Town": "Example City H",
+      "Country": "ZZ",
+      "Longitude": 17,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
       "IPv4": true,
       "IPv6": true,
       "Identifiers": [
-        "001.apg.h.root-servers.org"
-      ],
-      "Instances": 1,
-      "Latitude": 39.476245,
-      "Longitude": -76.119154,
-      "Status": "operational",
-      "Town": "Aberdeen Proving Ground",
-      "Type": "Global",
-      "Updated": "2025-04-18T14:13:27Z"
+        "h.synthetic.invalid"
+      ]
     },
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "GB",
-      "Created": "2022-03-01T14:35:47Z",
-      "ID": "3DkqN3",
+      "ID": "synthetic-h-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
+      "Type": "Local",
+      "Status": "",
       "IPv4": true,
-      "IPv6": true,
-      "Identifiers": [
-        "001.lcy.h.root-servers.org"
-      ],
-      "Instances": 1,
-      "Latitude": 51.523551,
-      "Longitude": -0.100785,
-      "Status": "operational",
-      "Town": "London",
-      "Type": "Global",
-      "Updated": "2022-03-01T14:35:47Z"
+      "IPv6": false,
+      "Identifiers": []
     }
-  ],
-  "Statistics": "https://h.root-servers.org/",
-  "Updated": "2025-04-18T14:13:27Z"
+  ]
 }

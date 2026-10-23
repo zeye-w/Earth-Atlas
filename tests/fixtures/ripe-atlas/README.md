@@ -1,4 +1,4 @@
-# Recorded DNS and root-site samples
+# Recorded DNS samples and synthetic root-site fixtures
 
 Recorded on 2026-10-23. All HTTP requests identify
 `Earth-Atlas (+https://github.com/zeye-w/Earth-Atlas)`.
@@ -8,11 +8,14 @@ Recorded on 2026-10-23. All HTTP requests identify
   were retained. Answer bytes, TXT text and RTT are unmodified; historical
   observations remain to test freshness rejection.
 - `probes.json`: real public probe IDs and published approximate geometry.
-- `roots/a.json` through `roots/m.json`: official per-letter responses from
-  `https://root-servers.org/root/{A..M}/json/`. Only the Sites array was cropped
-  to a few real entries (first usable site, first site with identifiers and
-  selected Amsterdam/London entries where available). All retained fields and
-  values are unchanged. These are test recordings, never production fallback.
+- `roots/a.json` through `roots/m.json`: entirely SYNTHETIC schema examples.
+  Operator names, site IDs, towns, countries, coordinates and identifiers are
+  fabricated; addresses use documentation ranges. They retain the upstream
+  Sites/Identifiers/Status/IPv4/IPv6/Type field shapes. These are not recordings
+  and must never serve as production fallback. Real root responses remain only
+  in local, uncommitted recordings for performance and matching-rate analysis.
+  Tests combine real recorded Atlas wire-format parsing with explicitly synthetic
+  root-matching replies; synthetic rates are not presented as real observations.
 
 Measurement IDs: A 10309, B 10310, C 10311, D 10312, E 10313, F 10304,
 G 10314, H 10315, I 10305, J 10316, K 10301, L 10308, M 10306.
@@ -33,8 +36,13 @@ The worker now loads the 13 official root responses directly, with one second
 between requests to avoid bursts (an initial unpaced recording encountered 429).
 It retains actual Identifiers and rejects unusable coordinates, inactive sites,
 IPv6-only sites and duplicate IDs. Root data lives only in server-side memory
-and Cache API for at most 24h; refresh begins after 23h, with valid-cache fallback
-on failure. An expired/missing root cache plus upstream failure returns 503.
+and Cache API for at most 24h; between 23h and 24h valid root data returns immediately and renewal is
+registered with ctx.waitUntil(). A shared refresh promise coalesces requests;
+failed renewal retains the original timestamp. Background loads have a 25s total
+budget to fit the post-response lifetime. Only missing/expired data synchronously
+waits. Without ctx the valid cache is served and renewal deferred to expiry.
+Integration required from Claude in the hotspot worker/index.ts: accept ctx as
+fetch's third argument and forward dnsFlowsResponse(request, env.ASSETS, ctx). An expired/missing root cache plus upstream failure returns 503.
 There is no ASSETS/static-file dependency. Cache keys were versioned so old
 104-probe or static-root snapshots cannot defeat the new sample bounds.
 
@@ -42,7 +50,8 @@ Samples: at most six connected public IPv4 probes per country (US, BR, ZA, DE,
 IN, JP, AU, NL), at most 48. This convenience sample is not a statistical view of
 global traffic. Results older than five minutes are examined but never drawn.
 Exact identifiers are preferred, and I's sN.site response is compared against the
-literal official site ID. No inferred aliases for A/J's incompatible formats.
+literal official site ID. No inferred aliases for A/J's incompatible formats. A/E/J currently cannot be
+matched to a site in the measured sample.
 Unknown codes and ambiguous cities remain unmatched. Probe coordinates are
 rounded to two decimals; root coordinates to three. Output contract is unchanged.
 

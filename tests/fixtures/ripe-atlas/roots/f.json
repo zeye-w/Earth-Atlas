@@ -1,79 +1,33 @@
 {
-  "ASN": 3557,
-  "BGP Community Convention": "",
-  "BGP Extended Community Convention": "",
-  "BGP Large Community Convention": "",
-  "Contact Email": "f-root@isc.org",
-  "Homepage": "https://www.isc.org/f-root/",
-  "IPv4": "192.5.5.241",
-  "IPv6": "2001:500:2f::f",
-  "Identifier Naming Convention": "The first label is an IATA code, optionally followed by a site number and a host-type letter (e.g. lcy1f)",
-  "Operator": "Internet Systems Consortium, Inc.",
-  "Peering Policy": "https://www.isc.org/froot-peering/",
-  "RSSAC001": "https://www.isc.org/docs/isc-froot-rssac001.pdf",
-  "RSSAC002": "https://rssac-stats.isc.org/rssac002/",
+  "Operator": "SYNTHETIC TEST OPERATOR F",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
   "Sites": [
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "CI",
-      "Created": "2026-09-07T12:59:43Z",
-      "ID": "ci-abj-cf",
+      "ID": "synthetic-f-01",
+      "Town": "Example City F",
+      "Country": "ZZ",
+      "Longitude": 15,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
       "IPv4": true,
       "IPv6": true,
       "Identifiers": [
-        "ABJ.cf.f.root-servers.org"
-      ],
-      "Instances": 2,
-      "Latitude": 5.292598,
-      "Longitude": -3.999133,
-      "Status": "",
-      "Town": "Abidjan",
+        "f.synthetic.invalid"
+      ]
+    },
+    {
+      "ID": "synthetic-f-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
       "Type": "Local",
-      "Updated": "2026-09-07T12:59:44Z"
-    },
-    {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "NL",
-      "Created": "2024-02-19T14:49:16Z",
-      "ID": "nl-ams-cf",
-      "IPv4": true,
-      "IPv6": true,
-      "Identifiers": [
-        "AMS.cf.f.root-servers.org"
-      ],
-      "Instances": 5,
-      "Latitude": 52.308601,
-      "Longitude": 4.76389,
       "Status": "",
-      "Town": "Amsterdam",
-      "Type": "Global",
-      "Updated": "2026-09-07T12:59:44Z"
-    },
-    {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": null,
-      "BGP Site Identifier": "",
-      "Country": "GB",
-      "Created": "2024-02-19T14:49:16Z",
-      "ID": "gb-lhr-cf",
       "IPv4": true,
-      "IPv6": true,
-      "Identifiers": [
-        "LHR.cf.f.root-servers.org"
-      ],
-      "Instances": 3,
-      "Latitude": 51.4706,
-      "Longitude": -0.461941,
-      "Status": "",
-      "Town": "London",
-      "Type": "Global",
-      "Updated": "2026-09-07T12:59:44Z"
+      "IPv6": false,
+      "Identifiers": []
     }
-  ],
-  "Statistics": "",
-  "Updated": "2026-10-05T22:54:44Z"
+  ]
 }

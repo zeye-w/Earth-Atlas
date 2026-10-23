@@ -1,42 +1,33 @@
 {
-  "ASN": 394353,
-  "BGP Community Convention": "",
-  "BGP Extended Community Convention": "",
-  "BGP Large Community Convention": "",
-  "Contact Email": "b-poc@isi.edu",
-  "Homepage": "http://b.root-servers.org/",
-  "IPv4": "170.247.170.2",
-  "IPv6": "2801:1b8:10::b",
-  "Identifier Naming Convention": "b<N>-<IATA Code>",
-  "Operator": "Information Sciences Institute",
-  "Peering Policy": "",
-  "RSSAC001": "https://b.root-servers.org/statements/rssac001.html",
-  "RSSAC002": "http://b.root-servers.org/rssac/",
+  "Operator": "SYNTHETIC TEST OPERATOR B",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
   "Sites": [
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": 394353,
-      "BGP Site Identifier": "",
-      "Country": "DE",
-      "Created": "2025-07-14T20:17:41Z",
-      "ID": "fra",
+      "ID": "synthetic-b-01",
+      "Town": "Example City B",
+      "Country": "ZZ",
+      "Longitude": 11,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
       "IPv4": true,
       "IPv6": true,
       "Identifiers": [
-        "b1-fra",
-        "b2-fra",
-        "b3-fra",
-        "b4-fra"
-      ],
-      "Instances": 1,
-      "Latitude": 50.111,
-      "Longitude": 8.682,
-      "Status": "operational",
-      "Town": "Frankfurt",
-      "Type": "Global",
-      "Updated": "2025-07-14T20:36:34Z"
+        "b.synthetic.invalid"
+      ]
+    },
+    {
+      "ID": "synthetic-b-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
+      "Type": "Local",
+      "Status": "",
+      "IPv4": true,
+      "IPv6": false,
+      "Identifiers": []
     }
-  ],
-  "Statistics": "https://b.root-servers.org/rssac/",
-  "Updated": "2025-07-14T20:36:34Z"
+  ]
 }

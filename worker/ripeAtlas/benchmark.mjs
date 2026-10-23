@@ -47,7 +47,7 @@ for(let batch=0;batch<10;batch++){
  for(let n=0;n<100;n++){JSON.stringify(buildSnapshot(data.all,points,roots.instances,now));}
  const cpu=process.cpuUsage(start);batches.push((cpu.user+cpu.system)/100000);wall.push((performance.now()-time)/100);
 }
-console.log(JSON.stringify({runtime:process.version,cpuMsPerSnapshot:batches,wallMsPerSnapshot:wall,coldSubrequests:34,refreshSubrequests:13,cachedSubrequests:0},null,2));
+console.log(JSON.stringify({runtime:process.version,cpuMsPerSnapshot:batches,wallMsPerSnapshot:wall,coldSubrequests:40,refreshSubrequests:14,cachedSubrequests:0,coldHttpRequests:34,coldCacheOperations:6,refreshHttpRequests:13,refreshCacheOperations:1},null,2));
 // Replay the complete handler, including UTF-8 decode, JSON parse and serialization.
 // Response bodies are recorded bytes; this measures CPU without network wait time.
 const countries=['US','BR','ZA','DE','IN','JP','AU','NL'];

@@ -1,61 +1,33 @@
 {
-  "ASN": 26415,
-  "BGP Community Convention": "",
-  "BGP Extended Community Convention": "",
-  "BGP Large Community Convention": "",
-  "Contact Email": "rootdns@verisign.com",
-  "Homepage": "https://j.root-servers.org/",
-  "IPv4": "192.58.128.30",
-  "IPv6": "2001:503:c27::2:30",
-  "Identifier Naming Convention": "",
-  "Operator": "Verisign, Inc.",
-  "Peering Policy": "https://www.peeringdb.com/net/873",
-  "RSSAC001": "https://j.root-servers.org/jroot-rssac001v2-expectations.pdf",
-  "RSSAC002": "https://j.root-servers.org/rssac-metrics/raw",
+  "Operator": "SYNTHETIC TEST OPERATOR J",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
   "Sites": [
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": 396587,
-      "BGP Site Identifier": "",
-      "Country": "NL",
-      "Created": "2024-03-28T16:15:04Z",
-      "ID": "5f3c0c0a56cd0217de266cc4",
+      "ID": "synthetic-j-01",
+      "Town": "Example City J",
+      "Country": "ZZ",
+      "Longitude": 19,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
       "IPv4": true,
       "IPv6": true,
       "Identifiers": [
-        "a1.nl-ams.root",
-        "n1.nl-ams.root"
-      ],
-      "Instances": 1,
-      "Latitude": 52.3702157,
-      "Longitude": 4.8951679,
-      "Status": "",
-      "Town": "Amsterdam",
-      "Type": "Global",
-      "Updated": "2025-01-28T16:15:48Z"
+        "j.synthetic.invalid"
+      ]
     },
     {
-      "BGP Intermediate AS": null,
-      "BGP Origin AS": 396591,
-      "BGP Site Identifier": "",
-      "Country": "GB",
-      "Created": "2024-03-28T16:15:04Z",
-      "ID": "5f64cf431c138531612c9e70",
-      "IPv4": true,
-      "IPv6": true,
-      "Identifiers": [
-        "a1.gb-lon.root",
-        "n1.gb-lon.root"
-      ],
-      "Instances": 1,
-      "Latitude": 51.5073509,
-      "Longitude": -0.1277583,
+      "ID": "synthetic-j-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
+      "Type": "Local",
       "Status": "",
-      "Town": "London",
-      "Type": "Global",
-      "Updated": "2025-01-28T16:15:48Z"
+      "IPv4": true,
+      "IPv6": false,
+      "Identifiers": []
     }
-  ],
-  "Statistics": "https://j.root-servers.org/metrics/index.html",
-  "Updated": "2025-12-08T20:20:47Z"
+  ]
 }

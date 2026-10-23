@@ -5,6 +5,9 @@ import { ROOT_LETTERS, type LonLat, type RootLetter, type RootInstance } from '.
 export interface Assets {
     fetch(request: Request): Promise<Response>;
 }
+export interface DnsFlowsContext {
+    waitUntil(promise: Promise<unknown>): void;
+}
 const TTL = 300000;
 const ROOT_TTL = 86400000;
 class RootsUnavailable extends Error {
@@ -25,6 +28,7 @@ type Probe = {
 type EdgeCache = Pick<Cache, 'match' | 'put'>;
 export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Date.now, edge?: EdgeCache, pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))) {
     let cached: Entry | undefined, pending: Promise<Entry> | undefined;
+    let rootPending: Promise<RootInstance[]> | undefined;
     let locations: {
         points: Map<number, LonLat>;
         at: number;
@@ -33,8 +37,8 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         at: number;
         instances: RootInstance[];
     } | undefined;
-    async function json(url: string): Promise<unknown> {
-        const r = await network(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(8000) });
+    async function json(url: string, lifetime?: AbortSignal): Promise<unknown> {
+        const r = await network(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, redirect: 'error', signal: lifetime ? AbortSignal.any([lifetime, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000) });
         if (!r.ok)
             throw Error('Upstream HTTP ' + r.status);
         const reader = r.body?.getReader();
@@ -61,7 +65,7 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         }
         return JSON.parse(new TextDecoder().decode(bytes));
     }
-    async function roots(cache: EdgeCache | undefined, origin: string) {
+    async function roots(cache: EdgeCache | undefined, origin: string, ctx?: DnsFlowsContext) {
         const valid = (at: number) => Number.isFinite(at) && at <= clock() && clock() - at < ROOT_TTL;
         const key = new Request(origin + '/__atlas-cache/root-sites-v2');
         if (!rootSites) {
@@ -81,27 +85,38 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
             }
             catch { /* Corrupt/missing edge data is a cache miss. */ }
         }
-        // Try a refresh one hour before expiry; a failure can still use the original data.
-        if (rootSites && valid(rootSites.at) && clock() - rootSites.at < 23 * 3600000)
-            return rootSites.instances;
-        try {
-            const instances: RootInstance[] = [];
-            const at = clock();
-            // Avoid a burst to one upstream and stay below the six-open-connection limit.
-            for (const [index, letter] of ROOT_LETTERS.entries()) {
-                if (index)
-                    await pause(1000);
-                const raw = await json(`https://root-servers.org/root/${letter.toUpperCase()}/json/`);
-                const sites = parseRootSites(letter, raw);
-                instances.push(...sites);
+        const refresh = (background: boolean) => {
+            rootPending ??= (async () => {
+                const instances: RootInstance[] = [];
+                const at = clock();
+                // waitUntil has a limited post-response lifetime. Stop a background
+                // attempt within 25s, retaining the old cache if upstream is slow.
+                const lifetime = background ? AbortSignal.timeout(25000) : undefined;
+                for (const [index, letter] of ROOT_LETTERS.entries()) {
+                    if (index)
+                        await pause(1000);
+                    lifetime?.throwIfAborted();
+                    const raw = await json(`https://root-servers.org/root/${letter.toUpperCase()}/json/`, lifetime);
+                    instances.push(...parseRootSites(letter, raw));
+                }
+                rootSites = { at, instances };
+                await cache?.put(key, new Response(JSON.stringify(rootSites), { headers: { 'Cache-Control': 'public, max-age=86400' } })).catch(() => undefined);
+                return instances;
+            })().finally(() => { rootPending = undefined; });
+            return rootPending;
+        };
+        if (rootSites && valid(rootSites.at)) {
+            if (clock() - rootSites.at >= 23 * 3600000 && ctx) {
+                ctx.waitUntil(refresh(true).catch(() => undefined));
             }
-            rootSites = { at, instances };
-            await cache?.put(key, new Response(JSON.stringify(rootSites), { headers: { 'Cache-Control': 'public, max-age=86400' } })).catch(() => undefined);
-            return instances;
+            // Without a context, keep serving valid data and defer renewal until
+            // expiry. Claude wires ctx through the hotspot entry point separately.
+            return rootSites.instances;
+        }
+        try {
+            return await refresh(false);
         }
         catch {
-            if (rootSites && valid(rootSites.at))
-                return rootSites.instances;
             throw new RootsUnavailable('Root sites unavailable');
         }
     }
@@ -144,7 +159,7 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         await cache?.put(key, new Response(JSON.stringify({ at: locations.at, points: [...points] }), { headers: { 'Cache-Control': 'public, max-age=86400' } })).catch(() => undefined);
         return points;
     }
-    return async (request: Request, _assets?: Assets): Promise<Response> => {
+    return async (request: Request, _assets?: Assets, ctx?: DnsFlowsContext): Promise<Response> => {
         if (!['GET', 'HEAD'].includes(request.method))
             return new Response(null, { status: 405, headers: { Allow: 'GET, HEAD' } });
         const origin = new URL(request.url).origin;
@@ -166,7 +181,7 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
             // Refresh at four minutes; the last good snapshot survives failures until minute five.
             if (!cached || clock() - cached.at >= 240000) {
                 pending ??= (async () => {
-                    const instances = await roots(cache, origin);
+                    const instances = await roots(cache, origin, ctx);
                     const points = await probes(cache, origin), ids = [...points.keys()].join(',');
                     const results: Partial<Record<RootLetter, AtlasResult[]>> = {};
                     await Promise.all(Object.entries(DNS_MEASUREMENTS).map(async ([letter, id]) => {
