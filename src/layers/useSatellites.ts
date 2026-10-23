@@ -85,7 +85,9 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
     const entity = followCamera && trackedId && status === "ready" ? overlayRef.current?.markerEntity(trackedId) : undefined;
     if (!viewer || !entity) return;
     minimumZoom.current=viewer.scene.screenSpaceCameraController.minimumZoomDistance;
-    entity.viewFrom = new Cartesian3(0, -2_400_000, 1_600_000);
+    const model=trackedId?SATELLITE_MODELS[trackedId]:undefined;
+    if(model)viewer.scene.screenSpaceCameraController.minimumZoomDistance=model.span*1.2;
+    entity.viewFrom=model?new Cartesian3(0,-model.span*5,model.span*2):new Cartesian3(0,-2_400_000,1_600_000);
     viewer.trackedEntity = entity;
     return () => {
       if (!viewer.isDestroyed()) {

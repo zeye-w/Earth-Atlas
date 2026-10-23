@@ -32,7 +32,8 @@ python scripts/prepare-satellite-models.py SOURCE_DIRECTORY
 
 Models are display aids: scale and orientation are approximate. SGP4/CelesTrak
 supplies the position, not spacecraft attitude or solar-panel articulation.
-Only a tracked spacecraft within 50 km loads a model; it is released beyond
+Selecting a supported target opens model close-up directly. The orbit-view button
+returns to the lightweight marker view. Only a tracked spacecraft within 50 km loads a model; it is released beyond
 75 km, on target change, disabled satellite layer, stale orbit or stopped tracking.
 Ordinary browsing and recording-mode model APIs remain separate.
 NOAA-20 and Landsat 9 retain icons until matching verified assets are available.
