@@ -17,10 +17,6 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      PEERINGDB_API_KEY: ${{ secrets.PEERINGDB_API_KEY }}
-      INTERNET_DATA_PUBLICATION_APPROVED: ${{ vars.INTERNET_DATA_PUBLICATION_APPROVED }}
-      INTERNET_DATA_PERMISSION_REFERENCE: ${{ vars.INTERNET_DATA_PERMISSION_REFERENCE }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,18 +24,9 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Build production data on main (requires recorded permissions)
-        if: github.ref == 'refs/heads/main'
+      - name: Build three open-licensed datasets
         run: node --experimental-strip-types scripts/internet/build.mjs
-      - name: Build unpublished research preview on a branch
-        if: github.ref != 'refs/heads/main'
-        run: node --experimental-strip-types scripts/internet/build.mjs --output-dir .cache/internet-preview
-      - name: Validate all production or preview data
-        run: |
-          if [ "$GITHUB_REF" != 'refs/heads/main' ]; then
-            export INTERNET_DATA_TEST_DIR=.cache/internet-preview
-          fi
-          npm test
+      - run: npm test
       - name: Commit changed data on main only
         if: github.ref == 'refs/heads/main'
         run: |

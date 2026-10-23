@@ -3,23 +3,27 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildCables, buildPeering, buildRoots } from './sources.mjs';
 import { validateBundle } from './validate.mjs';
+import { buildOpenData } from './open-sources.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 export function publicationAllowed(env = process.env) {
   return env.INTERNET_DATA_PUBLICATION_APPROVED === 'true' && Boolean(env.INTERNET_DATA_PERMISSION_REFERENCE?.trim());
 }
 
-export async function build({ builders = [buildRoots, buildPeering, buildCables], args = process.argv.slice(2) } = {}) {
+export async function build({ builders, args = process.argv.slice(2) } = {}) {
+  const restricted = args.includes('--restricted');
+  args = args.filter(arg => arg !== '--restricted');
   if (args.length && (args.length !== 2 || args[0] !== '--output-dir')) throw new Error('Usage: build.mjs [--output-dir .cache/internet-preview]');
   const output = resolve(root, args[1] || 'public/data/internet');
   const preview = output.startsWith(resolve(root, '.cache') + (process.platform === 'win32' ? '\\' : '/'));
-  if (!preview && !publicationAllowed()) throw new Error('Publication withheld: obtain/record TeleGeography data reuse, PeeringDB bulk redistribution and root-servers.org reuse permission. Set INTERNET_DATA_PUBLICATION_APPROVED=true and INTERNET_DATA_PERMISSION_REFERENCE to the documented approvals. For local research use --output-dir .cache/internet-preview.');
+  if (restricted && !publicationAllowed()) throw new Error('Restricted adapters require INTERNET_DATA_PUBLICATION_APPROVED=true and INTERNET_DATA_PERMISSION_REFERENCE; disabled by default, including previews.');
+  if (restricted && !preview) throw new Error('Restricted adapters may only write to .cache; default production data must remain open-licensed.');
   const bundle = {}, quality = {};
   // Deliberately serial: one source failure prevents publication of every file.
-  for (const builder of builders) {
+  for (const builder of builders ?? (restricted ? [buildRoots, buildPeering, buildCables] : [buildOpenData])) {
     const result = await builder(); Object.assign(bundle, result.datasets); Object.assign(quality, result.quality);
   }
-  validateBundle(bundle);
+  validateBundle(bundle, { restricted });
   const report = {};
   for (const [name, dataset] of Object.entries(bundle)) {
     const content = rows => JSON.stringify({ ...Object.fromEntries(Object.entries(rows).filter(([key]) => key !== 'generatedAt' && key !== 'sources')), sources: rows.sources.map(({ retrievedAt, ...source }) => source) });

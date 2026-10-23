@@ -2,12 +2,12 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 export const USER_AGENT = 'Earth-Atlas data builder (+https://github.com/zeye-w/Earth-Atlas)';
 let lastRequest = 0;
-export async function getJson(url, headers = {}) {
+export async function getJson(url, headers = {}, { timeoutMs = 60000 } = {}) {
   for (let attempt = 0; attempt < 4; attempt++) {
     await sleep(Math.max(0, (new URL(url).hostname === 'www.peeringdb.com' ? 2000 : 1000) - (Date.now() - lastRequest)));
     lastRequest = Date.now();
     try {
-      const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(60000) });
+      const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(timeoutMs) });
       if (!response.ok) {
         if (response.status !== 429 && response.status < 500) throw Object.assign(new Error(`${url}: HTTP ${response.status}`), { permanent: true });
         const retryAfter = response.headers.get('retry-after');

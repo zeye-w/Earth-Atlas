@@ -1,81 +1,118 @@
-# Internet infrastructure data builder
+# Internet infrastructure data
 
-PUBLICATION WITHHELD — no PeeringDB bulk redistribution approval has been obtained
-(confirmed by the project owner on 2026-10-23). No production JSON is committed.
-This is an implementation awaiting permission, not a completed production dataset release.
-
-Requires Node 22 with `--experimental-strip-types`; no npm dependencies added.
-
-```
-node --experimental-strip-types scripts/internet/build.mjs --output-dir .cache/internet-preview
-```
-
-This builds a local research preview, excluded from Git. To validate it:
-set `INTERNET_DATA_TEST_DIR=.cache/internet-preview` and run `npm test`.
-Quality counts are printed and written to `.cache/internet-quality.json`.
-Requests are serial, at least one second apart, with a 60-second timeout and
-at most four attempts. Pagination fails on duplicate IDs or excessive pages.
-All four outputs must satisfy the actual application parsers, minimum counts,
-unique IDs, cross-file references and byte budgets before replacing the old directory.
-An unchanged dataset retains its original build/retrieval timestamps to avoid
-timestamp-only commits. A failed upstream never publishes partial data.
-
-## Source and permission verification (2026-10-23)
-
-- TeleGeography GeoJSON: <https://www.submarinecablemap.com/api/v3/cable/cable-geo.json>
-  and <https://www.submarinecablemap.com/api/v3/landing-point/landing-point-geo.json>;
-  details: `/api/v3/cable/{id}.json`. All responded HTTP 200.
-  Current [About](https://www.submarinecablemap.com/about) text labels map
-  references, URLs and screenshots CC BY-SA 4.0, not the old CC BY-NC-SA 3.0.
-  That wording does not clearly license bulk geocoded data redistribution.
-  [Map licensing](https://www2.telegeography.com/license-telegeography-map) and
-  [data licensing](https://www2.telegeography.com/license-geocoded-map-data)
-  must be distinguished; obtain confirmation for the derived JSON.
-- PeeringDB `/api/ix`, `/api/fac`, `/api/ixfac`, `/api/netixlan` all responded
-  HTTP 200 to sample requests. [API](https://www.peeringdb.com/apidocs/),
-  [API keys](https://docs.peeringdb.com/howto/api_keys/),
-  [AUP](https://www.peeringdb.com/aup): Internet research and analysis is an
-  operational purpose, but passing data on in bulk requires PeeringDB approval.
-  Noncommercial status alone does not establish redistribution permission.
-- [Root Server Technical Operations Association](https://root-servers.org/)
-  exposes each letter at `https://root-servers.org/root/{A..M}/json/`.
-  A and K returned HTTP 200 during initial verification. No explicit data reuse
-  license was found on the homepage or JSON; do not invent a CC license.
-  [Contact](https://root-servers.org/contact/) for reuse clarification.
-
-## Enable production only after permissions are documented
-
-Record approvals for all three sources in a reviewable issue/document. Set
-repository variables `INTERNET_DATA_PUBLICATION_APPROVED=true` and
-`INTERNET_DATA_PERMISSION_REFERENCE` to that evidence. Use the same environment
-variables locally for the normal entry point:
+Default: Node 22 ESM, no additional dependencies:
 
 ```
 node --experimental-strip-types scripts/internet/build.mjs
+npm test
 ```
 
-The weekly workflow and main dispatch deliberately fail before fetching or
-writing production data until these variables exist. Branch dispatches and
-pull-request runs build only an ephemeral `.cache` research preview, validate the actual data and never
-upload datasets or commit to main; only successful main runs can commit. Merge
-remains subject to Claude review under the collaboration document.
+Generates exactly `cables.json`, `facilities.json`, `ixps.json` in
+`public/data/internet/`. No static `root-servers.json`: C line supplies root
+information live through the Worker. The static root URL/hook is a separate
+integration task; shared interfaces and UI files are not edited here.
 
-## Quality limitations
+## Licensing (verified 2026-10-23)
 
-Cable routes are generalized map paths, not surveyed seabed trajectories.
-Country names not confidently mapped to ISO alpha-2 are null. Landing references
-without geolocated records are omitted and counted. RFS years retain future years.
-PeeringDB contains self-reported data. Facilities without coordinates are omitted.
-IXP positions use geolocated member-facility centroids; fallback uses facilities
-in the same country/city as an explicitly approximate city coordinate. IXPs
-without either are omitted and counted. Port sums include active (`status=ok`)
-netixlan records, in Gbit/s; unknown totals remain null. Members use `net_count`.
-Root records represent upstream sites, sometimes grouping multiple colocated
-instances; only supplied identifiers are copied, with no speculative patterns.
-Blank upstream status is accepted (A-root uses it), explicit suspended or
-decommissioned sites are excluded. Stable IDs combine root letter and upstream
-site ID; array order never determines identity.
+OSM data and the derived cables/facilities JSON databases are distributed under
+**ODbL 1.0, © OpenStreetMap contributors**, separately from the code license.
+Attribution and share-alike apply. Keep source credit visible in the app.
+[OSM copyright](https://www.openstreetmap.org/copyright),
+[ODbL legal text](https://opendatacommons.org/licenses/odbl/1-0/).
 
-The default test suite checks publication withholding when no production data
-exists. This is explicitly not the production count acceptance test: after
-permission, all four real files must pass `validateBundle` and the size/count tests.
+Wikidata structured data and `ixps.json`: **CC0 1.0**.
+[Wikidata copyright](https://www.wikidata.org/wiki/Wikidata:Copyright),
+[CC0 legal text](https://creativecommons.org/publicdomain/zero/1.0/).
+The ODbL and CC0 databases stay separate. Restricted data/caches are never used
+as a fallback or mixed into these files.
+
+Exact Overpass and SPARQL queries are exported in `open-sources.mjs`.
+Overpass endpoint: https://overpass-api.de/api/interpreter . Wikidata endpoint:
+https://query.wikidata.org/sparql . Each output carries license, retrieval/build
+timestamps and source links; OSM base timestamps are also in the quality report.
+
+## Cables: tags, grouping and inferred endpoints
+
+Query `communication=line` or `telecom=line/cable` with `location=underwater`
+or `submarine=yes`; also query `seamark:type=cable_submarine`, communication/
+telecom route relations, and parents of matching ways. Accept seamark categories
+telephone, telegraph, optical, fibre_optic as communication evidence. Exclude
+explicit power/transmission/mooring/ferry and unclassified marine cables, and
+power route relations: a submarine seamark alone need not carry communications.
+[Communication line](https://wiki.openstreetmap.org/wiki/Tag:communication%3Dline),
+[submarine](https://wiki.openstreetmap.org/wiki/Key:submarine),
+[telecom guidance](https://wiki.openstreetmap.org/wiki/Telecommunication),
+[marine categories](https://wiki.openstreetmap.org/wiki/Key:seamark:cable_submarine:category).
+
+Route relation identity takes precedence over member ways; exact name/ref merges
+split segments and disjoint branches. No fuzzy identity or proximity links.
+Unnamed/unreferenced ways retain separate OSM identities, so their count measures
+mapped fragments, not unique global cable systems. Missing names are explicitly
+marked as unnamed OSM objects; existing `name` tags are preserved. `start_date`
+provides `rfsYear` if parseable, else null. Conflicting segment dates stay unknown
+unless the route provides a year. OSM start dates are not independently verified
+commercial RFS dates. Operators/owners copy tags; no cable length is invented.
+Existing 0.04-degree Douglas–Peucker simplification and ±180° splitting apply.
+
+Landings are explicitly named **inferred topological cable endpoints**. Endpoints
+shared between split ways are removed. These can be offshore survey fragments,
+not verified coastal landing stations. Unknown countries remain null. No coastal
+station name/location is fabricated or imported from restricted sources.
+
+## Data centers
+
+Query `telecom=data_center`, `building=data_center`, `building:use=data_center`.
+[Tag documentation](https://wiki.openstreetmap.org/wiki/Tag:telecom%3Ddata_center).
+Ways/relations use Overpass bounding-box centers, not entrances or geometric
+polygon centroids. Campuses, buildings and POIs can overlap: counts are mapped
+objects, not deduplicated physical businesses. Numeric ID is OSM_ID * 4 + typeCode
+(node 0, way 1, relation 2), checked as a safe integer. Name/operator/address copy
+tags; absent interconnection/network counts are 0.
+
+## IXPs
+
+SPARQL uses P31/P279* Q1433061 (Internet exchange point), direct P625 coordinates,
+otherwise P159 headquarters or P131 location restricted to Q486972 human
+settlements and their P625. These city fallbacks are **inferred city locations**,
+not exact IXP facilities; affected QIDs appear in the quality report. Distinct
+multiple coordinates are excluded rather than selecting an arbitrary site.
+Items without coordinates are omitted. ID is Q-number; website P856; members
+P2124 when unambiguous (not guaranteed current). Conflicting counts become null.
+Port capacity remains null and facilityIds stays empty: no OSM links are invented.
+
+## Validation and automation
+
+All three sources must pass application parsers without dropped/changed rows,
+references, unique IDs, size/count budgets before a directory swap publishes the
+bundle. Overpass `remark` (including partial timeouts) fails the build. Source
+failure preserves old files and fails the run. Unchanged content and license
+metadata preserve timestamps, avoiding timestamp-only commits. Quality report:
+`.cache/internet-quality.json` and console output.
+
+Floors: 500 cable records, 2000 data-center objects, 10 IXPs; zero inferred
+landings is valid. These catch empty/truncated responses, not global completeness.
+Weekly Monday 03:17 UTC and manual dispatch; PR runs use the same open-data build.
+Only successful main runs commit changed data. No root-server file is generated.
+
+Serial requests, at least one second apart (two for PeeringDB if enabled), at most
+four attempts. Overpass timeout is 240 seconds for a 180-second server query;
+other requests 60 seconds. Retry-After is bounded. No extra npm dependencies.
+
+## Restricted adapters: disabled by default
+
+`sources.mjs` retains PeeringDB, TeleGeography and root-servers.org adapters.
+The project is not seeking permission. Default builds/workflows neither call
+those endpoints nor read their caches. Explicit `--restricted` additionally
+requires both INTERNET_DATA_PUBLICATION_APPROVED=true and a nonempty
+INTERNET_DATA_PERMISSION_REFERENCE. Even with approval, output must be in .cache:
+
+```
+node --experimental-strip-types scripts/internet/build.mjs --restricted --output-dir .cache/restricted-preview
+```
+
+Do not set approval without evidence. [PeeringDB AUP](https://www.peeringdb.com/aup)
+requires bulk redistribution approval. TeleGeography's current
+[About](https://www.submarinecablemap.com/about) wording covers map references,
+URLs/screenshots under CC BY-SA 4.0, not clearly bulk geocoded data;
+[data licensing](https://www2.telegeography.com/license-geocoded-map-data) is separate.
+No explicit data reuse license was found at https://root-servers.org/ .
