@@ -1,0 +1,77 @@
+[
+  {
+    "prb_id": 1,
+    "timestamp": 1792737267,
+    "msm_id": 10313,
+    "af": 4,
+    "result": {
+      "rt": 22.505,
+      "size": 57,
+      "abuf": "IWOAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAADg1wMDYuYW1zLmVyb290",
+      "ID": 8547,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "p06.ams.eroot"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 2049,
+    "timestamp": 1740569895,
+    "msm_id": 10313,
+    "af": 4,
+    "result": {
+      "rt": 18.266,
+      "size": 57,
+      "abuf": "UcqAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAADg1wMDYuZnJhLmVyb290",
+      "ID": 20938,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "p06.fra.eroot"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 3,
+    "timestamp": 1726509296,
+    "msm_id": 10313,
+    "af": 4,
+    "result": {
+      "rt": 12.087,
+      "size": 57,
+      "abuf": "KgyEAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAADwADg1jMDEuQU1TLmVyb290",
+      "ID": 10764,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "c01.AMS.eroot"
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,77 @@
+[
+  {
+    "prb_id": 1,
+    "timestamp": 1792737260,
+    "msm_id": 10301,
+    "af": 4,
+    "result": {
+      "rt": 28.65,
+      "size": 65,
+      "abuf": "7KqAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAFhVuczIubmwtYW1zLmsucmlwZS5uZXQ=",
+      "ID": 60586,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "ns2.nl-ams.k.ripe.net"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 2049,
+    "timestamp": 1740569883,
+    "msm_id": 10301,
+    "af": 4,
+    "result": {
+      "rt": 34.36,
+      "size": 65,
+      "abuf": "JPCAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAFhVuczIubmwtYW1zLmsucmlwZS5uZXQ=",
+      "ID": 9456,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "ns2.nl-ams.k.ripe.net"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 3,
+    "timestamp": 1726509283,
+    "msm_id": 10301,
+    "af": 4,
+    "result": {
+      "rt": 14.892,
+      "size": 65,
+      "abuf": "sCCAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAFhVuczIubmwtYW1zLmsucmlwZS5uZXQ=",
+      "ID": 45088,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "ns2.nl-ams.k.ripe.net"
+          ]
+        }
+      ]
+    }
+  }
+]
