@@ -1,6 +1,6 @@
 # 互联网基础设施图层：协作文档
 
-阶段 1（静态图层）和阶段 2（实测 DNS 查询流）的共同依据。**每个参与者开工前先读完这份文档。** 不同的对话或 Codex 之间不共享上下文，这里写的就是全部约定。
+阶段 1（静态图层）和阶段 2（实测 DNS 查询流）的共同依据。不同的对话或 Codex 之间不共享上下文，这里写的就是全部约定。Claude 各对话开工前先读这份文档；Codex 按任务书干活，只看任务书链接到的章节（任务书格式见 [`docs/codex/README.md`](codex/README.md)）。
 
 ## 目标
 
@@ -79,7 +79,7 @@ PeeringDB / TeleGeography / root-servers.org 的适配代码保留在 `scripts/i
 
 1. 从最新的 `main` 拉分支；开 PR 前先合并一次 `main`（用 merge，不要 rebase 别人的提交）。
 2. PR 描述里写清楚：做了什么、怎么验证的（命令和结果）、数据来源和许可证的核实结论、已知问题。
-3. 提交前本地必须通过：`npm run typecheck`、`npm test`、`npm run build`。只要动到界面，再跑 `npx playwright test tests/e2e/internet.spec.ts`。
+3. 提交前本地跑 `npm run typecheck` 和与改动相关的单元测试（例如 `node --experimental-strip-types --test tests/dnsFlows.test.mjs`）。全部单元测试、构建和浏览器测试 `e2e` 交给 CI；CI 红了，只在本地复现失败的那一项。截图只在任务书要求时做。
 4. 不要跳过或删除测试来让测试通过；不要改热点文件。
 5. 合并由 Claude 集成对话审查后执行。Claude 开发对话的改动同样走 PR。
 6. 审查意见和追加修改都推到**原来那个 PR 的分支**上，不要另开新 PR；原 PR 已合并或关闭时才开新的。合并不等浏览器测试 `e2e`，它在合并后的 `main` 上跑（细节见 `docs/integrator.md`“合并节奏”）。
