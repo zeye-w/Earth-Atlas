@@ -31,5 +31,8 @@ test("arcs join the two points and rise above the surface between them", () => {
   const middle = Cartesian3.magnitude(path[path.length >> 1]);
   assert.ok(middle > 6_371_000 + 500_000, "long hops arc high");
   const short = arc([2.35, 48.86], [2.4, 48.9]);
-  assert.ok(Cartesian3.magnitude(short[16]) < 6_371_000 + 60_000, "short hops stay low");
+  assert.ok(Cartesian3.magnitude(short[short.length >> 1]) < 6_371_000 + 60_000, "short hops stay low");
+  // Vertices follow the arc length: cheap for short hops, smooth for long ones.
+  assert.equal(short.length, 7);
+  assert.equal(path.length, 33);
 });

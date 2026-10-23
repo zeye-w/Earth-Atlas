@@ -24,6 +24,7 @@ English · [简体中文](README.zh-CN.md)
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
 - **Live flights** — thousands of aircraft from volunteer ADS-B receivers (adsb.lol), drawn at their altitude and heading, updated every minute.
 - **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, pass predictions for your location, and a tracking camera with live telemetry beside the satellite.
+- **Internet infrastructure** — submarine cables and data centres mapped in OpenStreetMap, internet exchanges from Wikidata, and **measured** DNS queries: RIPE Atlas probes reaching the root-server instance that actually answered.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
 - **Travel in time** — a timeline replays the past 24 hours, 7 or 30 days (and looks a day ahead): sunlight, earthquakes, satellite positions and daily satellite imagery all follow it.
 - **Honest by design** — no fabricated data. When a feed is down the layer says so and draws nothing; illustrative elements are labelled.
@@ -65,6 +66,14 @@ English · [简体中文](README.zh-CN.md)
 
 <p align="center"><img src="docs/screenshots/mobile.jpg" alt="TerraScope on a phone" width="260"><br><sub>Works on phones too: panels become bottom sheets and quality starts in Eco mode.</sub></p>
 
+**Internet infrastructure** (screenshots to follow with the layer panel). Five layers, each labelled with what it is:
+
+- *Submarine cables* — communication cables mapped by OpenStreetMap volunteers (ODbL), drawn with pulses running along them. The pulses only mark the line as a communication route; they are **illustrative**, not traffic. Mapping is incomplete (see the notes below), and landing stations are not shown because OSM does not tag them.
+- *Data centres* — sites tagged as data centres in OpenStreetMap; faint from afar so thousands of points stay readable.
+- *Internet exchanges* — exchanges recorded in Wikidata (CC0) with a location. Where Wikidata gives only the city, the city's coordinates are used, so those positions are **estimated**.
+- *DNS queries (measured)* — RIPE Atlas probes querying the 13 root servers; each arc runs from a probe to the anycast instance that answered it, and the packet flies slower for a longer round trip. Queries whose answering site cannot be identified are left out, never guessed.
+- *DNS root servers* — the instances those measured queries reached, with query count, probes and median round trip. The full instance list is not republished.
+
 **Also included:** your location on the globe (only when you ask, never uploaded); place and coordinate search; shareable scene links that restore the camera, layers, filters and timeline moment; fullscreen; reduced-motion support; eco / balanced / high quality presets.
 
 ## Data sources
@@ -85,6 +94,11 @@ English · [简体中文](README.zh-CN.md)
 | Starlink constellation | CelesTrak — GP group `starlink` (OMM CSV, ~1.7 MB) | cached ≥ 2 h |
 | Clouds | SSEC / UW–Madison RealEarth — `globalir` | hourly |
 | Geology | Macrostrat (CC BY 4.0) | live tiles & queries |
+| Submarine cables | OpenStreetMap contributors, via Overpass (ODbL 1.0) | bundled, refreshed weekly by workflow |
+| Data centres | OpenStreetMap contributors, via Overpass (ODbL 1.0) | bundled, refreshed weekly by workflow |
+| Internet exchanges | Wikidata, via SPARQL (CC0 1.0) | bundled, refreshed weekly by workflow |
+| DNS queries | RIPE Atlas built-in root-server measurements (RIPE NCC; Service Terms and Conditions, article 4 — commercial use needs prior permission), via the site's Worker | every 5 min (live only) |
+| DNS root instances | root-servers.org — used on the server only to identify the answering site; not republished | on demand |
 | Labels | Natural Earth (public domain) | bundled |
 | Search | Open-Meteo / GeoNames; mledoze/countries (ODbL) | on demand |
 
@@ -121,7 +135,7 @@ scripts/             data generators, live smoke tests, screenshot capture
 tests/               unit tests (node:test) and e2e tests (Playwright)
 ```
 
-Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
+Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights` and serves measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
 
 ## Scientific notes
 
@@ -130,6 +144,9 @@ Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small W
 - Flight coverage depends on volunteer receivers, so it is not every flight; between updates positions are extrapolated from speed and track.
 - Volcano colours reflect catalogued eruption years, not current alert levels.
 - Geologic units are mapped surface units; overlapping map results are shown as candidates.
+- Submarine cables are those OpenStreetMap volunteers have mapped: about 240,000 km against roughly 1.4 million km in service, mostly near coasts and in the North Atlantic and Europe, and many are short unnamed pieces. Few carry a ready-for-service year, so there is no year slider for them.
+- Wikidata lists only a few dozen internet exchanges with a location, far fewer than exist; data centres are the sites OSM has tagged.
+- DNS queries come from a small sample of RIPE Atlas probes (about a hundred, in eight countries), so they show how anycast routing behaves, not where internet traffic flows.
 
 More detail: [docs/TECHNICAL.md](docs/TECHNICAL.md).
 

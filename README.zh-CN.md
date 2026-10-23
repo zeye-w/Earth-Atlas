@@ -24,6 +24,7 @@
 - **实时地球物理数据**：USGS 地震、NOAA 极光预报与 Kp 地磁指数、史密森尼火山名录、PB2002 板块边界。
 - **实时航班**：来自志愿者 ADS-B 接收网（adsb.lol）的数千架航空器，按真实高度和航向绘制，每分钟更新。
 - **在轨卫星**：根据 CelesTrak 轨道根数用 SGP4 预测位置，轨道线画在真实高度上，还能预测卫星何时从你头顶飞过，以及跟踪卫星并在旁边显示实时数据。
+- **互联网基础设施**：OpenStreetMap 标注的海底光缆和数据中心、Wikidata 收录的互联网交换中心，以及**实测**的 DNS 查询：RIPE Atlas 探针的查询飞向实际应答它的根服务器实例。
 - **按需加载的地质图**：Macrostrat 全球地质图，点击任意位置查看岩石单元、地质年代和岩性。
 - **时间回溯**：时间轴可回看过去 24 小时、7 天或 30 天（也能看未来一天），日照、地震、卫星位置和每日卫星影像都随之变化。
 - **不编造数据**：数据源不可用时，图层会明确提示并且不绘制；示意性的内容都有标注。
@@ -65,6 +66,14 @@
 
 <p align="center"><img src="docs/screenshots/mobile.jpg" alt="手机上的 TerraScope" width="260"><br><sub>手机上也能用：面板变为底部抽屉，默认使用省电画质。</sub></p>
 
+**互联网基础设施**（截图待图层面板完成后补上）。共五个图层，每个都标明数据的性质：
+
+- *海底光缆*：OpenStreetMap 志愿者标注的通信光缆（ODbL），光缆上有光脉冲流动。脉冲只表示"这是一条通信线路"，属于**示意**，不代表实际流量。标注并不完整（见下方科学说明）；OSM 没有登陆站的标注，所以不显示登陆站。
+- *数据中心*：OpenStreetMap 里标注为数据中心的设施；远看时点会变淡，几千个点也不会糊成一片。
+- *互联网交换中心*：Wikidata（CC0）收录且有位置的交换中心。Wikidata 只给出所在城市时，用城市坐标代替，这些位置属于**推算**。
+- *DNS 查询（实测）*：RIPE Atlas 探针向 13 个根服务器发起的查询。每条弧线从探针连到实际应答它的任播实例，往返延迟越长，光点飞得越慢。无法确定应答站点的查询不会显示，绝不猜测。
+- *DNS 根服务器*：上述实测查询命中的实例，显示被查询次数、探针数和往返延迟中位数。不转发完整的实例清单。
+
 **其他功能**：在地球上显示你的位置（只在你点击时获取，不会上传）；地点与坐标搜索；可分享的场景链接（还原视角、图层、筛选条件和时间轴时刻）；全屏；尊重"减少动态效果"系统设置；省电 / 均衡 / 高清三档画质。
 
 ## 数据来源
@@ -85,6 +94,11 @@
 | 星链星座 | CelesTrak：GP 分组 `starlink`（OMM CSV，约 1.7 MB） | 缓存至少 2 小时 |
 | 云图 | SSEC / UW–Madison RealEarth：`globalir` | 逐小时 |
 | 地质 | Macrostrat（CC BY 4.0） | 实时瓦片与查询 |
+| 海底光缆 | OpenStreetMap 贡献者，经 Overpass 获取（ODbL 1.0） | 内置，工作流每周刷新 |
+| 数据中心 | OpenStreetMap 贡献者，经 Overpass 获取（ODbL 1.0） | 内置，工作流每周刷新 |
+| 互联网交换中心 | Wikidata，经 SPARQL 获取（CC0 1.0） | 内置，工作流每周刷新 |
+| DNS 查询 | RIPE Atlas 根服务器内置测量（RIPE NCC；服务条款第 4 条，商业使用需事先获得许可），经本站 Worker 中转 | 每 5 分钟（仅实时） |
+| DNS 根实例 | root-servers.org：只在服务端用来识别应答站点，不对外转发 | 按需 |
 | 地理标注 | Natural Earth（公共领域） | 内置 |
 | 搜索 | Open-Meteo / GeoNames；mledoze/countries（ODbL） | 按需 |
 
@@ -121,7 +135,7 @@ scripts/             数据生成、线上数据源检查、截图生成
 tests/               单元测试（node:test）与端到端测试（Playwright）
 ```
 
-部署在 Cloudflare Workers（`wrangler.jsonc`）：静态资源，加上一个在 `/api/flights` 中转航班数据的小型 Worker（`worker/`）。本页截图由 [README Screenshots](.github/workflows/screenshots.yml) 工作流使用实时数据渲染生成。
+部署在 Cloudflare Workers（`wrangler.jsonc`）：静态资源，加上一个小型 Worker（`worker/`），在 `/api/flights` 中转航班数据，在 `/api/internet/dns-flows` 提供实测 DNS 查询。本页截图由 [README Screenshots](.github/workflows/screenshots.yml) 工作流使用实时数据渲染生成。
 
 ## 科学说明
 
@@ -130,6 +144,9 @@ tests/               单元测试（node:test）与端到端测试（Playwright�
 - 航班覆盖取决于志愿者接收站，并不是全部航班；两次更新之间的位置按速度和航向推算。
 - 火山颜色反映名录中的喷发年份，不是当前的预警级别。
 - 地质单元是地表填图单元；同一位置有多个结果时作为候选项列出。
+- 海底光缆只包含 OpenStreetMap 志愿者标注过的部分：约 24 万 km，而实际在役的约 140 万 km；主要集中在近岸和北大西洋、欧洲一带，其中不少是无名的短片段。标注了投产年份的很少，所以不提供按年份浏览。
+- Wikidata 里有位置的互联网交换中心只有几十个，远少于实际数量；数据中心是 OSM 里已标注的设施。
+- DNS 查询来自 RIPE Atlas 的一小部分探针（约一百个，分布在八个国家），反映的是任播路由的效果，不代表互联网流量的去向。
 
 更多细节见 [docs/TECHNICAL.md](docs/TECHNICAL.md)。
 
