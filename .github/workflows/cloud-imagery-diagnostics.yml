@@ -1,0 +1,55 @@
+name: Cloud imagery upstream diagnostics
+on:
+  push:
+    branches: [fix/cloud-imagery-loading-20261023]
+    paths: [.github/workflows/cloud-imagery-diagnostics.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check SSEC catalogue, real image tiles, CORS and the live site
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, datetime, urllib.request, urllib.error, ssl
+          BASE='https://realearth.ssec.wisc.edu'
+          urls=[
+            ('catalogue',BASE+'/api/products?products=globalir&timespan=-30d'),
+            ('latest',BASE+'/api/latest?products=globalir'),
+            ('live-site','https://earth-atlas.edwardlab.workers.dev/')
+          ]
+          latest=None
+          for name,url in urls:
+            print('BEGIN',name,url,flush=True)
+            try:
+              req=urllib.request.Request(url,headers={'Origin':'https://earth-atlas.edwardlab.workers.dev','User-Agent':'TerraScope-cloud-diagnostic/1.0'})
+              with urllib.request.urlopen(req,timeout=35) as f:
+                blob=f.read(3000000)
+                print('STATUS',f.status,'TYPE',f.headers.get('Content-Type'),'CORS',f.headers.get('Access-Control-Allow-Origin'),'LENGTH',len(blob),flush=True)
+                if name=='catalogue':
+                  data=json.loads(blob);print('META',str(data)[:1000],flush=True)
+                  for p in data:
+                    if p.get('id')=='globalir':
+                      times=p.get('times',[]);print('TIMES',len(times),'FIRST',times[:2],'LATEST',times[-2:],flush=True)
+                      if times:
+                        stamp=times[-1];latest=stamp[:8]+'_'+stamp[9:]
+                        if len(stamp)==15:
+                          dt=datetime.datetime.strptime(stamp,'%Y%m%d.%H%M%S').replace(tzinfo=datetime.timezone.utc)
+                          print('AGE_HOURS',(datetime.datetime.now(datetime.timezone.utc)-dt).total_seconds()/3600,flush=True)
+                if name=='latest':print('LATEST_PAYLOAD',blob[:700],flush=True)
+            except Exception as e:
+              print('PROBE_FAILURE',name,type(e).__name__,str(e)[:800],flush=True)
+          for suffix in ([f'/api/image?products=globalir_{latest}&x=0&y=0&z=0'] if latest else [])+['/api/image?products=globalir&x=0&y=0&z=0']:
+            print('BEGIN IMAGE',suffix,flush=True)
+            try:
+              req=urllib.request.Request(BASE+suffix,headers={'Origin':'https://earth-atlas.edwardlab.workers.dev','User-Agent':'TerraScope-cloud-diagnostic/1.0'})
+              with urllib.request.urlopen(req,timeout=35) as f:
+                blob=f.read(2000000)
+                print('IMAGE_STATUS',f.status,'TYPE',f.headers.get('Content-Type'),'CORS',f.headers.get('Access-Control-Allow-Origin'),'BYTES',len(blob),'HEAD',blob[:20].hex(),flush=True)
+            except Exception as e:
+              print('IMAGE_FAILURE',type(e).__name__,str(e)[:800],flush=True)
+          PY
