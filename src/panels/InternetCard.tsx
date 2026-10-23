@@ -8,11 +8,13 @@ interface Props {
 }
 
 const count = (n: number) => n.toLocaleString("zh-CN");
+// Open-data placeholders ("Unnamed OSM cable (osm-way-1)") read better in Chinese.
+const named = (name: string, unnamed: string) => (name.startsWith("Unnamed OSM") ? unnamed : name);
 const place = (city: string, country: string | null) => [city, country].filter(Boolean).join(" · ") || "—";
 
-function rows(s: InternetSelection): { title: string; kind: string; items: Array<[string, string]> } {
+function rows(s: InternetSelection): { title: string; kind: string; items: Array<[string, string]>; link?: [string, string] } {
   switch (s.kind) {
-    case "cable": return { title: s.cable.name, kind: "海底光缆", items: [
+    case "cable": return { title: named(s.cable.name, "未命名光缆段"), kind: "海底光缆", link: s.cable.url ? ["在 OpenStreetMap 查看", s.cable.url] : undefined, items: [
       ["投产年份", s.cable.rfsYear ? String(s.cable.rfsYear) : "—"],
       ["长度", s.cable.lengthKm ? count(s.cable.lengthKm) + " km" : "—"],
       ["登陆站", s.landings.length ? s.landings.map((l) => l.name).join("、") : "—"],
@@ -22,30 +24,32 @@ function rows(s: InternetSelection): { title: string; kind: string; items: Array
       ["国家 / 地区", s.landing.country ?? "—"],
       ["接入光缆", s.cables.length ? s.cables.map((c) => c.name).join("、") : "—"],
     ] };
-    case "ixp": return { title: s.ixp.name, kind: "互联网交换中心", items: [
+    case "ixp": return { title: s.ixp.name, kind: "互联网交换中心", link: s.ixp.website ? ["官方网站", s.ixp.website] : undefined, items: [
       ["城市", place(s.ixp.city, s.ixp.country)],
       ["接入网络", s.ixp.members !== null ? count(s.ixp.members) : "—"],
       ["端口总容量", s.ixp.portCapacityGbps !== null ? count(Math.round(s.ixp.portCapacityGbps)) + " Gbit/s" : "—"],
       ["所在设施", s.facilities.length ? s.facilities.map((f) => f.name).join("、") : "—"],
     ] };
-    case "facility": return { title: s.facility.name, kind: "数据中心 / 互联设施", items: [
+    case "facility": return { title: named(s.facility.name, "未命名数据中心"), kind: "数据中心", items: [
       ["城市", place(s.facility.city, s.facility.country)],
       ["运营方", s.facility.operator ?? "—"],
       ["接入网络", count(s.facility.networkCount)],
       ["交换中心", s.ixps.length ? s.ixps.map((x) => x.name).join("、") : count(s.facility.ixCount)],
     ] };
-    case "rootInstance": return { title: s.instance.letter.toUpperCase() + " 根 · " + (s.instance.city || "实例"), kind: "DNS 根服务器实例", items: [
-      ["运营机构", s.server?.operator ?? "—"],
-      ["地址", s.server ? [s.server.ipv4, s.server.ipv6].filter(Boolean).join(" / ") : "—"],
+    case "rootInstance": return { title: s.instance.letter.toUpperCase() + " 根 · " + (s.instance.city || "任播实例"), kind: "DNS 根服务器实例", items: [
+      ...(s.server ? [["运营机构", s.server.operator], ["地址", [s.server.ipv4, s.server.ipv6].filter(Boolean).join(" / ")]] as Array<[string, string]> : []),
       ["位置", place(s.instance.city, s.instance.country)],
-      ["广播范围", s.instance.scope === "global" ? "全球" : s.instance.scope === "local" ? "本地" : "—"],
+      ...(s.measured ? [
+        ["实测查询", count(s.measured.queries) + " 次 · 来自 " + count(s.measured.probes) + " 个 RIPE Atlas 探针"],
+        ["往返延迟", "中位数 " + s.measured.medianRttMs.toFixed(1) + " ms"],
+      ] as Array<[string, string]> : []),
     ] };
   }
 }
 
 /** Details of a picked cable, landing, exchange, facility or root instance (track D polishes this). */
 export function InternetCard({ selection, onClose }: Props) {
-  const { title, kind, items } = rows(selection);
+  const { title, kind, items, link } = rows(selection);
   return (
     <section className="internet-card glass-panel" aria-label={kind + " " + title}>
       <header>
@@ -53,6 +57,7 @@ export function InternetCard({ selection, onClose }: Props) {
         <button type="button" onClick={onClose} aria-label="关闭"><X size={13} aria-hidden="true" /></button>
       </header>
       <dl>{items.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
+      {link && <a className="internet-card-link" href={link[1]} target="_blank" rel="noreferrer">{link[0]}</a>}
     </section>
   );
 }

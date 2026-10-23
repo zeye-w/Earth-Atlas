@@ -118,8 +118,9 @@ test('OSM conversion merges route ways, keeps real names and rejects non-communi
   assert.equal(dataset.cables[0].name, 'Cable');
   assert.equal(dataset.cables[0].rfsYear, 2028);
   assert.deepEqual(dataset.cables[0].owners, ['A', 'B', 'C']);
-  assert.deepEqual(dataset.cables[0].landingIds, ['osm-node-1', 'osm-node-3']);
-  assert.equal(dataset.landings.length, 2);
+  // Loose ends of OSM ways are not landing stations.
+  assert.deepEqual(dataset.cables[0].landingIds, []);
+  assert.equal(dataset.landings.length, 0);
   assert.equal(rfsYear('unknown'), null);
   assert.throws(() => convertCables({ ...raw, remark: 'timeout' }), /Incomplete Overpass/);
 });

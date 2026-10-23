@@ -86,7 +86,11 @@ function rootInstance(v: unknown): RootInstance | null {
 function dnsFlow(v: unknown): DnsFlow | null {
   if (!isObject(v) || !finite(v.probeId) || !isLonLat(v.probe) || !isLetter(v.letter) || !isString(v.instanceId) || !isLonLat(v.instance)) return null;
   if (!finite(v.rttMs) || v.rttMs <= 0 || v.rttMs > 10_000 || !finite(v.time)) return null;
-  return { probeId: v.probeId, probe: v.probe, letter: v.letter, instanceId: v.instanceId, instance: v.instance, rttMs: v.rttMs, time: v.time };
+  return {
+    probeId: v.probeId, probe: v.probe, letter: v.letter, instanceId: v.instanceId, instance: v.instance, rttMs: v.rttMs, time: v.time,
+    ...(isString(v.instanceCity) ? { instanceCity: v.instanceCity } : {}),
+    ...(v.instanceCountry === null || isString(v.instanceCountry) ? { instanceCountry: v.instanceCountry } : {}),
+  };
 }
 
 const keep = <T>(list: unknown[], parse: (v: unknown) => T | null): T[] => list.map(parse).filter((x): x is T => x !== null);

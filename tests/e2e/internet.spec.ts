@@ -17,10 +17,12 @@ test("internet layers load their datasets, report counts and open a card on clic
   await waitForGlobe(page);
   await openInternet(page);
   const panel = layerPanel(page);
-  await expect(panel).toContainText("3 条光缆 · 4 个登陆站");
+  await expect(panel).toContainText("3 段光缆");
+  await expect(panel.getByRole("slider", { name: "光缆投产年份" })).toBeVisible();
   await expect(panel).toContainText("2 个交换中心");
   await expect(panel).toContainText("2 个设施");
-  await expect(panel).toContainText("2 个实例");
+  // Root instances come from the measured queries, not a published list.
+  await expect(panel).toContainText("此刻实测命中 2 个实例 · 13 个根字母中的 2 个");
   await expect(panel).toContainText("2 次查询 · 匹配到实例 2 / 3");
   const canvas = page.locator(".cesium-widget canvas");
   await expect(async () => {

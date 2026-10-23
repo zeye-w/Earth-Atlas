@@ -11,19 +11,35 @@
 - DNS 根服务器的任播实例
 - RIPE Atlas **实测**的 DNS 查询：探针 → 实际应答的根服务器实例
 
-原则沿用整个项目：**每个点、每条线都要能说明是实测、推算还是示意。** 拿不到数据时就如实说"暂不可用"，绝不画虚构的数据。项目不商用，所以可以使用 CC BY-NC 类数据，但必须署名。
+原则沿用整个项目：**每个点、每条线都要能说明是实测、推算还是示意。** 拿不到数据时就如实说"暂不可用"，绝不画虚构的数据。
+
+## 数据源（2026-10-23 决定）
+
+项目暂不向 PeeringDB、TeleGeography、root-servers.org 申请再分发许可，**只公开发布许可明确允许再分发的数据**：
+
+| 图层 | 数据源 | 许可 | 说明 |
+| --- | --- | --- | --- |
+| 海底光缆 | OpenStreetMap（Overpass） | ODbL 1.0 | 志愿者逐段标注，覆盖不完整；年份很少，所以只有带年份的光缆占三成以上时才显示年份滑块；OSM 没有登陆站标注，**不发布推断的端点** |
+| 数据中心 | OpenStreetMap | ODbL 1.0 | 无接入网络数 |
+| 交换中心 | Wikidata（SPARQL） | CC0 1.0 | 数量远少于实际 |
+| 根服务器 | **不发布静态文件**。Worker 在服务端读取 root-servers.org 用于匹配，网站只显示实测查询命中的实例 | — | 见 C 线 |
+| DNS 实测查询 | RIPE Atlas | RIPE Atlas 服务条款第 4 条 | 实时 |
+
+PeeringDB / TeleGeography / root-servers.org 的适配代码保留在 `scripts/internet/`，由发布开关挡住（仓库变量 `INTERNET_DATA_PUBLICATION_APPROVED`），拿到许可后才启用。
 
 ## 现状（骨架，已在 main 上）
 
-| 部分 | 文件 | 状态 |
+| 部分 | 文件 | 状态（2026-10-23） |
 | --- | --- | --- |
 | 数据格式（接口约定） | `src/internet/types.ts` | 定稿。要改先改这里和本文档 |
 | 解析与校验 | `src/internet/data.ts` | 定稿。生产方用这些解析器测试自己的输出 |
-| 基础渲染 | `src/internet/internetOverlay.ts` | 占位：只有普通的线和点（B 线替换） |
+| 渲染 | `src/internet/internetOverlay.ts`、`flowMaterial.ts` | 完成：光缆辉光与流动脉冲、年份滑块、DNS 查询飞行光点 |
 | 图层 hook | `src/layers/useInternet.ts` | 可用：按需加载，DNS 流每 5 分钟刷新 |
 | 图层面板 | `src/panels/InternetGroup.tsx` | 占位：开关和状态行（D 线完善） |
 | 信息卡 | `src/panels/InternetCard.tsx`、`src/panels/internet.css` | 占位（D 线完善） |
-| Worker 接口 | `worker/ripeAtlas.ts`，路由 `/api/internet/dns-flows` | 占位：返回 503（C 线实现） |
+| Worker 接口 | `worker/ripeAtlas.ts`，路由 `/api/internet/dns-flows` | 完成（PR #17）；改为实时读取 root-servers.org 进行中（`codex/dns-roots`） |
+| 数据管线 | `scripts/internet/`、`public/data/internet/` | 完成（PR #16）：光缆、数据中心、交换中心三个开放数据文件 |
+| 实测根实例 | `src/internet/measuredRoots.ts` | 完成：根服务器图层从实测查询取实例 |
 | 测试假数据 | `tests/e2e/fixtures/internet/*.json` | 合成数据，不是真实基础设施 |
 | 测试 | `tests/internetData.test.mjs`、`tests/e2e/internet.spec.ts` | 通过 |
 
@@ -38,9 +54,8 @@
 | `public/data/internet/cables.json` | `CableDataset` | 2.5 MB |
 | `public/data/internet/ixps.json` | `IxpDataset` | 400 KB |
 | `public/data/internet/facilities.json` | `FacilityDataset` | 1.2 MB |
-| `public/data/internet/root-servers.json` | `RootServerDataset` | 500 KB |
 
-实时接口（C 线）：`GET /api/internet/dns-flows` 返回 `DnsFlowSnapshot`。
+实时接口（C 线）：`GET /api/internet/dns-flows` 返回 `DnsFlowSnapshot`。`DnsFlow` 可以带 `instanceCity`、`instanceCountry`（可选），信息卡会显示。
 
 通用规则：
 - 坐标一律是 `[经度, 纬度]`，单位为度。光缆坐标保留 2–3 位小数，节点保留 3 位。
@@ -53,12 +68,12 @@
 | 线 | 负责方 | 分支 | 只改这些文件 |
 | --- | --- | --- | --- |
 | A 数据管线 | Codex 1 | `codex/internet-data` | `scripts/internet/**`、`public/data/internet/**`、`.github/workflows/internet-data.yml`、`tests/internetDataFiles.test.mjs` |
-| B 渲染 | Claude | `claude/internet-render` | `src/internet/internetOverlay.ts`、`src/internet/flowMaterial.ts`、`src/internet/*Overlay*.ts`、`src/layers/useInternet.ts` |
+| B 渲染 | Claude 开发对话 | `claude/*` | `src/internet/internetOverlay.ts`、`src/internet/flowMaterial.ts`、`src/internet/*Overlay*.ts`、`src/layers/useInternet.ts` |
 | C 实测 DNS 查询流 | Codex 2 | `codex/dns-flows` | `worker/ripeAtlas.ts`、`worker/ripeAtlas/**`、`src/internet/dnsFlows.ts`、`tests/dnsFlows.test.mjs`、`tests/fixtures/ripe-atlas/**` |
 | D 界面 | A 或 C 完成后，交给先空下来的 Codex | `codex/internet-ui` | `src/panels/InternetGroup.tsx`、`src/panels/InternetCard.tsx`、`src/panels/internet.css` |
-| 集成与审查 | Claude | `main` | 下面的热点文件 |
+| 集成与审查 | Claude 集成对话（见 `docs/integrator.md`） | `main` | 下面的热点文件；**只有它合并到 `main`** |
 
-**热点文件只由 Claude 修改**：`src/App.tsx`、`src/hooks/useLayerSettings.ts`、`src/sceneState.ts`、`src/panels/LayerPanel.tsx`、`src/styles.css`、`worker/index.ts`、`tests/e2e/mocks.ts`、`src/internet/types.ts`、`src/internet/data.ts`、`package.json`。需要改这些文件时，在 PR 描述里写清楚要改什么、为什么，由 Claude 来改。
+**热点文件只由 Claude 修改**，清单在 `.github/hotspots.txt`（`src/App.tsx`、`src/internet/types.ts`、`src/internet/data.ts`、`worker/index.ts`、`tests/e2e/mocks.ts`、测试假数据、`package.json` 等）。需要改这些文件时，在 PR 描述里写清楚要改什么、为什么，由 Claude 来改。来自 `codex/*` 分支的 PR 如果改了这些文件，GitHub Actions 的 `ownership` 检查会直接标红。
 
 ## 合并规则
 
@@ -66,7 +81,7 @@
 2. PR 描述里写清楚：做了什么、怎么验证的（命令和结果）、数据来源和许可证的核实结论、已知问题。
 3. 提交前本地必须通过：`npm run typecheck`、`npm test`、`npm run build`。只要动到界面，再跑 `npx playwright test tests/e2e/internet.spec.ts`。
 4. 不要跳过或删除测试来让测试通过；不要改热点文件。
-5. 合并由 Claude 审查后执行。
+5. 合并由 Claude 集成对话审查后执行。Claude 开发对话的改动同样走 PR。
 
 ## 各线的验收标准
 

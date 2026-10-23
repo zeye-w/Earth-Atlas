@@ -1,0 +1,20 @@
+# Files only the Claude integrator changes (docs/internet-layers.md, docs/integrator.md).
+# A pull request from a codex/* branch that touches one of these fails the
+# "ownership" check unless the integrator adds the label "hotspots-approved".
+# One path per line; a trailing / covers a directory.
+src/App.tsx
+src/hooks/useLayerSettings.ts
+src/sceneState.ts
+src/panels/LayerPanel.tsx
+src/styles.css
+src/internet/types.ts
+src/internet/data.ts
+worker/index.ts
+tests/e2e/mocks.ts
+tests/e2e/fixtures/
+package.json
+package-lock.json
+wrangler.jsonc
+.github/hotspots.txt
+.github/workflows/ci.yml
+.github/workflows/pr-guard.yml

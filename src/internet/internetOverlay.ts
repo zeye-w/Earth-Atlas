@@ -4,7 +4,7 @@ import {
 } from "cesium";
 import { now } from "../clock.ts";
 import { flowMaterial, setFlowTime } from "./flowMaterial.ts";
-import { INTERNET_ID_PREFIX, ROOT_LETTERS, type DnsFlow, type LonLat, type RootLetter } from "./types.ts";
+import { INTERNET_ID_PREFIX, ROOT_LETTERS, type DnsFlow, type LonLat, type RootInstance, type RootLetter } from "./types.ts";
 import type { InternetDatasets } from "./data.ts";
 
 /**
@@ -192,8 +192,8 @@ export class InternetOverlay {
     this.viewer.scene.requestRender();
   }
 
-  setRootServers(data: InternetDatasets["rootServers"]): void {
-    this.addPoints("rootServers", data.instances.map((r) => ({ id: INTERNET_ID_PREFIX.rootInstance + r.id, position: r.position, color: ROOT_COLORS[r.letter], size: 5 })));
+  setRootInstances(instances: readonly RootInstance[]): void {
+    this.addPoints("rootServers", instances.map((r) => ({ id: INTERNET_ID_PREFIX.rootInstance + r.id, position: r.position, color: ROOT_COLORS[r.letter], size: 6 })));
     this.viewer.scene.requestRender();
   }
 
