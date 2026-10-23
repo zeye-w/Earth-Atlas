@@ -4,8 +4,13 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Manual run: full e2e, whatever changed.
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -26,10 +31,40 @@ jobs:
         run: find dist -type f | grep -E 'transferTypedArrayTest|approximateTerrainHeights|createVerticesFromHeightmap|createTaskProcessorWorker' || true
       - name: Verify Cesium static asset paths
         run: npm run verify:assets
+  # Decides whether browser tests are needed. Changes made only of Markdown,
+  # docs/ or the internet datasets (public/data/internet/, which e2e replaces
+  # with fixtures) skip them. A manual run always runs them.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ] && [ "$EVENT" != push ] || [ -z "$BASE" ] || [ "$BASE" = 0000000000000000000000000000000000000000 ]; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/compare/$BASE...$HEAD" --jq '.files[].filename' > files.txt
+          cat files.txt
+          # The compare API lists at most 300 files: run everything past that.
+          if [ "$(wc -l < files.txt)" -ge 300 ] || grep -qvE '(\.md$|^docs/|^public/data/internet/)' files.txt; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Only docs or internet data changed: skipping e2e"
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+          fi
   # Browser tests are split across parallel shards (about 4x faster than one
   # runner). Pull requests may merge before these finish: see docs/integrator.md.
   e2e-shard:
     name: e2e (${{ matrix.shard }}/4)
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -45,8 +80,24 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Production build
         run: npm run build
+      # The runner image already has Chromium's system libraries. --with-deps
+      # only added fonts through apt, and that mirror once stalled for 8 min.
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-headless-shell
       - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --only-shell chromium
+      - name: Check Chromium starts (install system libraries only if missing)
+        run: |
+          node -e "require('@playwright/test').chromium.launch().then((b) => b.close())" \
+            || npx playwright install-deps chromium
       - name: End-to-end tests (all external services mocked)
         run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
       - name: Upload Playwright report
@@ -59,10 +110,19 @@ jobs:
             test-results/
           retention-days: 7
   # One stable check name ("e2e") for all shards, for branch protection later.
+  # Passes when e2e was skipped for a docs/data-only change, so it never stays
+  # pending.
   e2e:
     runs-on: ubuntu-latest
-    needs: e2e-shard
+    needs: [changes, e2e-shard]
     if: always()
     steps:
       - name: All e2e shards passed
-        run: test "${{ needs.e2e-shard.result }}" = "success"
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          RUN: ${{ needs.changes.outputs.e2e }}
+          SHARDS: ${{ needs.e2e-shard.result }}
+        run: |
+          test "$CHANGES" = success
+          if [ "$RUN" != true ]; then echo "Skipped: only docs or internet data changed"; exit 0; fi
+          test "$SHARDS" = success
