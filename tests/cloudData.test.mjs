@@ -36,3 +36,15 @@ test('sub-hour observations never come from later in the selected hour', async (
   const dates=['2026-10-19T02:00:00Z','2026-10-19T02:30:00Z'].map(x=>new Date(x));
   assert.equal(cloudFrameAt(dates,Date.parse('2026-10-19T02:05:00Z')).toISOString(),dates[0].toISOString());
 });
+
+test('NASA GIBS live IR fallback uses public Level6 WMTS, not synthetic clouds', async () => {
+  const { NASA_IR_LAYERS, nasaCloudTileUrl, nasaCloudProbeUrl } = await import('../src/cloudData.ts');
+  assert.deepEqual(NASA_IR_LAYERS.map((x) => x.label), ['GOES-East', 'GOES-West', 'Himawari']);
+  for (const sensor of NASA_IR_LAYERS) {
+    const url = nasaCloudTileUrl(sensor.id);
+    assert.match(url, /^https:\/\/gibs\.earthdata\.nasa\.gov\/wmts\/epsg3857\/best\//);
+    assert.ok(url.includes('Band13_Clean_Infrared'));
+    assert.match(url, /default\/default\/GoogleMapsCompatible_Level6\/\{z\}\/\{y\}\/\{x\}\.png$/);
+    assert.equal(nasaCloudProbeUrl(sensor.id), url.replace('{z}/{y}/{x}', '0/0/0'));
+  }
+});

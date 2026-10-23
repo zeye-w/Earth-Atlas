@@ -14,7 +14,7 @@ interface Props {
   setLayer: (key: keyof LayerToggles, value: boolean) => void;
   options: LayerOptions;
   setOption: <K extends keyof LayerOptions>(key: K, value: LayerOptions[K]) => void;
-  clouds: { status: string; time: string | null };
+  clouds: { status: string; time: string | null; fallbackSensors?: string[] };
   aurora: AuroraStatus;
   geomagnetic: Polled<GeomagneticState>;
   /** False while the timeline shows another moment. */
@@ -49,16 +49,17 @@ export function EarthViewGroup({ layers, setLayer, options, setOption, clouds, a
           <p className="layer-note">极轨卫星一天内多次过境拼接而成，云是各地卫星过境时刻的云；轨道间的缝隙和极夜区域显示下方底图。当天影像仍在补全，因此"实时"时显示前一天。</p>
         </div>
       )}
-      <ToggleRow icon={<Cloud {...ICON} />} title="卫星云图（红外）" caption="SSEC 多卫星全球合成 · 逐小时观测" checked={layers.clouds} onChange={(v) => setLayer("clouds", v)} />
+      <ToggleRow icon={<Cloud {...ICON} />} title="卫星云图（红外）" caption="SSEC 全球合成 · NASA 区域红外备用" checked={layers.clouds} onChange={(v) => setLayer("clouds", v)} />
       {layers.clouds && <div className="cloud-controls">
-        <p className="thematic-note" role="status">{clouds.status === "loading" ? (clouds.time ? "正在更新云图 · 当前显示 " + clouds.time : "正在读取卫星云图…") :
-          clouds.status === "error" ? (clouds.time ? "云图更新失败 · 保留观测 " + clouds.time : "云图加载失败，请稍后重试。") :
-          clouds.status === "nodata" ? (live ? "暂无 6 小时内的云图观测。" : "这一时刻没有云图：只保留最近约 30 天的逐小时观测，未来时刻也没有。") :
+        <p className="thematic-note" role="status">{clouds.status === "fallback" ? "SSEC 全球合成暂不可用。当前显示 NASA GIBS 区域红外影像（" + (clouds.fallbackSensors?.join("、") ?? "地球静止卫星") + "）；非全球覆盖、各卫星观测时间可能不同，历史回看不使用该备用图层。" :
+          clouds.status === "loading" ? (clouds.time ? "正在更新云图 · 当前显示 " + clouds.time : "正在尝试卫星云图数据源…") :
+          clouds.status === "error" ? (clouds.time ? "云图更新失败 · 保留观测 " + clouds.time : "卫星云图数据源暂不可用；未显示模拟云图。关闭再开启可重试。") :
+          clouds.status === "nodata" ? (live ? "暂无 6 小时内的全球红外云图观测，备用图层可能仅覆盖部分区域。" : "这一时刻没有云图：SSEC 只保留最近约 30 天观测，备用区域卫星图不用于历史回看。") :
           "观测时间 " + (clouds.time ?? "—") + (live ? "" : " · 跟随时间轴")}</p>
         <label className="opacity-head" htmlFor="cloud-opacity"><span>云图不透明度</span><span>{options.cloudOpacity}%</span></label>
         <input id="cloud-opacity" type="range" min="10" max="100" step="5" value={options.cloudOpacity} onChange={(event) => setOption("cloudOpacity", Number(event.target.value))} />
-        <p className="thematic-note">亮白通常表示较冷云顶；包含地表信号，并非精确云掩膜。极区与拼接处可能有误差。免费服务可能显示水印。</p>
-        <a href="https://www.ssec.wisc.edu/realearth/" target="_blank" rel="noreferrer">数据：SSEC / UW–Madison</a>
+        <p className="thematic-note">亮白通常表示较冷云顶；包含地表信号，并非精确云掩膜。SSEC 为全球合成，备用 NASA GOES/Himawari 为非全球覆盖的原始红外图层，可能出现覆盖缺口与拼接边界。</p>
+        <a href={clouds.status === "fallback" ? "https://gibs.earthdata.nasa.gov/" : "https://www.ssec.wisc.edu/realearth/"} target="_blank" rel="noreferrer">{clouds.status === "fallback" ? "数据：NASA GIBS / GOES / Himawari" : "数据：SSEC / UW–Madison"}</a>
       </div>}
       <ToggleRow icon={<Lightbulb {...ICON} />} title="城市夜光" caption={layers.dayNight ? "NASA Black Marble 卫星夜光 · 仅夜侧" : "需开启实时昼夜光照"} checked={layers.lights} onChange={(v) => setLayer("lights", v)} />
       <ToggleRow icon={<Sparkles {...ICON} />} title="极光" caption="NOAA OVATION 实时预报 · 南北半球 · 夜侧可见" checked={layers.aurora} onChange={(v) => setLayer("aurora", v)} />

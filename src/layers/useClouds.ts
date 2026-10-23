@@ -1,132 +1,81 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Credit, UrlTemplateImageryProvider, type ImageryLayer, type Viewer } from "cesium";
-import { CLOUD_MAX_AGE_MS, CLOUD_REFRESH_MS, cloudBlend, cloudFrameAt, cloudTileUrl, fetchCloudCatalog } from "../cloudData";
+import type { Viewer } from "cesium";
+import { CLOUD_MAX_AGE_MS, CLOUD_REFRESH_MS, NASA_IR_LAYERS, cloudFrameAt, cloudTileUrl, fetchCloudCatalog, nasaCloudProbeUrl, nasaCloudTileUrl } from "../cloudData";
+import { CloudImagery, type CloudImageState } from "../cloudImagery";
 import { usePolledData } from "../hooks/usePolledData";
 import { useTimeSelector } from "../hooks/useTimeline";
 import { beginWork } from "../pendingWork";
 import type { TimeController } from "../timeline";
 
-// Coarser tiles while the timeline replays: a new frame every second would
-// otherwise pull a full set of detailed tiles each time.
-const MAX_LEVEL = 5;
-const PLAYING_MAX_LEVEL = 3;
+export type CloudStatus = "idle" | "loading" | "ready" | "error" | "nodata" | "fallback";
+const EMPTY: CloudImageState={source:null,time:null,sensors:[],loading:false,error:false};
 
-export type CloudStatus = "idle" | "loading" | "ready" | "error" | "nodata";
-
-/**
- * SSEC infrared cloud composite, following the timeline: live shows the
- * latest hour, any other moment the hourly frame for it (about 30 days are
- * kept). Every tile of a frame is pinned to the same observed hour. A new
- * frame loads above the old one, which is removed once the globe has
- * finished loading, so replay does not flash.
- */
+/** Preserve the displayed source until its replacement has actually loaded. */
 export function useClouds(viewer: Viewer | null, visible: boolean, opacity: number, timeline: TimeController) {
-  const layersRef = useRef<{ layer: ImageryLayer; key: string }[]>([]);
-  const opacityRef = useRef(opacity);
-  opacityRef.current = opacity;
-  const [tileError, setTileError] = useState(false);
-  const [displayedTime, setDisplayedTime] = useState<number | null>(null);
-  const [tilesLoading, setTilesLoading] = useState(false);
-  const poll = usePolledData(fetchCloudCatalog, { enabled: visible && viewer !== null, intervalMs: CLOUD_REFRESH_MS, refreshOnVisible: true, keepDataOnError: true });
-  const live = useTimeSelector(timeline, (s) => s.live);
-  const playing = useTimeSelector(timeline, (s) => s.playing);
-  const selectedTime = useTimeSelector(timeline, (s) => cloudFrameAt(poll.data ?? [], s.time)?.getTime() ?? null);
-  const minute = useTimeSelector(timeline, (s) => Math.floor(s.time / 60_000));
+  const managerRef=useRef<CloudImagery | null>(null);
+  const probeRef=useRef<AbortController | null>(null);
+  const [image,setImage]=useState<CloudImageState>(EMPTY);
+  const poll=usePolledData(fetchCloudCatalog,{enabled:visible && viewer!==null,intervalMs:CLOUD_REFRESH_MS,refreshOnVisible:true,keepDataOnError:true});
+  const live=useTimeSelector(timeline,s=>s.live);
+  const playing=useTimeSelector(timeline,s=>s.playing);
+  const selectedTime=useTimeSelector(timeline,s=>cloudFrameAt(poll.data ?? [],s.time)?.getTime() ?? null);
+  const minute=useTimeSelector(timeline,s=>Math.floor(s.time/60_000));
+  const frameTimestamp=useMemo(()=>{
+    if(!live)return selectedTime;
+    const latest=poll.data?.at(-1)?.getTime();
+    return latest!==undefined && Date.now()-latest<=CLOUD_MAX_AGE_MS ? latest : null;
+  },[poll.data,live,selectedTime,minute]);
 
-  const frameTimestamp = useMemo(() => {
-    const times = poll.data;
-    if (!times || times.length === 0) return null;
-    if (live) {
-      const latest = times[times.length - 1];
-      return Date.now() - latest.getTime() <= CLOUD_MAX_AGE_MS ? latest.getTime() : null;
+  useEffect(()=>{
+    if(!viewer)return;
+    const manager=new CloudImagery(viewer,setImage);managerRef.current=manager;
+    return ()=>{probeRef.current?.abort();manager.dispose();managerRef.current=null;};
+  },[viewer]);
+
+  useEffect(()=>{
+    const manager=managerRef.current;
+    if(!viewer || !manager)return;
+    let active=true;
+    const controller=new AbortController();
+    probeRef.current=controller;
+    if(!visible || (!live && frameTimestamp===null)) {
+      manager.clear();return ()=>{active=false;controller.abort();};
     }
-    return selectedTime;
-  }, [poll.data, live, selectedTime, minute]);
-  const frame = useMemo(() => frameTimestamp === null ? null : new Date(frameTimestamp), [frameTimestamp]);
-
-  useEffect(() => {
-    if (!viewer) return;
-    const clear = () => {
-      if (!viewer.isDestroyed()) for (const { layer } of layersRef.current) viewer.imageryLayers.remove(layer, true);
-      layersRef.current = [];
-      if (!viewer.isDestroyed()) viewer.scene.requestRender();
+    if(!live && manager.hasSource("nasa"))manager.clear();
+    const fallback=async()=>{
+      if(!active || !live || manager.hasSource("nasa") || controller.signal.aborted)return;
+      manager.setLoading();
+      const done=beginWork();
+      // Aborting a superseded attempt must release recording's pending work immediately.
+      controller.signal.addEventListener("abort",done,{once:true});
+      try {
+        const available=await Promise.all(NASA_IR_LAYERS.map(async sensor=>{
+          try {
+            const response=await fetch(nasaCloudProbeUrl(sensor.id),{signal:AbortSignal.any([controller.signal,AbortSignal.timeout(12_000)])});
+            if(!response.ok || !/^image\/png/i.test(response.headers.get("content-type") ?? ""))return null;
+            const bytes=new Uint8Array(await response.arrayBuffer());
+            if(bytes.length<100 || bytes[0]!==137 || bytes[1]!==80 || bytes[2]!==78 || bytes[3]!==71)return null;
+            // Header alone cannot establish that the image will decode in Cesium.
+            const decoded=await createImageBitmap(new Blob([bytes],{type:"image/png"}));decoded.close();
+            return sensor;
+          }catch{return null;}
+        }));
+        if(!active || controller.signal.aborted || viewer.isDestroyed())return;
+        const sensors=available.filter((s):s is (typeof NASA_IR_LAYERS)[number]=>s!==null);
+        if(!sensors.length){manager.setError();return;}
+        manager.load({key:"nasa",source:"nasa",time:null,sensors:sensors.map(s=>s.label),maximumLevel:playing?3:5,
+          tiles:sensors.map(s=>({url:nasaCloudTileUrl(s.id),credit:`Cloud-top infrared: NASA GIBS / ${s.label}. Regional satellite coverage only.`}))},()=>manager.setError());
+      }finally{done();controller.signal.removeEventListener("abort",done);}
     };
-    if (!visible || !frame) { clear(); setDisplayedTime(null); setTilesLoading(false); setTileError(false); return; }
-    const maxLevel = playing ? PLAYING_MAX_LEVEL : MAX_LEVEL;
-    const key = frame.getTime() + "@" + maxLevel;
-    const layers = layersRef.current;
-    if (layers.at(-1)?.key === key) return;
-    // Keep at most the shown frame plus one loading: replace a frame that
-    // has not finished loading yet.
-    if (layers.length > 1) {
-      const pending = layers.pop()!;
-      viewer.imageryLayers.remove(pending.layer, true);
-    }
-    const provider = new UrlTemplateImageryProvider({
-      url: cloudTileUrl(frame), maximumLevel: maxLevel,
-      credit: new Credit('<a href="https://www.ssec.wisc.edu/realearth/" target="_blank" rel="noopener noreferrer">Cloud imagery: SSEC / UW–Madison RealEarth</a>'),
-    });
-    const layer = viewer.imageryLayers.addImageryProvider(provider);
-    // Gentle display contrast only; retain original infrared pixels and alpha.
-    layer.contrast = 1.12;
-    layer.gamma = 0.95;
-    const previous = layersRef.current.at(-1)?.layer;
-    const applyOpacity = () => {
-      const blend = cloudBlend(opacityRef.current, Boolean(previous));
-      layer.alpha = previous ? blend.incoming : blend.shown;
-      if (previous && !previous.isDestroyed()) previous.alpha = blend.shown;
-    };
-    applyOpacity();
-    layersRef.current = [...layersRef.current, { layer, key }];
-    setTileError(false);
-    setTilesLoading(true);
-    const done = beginWork();
-    let active = true;
-    let removeListener = () => {};
-    const retire = () => { active = false; removeListener(); window.clearTimeout(timer); done(); };
-    const fail = () => {
-      if (!active || viewer.isDestroyed()) return;
-      retire();
-      if (layersRef.current.at(-1)?.layer !== layer) return;
-      viewer.imageryLayers.remove(layer, true);
-      layersRef.current = layersRef.current.filter(item => item.layer !== layer);
-      if (previous && !previous.isDestroyed()) previous.alpha = opacityRef.current / 100;
-      setTileError(true);
-      setTilesLoading(false);
-      viewer.scene.requestRender();
-    };
-    const removeError = provider.errorEvent.addEventListener(fail);
-    const timer = window.setTimeout(fail, 60_000);
-    removeListener = viewer.scene.postRender.addEventListener(() => {
-      if (!active || !viewer.scene.globe.tilesLoaded) return;
-      retire();
-      if (layersRef.current.at(-1)?.layer !== layer) return;
-      const current = layersRef.current;
-      layer.alpha = opacityRef.current / 100;
-      for (const old of current.slice(0, -1)) viewer.imageryLayers.remove(old.layer, true);
-      layersRef.current = current.slice(-1);
-      setDisplayedTime(frame.getTime());
-      setTilesLoading(false);
-      viewer.scene.requestRender();
-    });
-    viewer.scene.requestRender();
-    return () => { retire(); removeError(); };
+    if(frameTimestamp!==null) {
+      manager.load({key:`ssec:${frameTimestamp}:${playing?3:5}`,source:"ssec",time:frameTimestamp,sensors:[],maximumLevel:playing?3:5,
+        tiles:[{url:cloudTileUrl(new Date(frameTimestamp)),credit:'<a href="https://www.ssec.wisc.edu/realearth/" target="_blank" rel="noopener noreferrer">Cloud imagery: SSEC / UW–Madison RealEarth</a>'}]},()=>{if(active)void fallback();});
+    } else if(live && (poll.status==="ready" || poll.status==="error"))void fallback();
+    return ()=>{active=false;controller.abort();};
+  },[viewer,visible,live,frameTimestamp,poll.data,poll.status,playing]);
 
-  }, [viewer, visible, frame, playing]);
-
-  useEffect(() => () => {
-    if (viewer && !viewer.isDestroyed()) for (const { layer } of layersRef.current) viewer.imageryLayers.remove(layer, true);
-    layersRef.current = [];
-  }, [viewer]);
-
-  useEffect(() => {
-    const layers = layersRef.current;
-    const blend = cloudBlend(opacity, layers.length > 1);
-    layers.forEach(({ layer }, index) => { layer.alpha = index === 0 ? blend.shown : blend.incoming; });
-    viewer?.scene.requestRender();
-  }, [viewer, opacity]);
-
-  const status: CloudStatus = tileError ? "error" : tilesLoading ? "loading" : poll.status === "ready" && !frame ? "nodata" : poll.status;
-  const time = displayedTime !== null ? new Date(displayedTime).toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
-  return { status, time };
+  useEffect(()=>{managerRef.current?.setOpacity(opacity);},[viewer,opacity]);
+  const status: CloudStatus=!visible?"idle":image.error?"error":image.source==="nasa"?"fallback":image.loading?"loading":image.source==="ssec"?"ready":poll.status==="ready" && frameTimestamp===null?"nodata":poll.status;
+  const time=image.time===null?null:new Date(image.time).toISOString().slice(0,16).replace("T"," ")+" UTC";
+  return {status,time,fallbackSensors:image.sensors};
 }

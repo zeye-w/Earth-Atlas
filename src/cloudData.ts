@@ -1,3 +1,24 @@
+/** Public NASA GIBS geostationary 10.3 μm cloud-top IR composites.
+ * Each sensor covers only its own geostationary disk, NOT the whole Earth.
+ * Used only when the SSEC global composite is unavailable and only in live mode.
+ * NASA GIBS WMTS docs: https://nasa-gibs.github.io/gibs-api-docs/access-basics/
+ */
+export const NASA_IR_LAYERS = [
+  { id: "GOES-East_ABI_Band13_Clean_Infrared", label: "GOES-East" },
+  { id: "GOES-West_ABI_Band13_Clean_Infrared", label: "GOES-West" },
+  { id: "Himawari_AHI_Band13_Clean_Infrared", label: "Himawari" },
+] as const;
+
+export function nasaCloudTileUrl(id: (typeof NASA_IR_LAYERS)[number]["id"]): string {
+  // The second "default" means the current/latest time according to the
+  // provider. It does not mean simultaneous observations among satellites.
+  return `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${id}/default/default/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
+}
+
+export function nasaCloudProbeUrl(id: (typeof NASA_IR_LAYERS)[number]["id"]): string {
+  return nasaCloudTileUrl(id).replace("{z}/{y}/{x}", "0/0/0");
+}
+
 // SSEC multi-satellite hourly infrared composite. This is imagery, not a cloud mask.
 // RealEarth keeps about 30 days of hourly frames (verified by the live smoke
 // test), so the timeline can show the frame for any moment it reaches.
