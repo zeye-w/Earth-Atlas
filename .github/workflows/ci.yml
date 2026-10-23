@@ -4,9 +4,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  # Full e2e on main every night (02:30 Beijing time), whatever changed.
-  schedule:
-    - cron: "30 18 * * *"
+  # Manual run: full e2e, whatever changed.
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,7 +33,7 @@ jobs:
         run: npm run verify:assets
   # Decides whether browser tests are needed. Changes made only of Markdown,
   # docs/ or the internet datasets (public/data/internet/, which e2e replaces
-  # with fixtures) skip them. The nightly and manual runs always run them.
+  # with fixtures) skip them. A manual run always runs them.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
