@@ -18,7 +18,8 @@ import {
 } from "cesium";
 import type { SceneState } from "../sceneState";
 
-export const HOME_VIEW = Cartesian3.fromDegrees(58, 19, 17000000);
+// Western Europe, near northern France; shared by first load and reset view.
+export const HOME_VIEW = Cartesian3.fromDegrees(2, 48, 17000000);
 
 // Fade out the static splash from index.html once the first globe tiles are in.
 function dismissSplash() {
