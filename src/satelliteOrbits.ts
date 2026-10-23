@@ -124,6 +124,23 @@ export function orbitPath(record: OrbitRecord, now: Date, durationMinutes = 90, 
   }
   return points;
 }
+/**
+ * A path from orbitPath (sampled from `pathStart` every `stepMinutes`) with
+ * the stretch around `now` resampled every `fineStepMs`, so the line passes
+ * through the satellite in close-up: straight 30 s chords of a LEO orbit sag
+ * up to about 1 km, ten times a station's size.
+ */
+export function refinePath(record: OrbitRecord, path: readonly OrbitalPosition[], pathStart: Date, stepMinutes: number, now: Date, windowMs = 60_000, fineStepMs = 1_000): OrbitalPosition[] {
+  const t = now.getTime();
+  const timeOf = (index: number) => pathStart.getTime() + index * stepMinutes * 60_000;
+  const fine: OrbitalPosition[] = [];
+  for (let offset = -windowMs; offset <= windowMs; offset += fineStepMs) {
+    const point = positionAt(record, new Date(t + offset));
+    if (!point) return [...path];
+    fine.push(point);
+  }
+  return [...path.filter((_, i) => timeOf(i) < t - windowMs), ...fine, ...path.filter((_, i) => timeOf(i) > t + windowMs)];
+}
 export function formatEpoch(epoch: Date): string {
   return epoch.toISOString().replace("T", " ").slice(0, 16) + " UTC";
 }

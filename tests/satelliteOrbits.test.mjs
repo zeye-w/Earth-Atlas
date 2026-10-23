@@ -10,6 +10,7 @@ import {
   convertGPRecords,
   positionAt,
   orbitPath,
+  refinePath,
   formatEpoch,
 } from "../src/satelliteOrbits.ts";
 import { SATELLITE_MAX_DISPLAY, SATELLITE_PATH_UPDATE_MS, SATELLITE_MIN_FPS, SATELLITE_MAX_FPS, satelliteFrameRate } from "../src/satelliteOverlay.ts";
@@ -89,6 +90,31 @@ test("orbit paths have bounded samples and genuine time evolution", () => {
   assert.ok(points.every((p) => p.altitudeKm > 200));
   assert.deepEqual(orbitPath(rec, atEpoch, 0), []);
   assert.deepEqual(orbitPath(rec, atEpoch, 150), []);
+});
+
+test("close up, the refined path passes through the satellite between coarse samples", () => {
+  const rec = { choice: SATELLITE_CHOICES[0], epoch: atEpoch, satrec: json2satrec(sample) };
+  // Spherical Earth is enough to compare points metres apart.
+  const xyz = (p) => { const r = 6_371_000 + p.altitudeKm * 1000; return [r * Math.cos(p.latitudeRad) * Math.cos(p.longitudeRad), r * Math.cos(p.latitudeRad) * Math.sin(p.longitudeRad), r * Math.sin(p.latitudeRad)]; };
+  const offLine = (point, line) => {
+    const p = xyz(point);
+    let best = Infinity;
+    for (let i = 0; i + 1 < line.length; i++) {
+      const a = xyz(line[i]), b = xyz(line[i + 1]);
+      const ab = b.map((v, k) => v - a[k]), ap = p.map((v, k) => v - a[k]);
+      const t = Math.max(0, Math.min(1, ap.reduce((s, v, k) => s + v * ab[k], 0) / ab.reduce((s, v) => s + v * v, 0)));
+      best = Math.min(best, Math.hypot(...ap.map((v, k) => v - t * ab[k])));
+    }
+    return best;
+  };
+  const coarse = orbitPath(rec, atEpoch);
+  const start = new Date(atEpoch.getTime() - 45 * 60_000);
+  const between = new Date(atEpoch.getTime() + 15_000); // mid-way between 30 s samples
+  const here = positionAt(rec, between);
+  assert.ok(offLine(here, coarse) > 300, "straight 30 s chords miss the satellite by hundreds of metres");
+  const refined = refinePath(rec, coarse, start, 0.5, between);
+  assert.ok(offLine(here, refined) < 1, "refined path within a metre");
+  assert.equal(refined.length, coarse.length - 4 + 121);
 });
 
 test("stale data never displays as current orbit, and API IDs are not invented", () => {

@@ -1,5 +1,6 @@
 import {
   ArcType,
+  CallbackProperty,
   Cartesian2,
   Cartesian3,
   Color,
@@ -17,12 +18,17 @@ import {
 import { SatelliteModelOverlay } from "./satelliteModelOverlay.ts";
 import type { SatelliteModelStatus } from "./satelliteModels.ts";
 import { LABEL_FONT } from "./labelFont.ts";
-import { elementsValidAt, orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
+import { elementsValidAt, orbitPath, positionAt, refinePath, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
 import { telemetryAt, type Observer, type Telemetry } from "./satelliteTelemetry.ts";
 import { now } from "./clock.ts";
 
 // Ground-fixed forecast path is recomputed after this much simulated time.
 export const SATELLITE_PATH_UPDATE_MS = 120_000;
+const PATH_MINUTES = 90;
+const PATH_STEP_MINUTES = 0.5;
+// Closer than this the stretch around the satellite is resampled every second
+// and redrawn with it (see refinePath), so it stays on the line in close-up.
+export const SATELLITE_PATH_REFINE_DISTANCE_M = 1_000_000;
 export const SATELLITE_MAX_DISPLAY = 6;
 // Positions are re-propagated continuously, but only as often as the motion
 // is visible on screen: a few frames per second at globe scale (real-time
@@ -76,6 +82,10 @@ interface MarkerPair {
   path: Entity;
   position: ConstantPositionProperty;
   axis: ConstantProperty;
+  coarse: OrbitalPosition[];
+  pathStart: Date;
+  // Refined positions, read by a CallbackProperty while the camera is close.
+  live: Cartesian3[] | null;
 }
 
 export class SatelliteOverlay {
@@ -147,7 +157,7 @@ export class SatelliteOverlay {
           distanceDisplayCondition: new DistanceDisplayCondition(0, 55_000_000),
         },
       });
-      this.pairs.push({ record, marker, path, position, axis });
+      this.pairs.push({ record, marker, path, position, axis, coarse: [], pathStart: now, live: null });
     }
     this.update(true);
     this.frameHandle = requestAnimationFrame(this.onFrame);
@@ -212,10 +222,12 @@ export class SatelliteOverlay {
         }
       }
       if (valid && updatePaths && this.showPaths) {
-        const points = orbitPath(pair.record, now);
-        pair.path.polyline!.positions = new ConstantProperty(points.map((point) => toCartesian(point)));
-        pair.path.show = points.length > 1;
+        pair.coarse = orbitPath(pair.record, now, PATH_MINUTES, PATH_STEP_MINUTES);
+        pair.pathStart = new Date(now.getTime() - (PATH_MINUTES / 2) * 60_000);
+        if (!pair.live) pair.path.polyline!.positions = new ConstantProperty(pair.coarse.map((point) => toCartesian(point)));
+        pair.path.show = pair.coarse.length > 1;
       }
+      if (valid && this.showPaths && pos && pair.coarse.length > 1) this.refinePath(pair, now);
     }
     if(this.modelOverlay && this.modelTarget){
       const pair=this.pairs.find(p=>p.record.choice.id===this.modelTarget);
@@ -225,6 +237,21 @@ export class SatelliteOverlay {
     }
     if (updatePaths) this.lastPathSimMs = now.getTime();
     this.viewer.scene.requestRender();
+  }
+
+  /** Swap the path to a per-update resampled one near the camera, and back. */
+  private refinePath(pair: MarkerPair, now: Date): void {
+    const near = Cartesian3.distance(this.viewer.camera.positionWC, pair.position.getValue()!) < SATELLITE_PATH_REFINE_DISTANCE_M;
+    if (near) {
+      const refined = refinePath(pair.record, pair.coarse, pair.pathStart, PATH_STEP_MINUTES, now).map((point) => toCartesian(point));
+      // A CallbackProperty keeps the polyline dynamic: no asynchronous
+      // geometry rebuild (and flicker) on every update.
+      if (!pair.live) pair.path.polyline!.positions = new CallbackProperty(() => pair.live, false);
+      pair.live = refined;
+    } else if (pair.live) {
+      pair.live = null;
+      pair.path.polyline!.positions = new ConstantProperty(pair.coarse.map((point) => toCartesian(point)));
+    }
   }
 
   setSelected(id: string | null): void {
