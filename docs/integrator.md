@@ -11,17 +11,18 @@
 
 各对话之间不共享上下文。沟通靠：本文档、`docs/internet-layers.md`（协作文档，先读它）、PR 描述和 PR 评论。项目所有者（用户）会在窗口之间转达消息。
 
-## 当前进度（2026-10-23，由开发对话写）
+## 当前进度（2026-10-23，由集成对话更新）
 
 | 项 | 状态 |
 | --- | --- |
-| 骨架、数据格式（`src/internet/types.ts`、`data.ts`） | 已在 main |
-| 渲染：光缆辉光和流动脉冲、DNS 查询飞行光点 | 已在 main |
-| [PR #17](https://github.com/zeye-w/Earth-Atlas/pull/17) RIPE Atlas 实测 DNS 查询 | 已合并 |
-| [PR #16](https://github.com/zeye-w/Earth-Atlas/pull/16) 开放数据管线（OSM 光缆和数据中心、Wikidata 交换中心） | 已合并 |
-| 分支 `claude/internet-polish`：去掉推断的"登陆站"、根服务器图层改从实测查询取实例、署名更新、本 CI 改动和本文档 | **等你审查合并，作为你接手后的第一个任务**（PR 由开发对话开好） |
-| `codex/dns-roots`（Codex 2）：Worker 改为实时读取 root-servers.org | 进行中。合并后线上的 DNS 实测查询和根服务器图层才会有数据 |
-| D 线（界面完善） | 还没分配。等 Codex 1 空下来，由你写任务书派给它（按 `docs/codex/README.md` 的模板） |
+| 骨架、数据格式、渲染（光缆脉冲、DNS 飞行光点） | 已在 main |
+| [#16](https://github.com/zeye-w/Earth-Atlas/pull/16) 开放数据管线、[#17](https://github.com/zeye-w/Earth-Atlas/pull/17) RIPE Atlas 实测 DNS 查询 | 已合并 |
+| [#19](https://github.com/zeye-w/Earth-Atlas/pull/19) 去掉推断登陆站、根实例改从实测取、热点守卫；[#20](https://github.com/zeye-w/Earth-Atlas/pull/20) 守卫从 base 读清单、冒烟测试 pipefail | 已合并 |
+| [#18](https://github.com/zeye-w/Earth-Atlas/pull/18) Worker 读取 root-servers.org（squash 合并，避免真实数据样本进入历史） | 已合并 |
+| [#22](https://github.com/zeye-w/Earth-Atlas/pull/22) Worker 入口把 `ctx` 传给 DNS 处理（热点文件） | 待审查 |
+| [#23](https://github.com/zeye-w/Earth-Atlas/pull/23) OSM 光缆按共用节点合并、首尾拼接 | 已合并，数据已在 main 上重新生成 |
+| [#24](https://github.com/zeye-w/Earth-Atlas/pull/24) 互联网图层收尾：性能验收和文档 | 审查通过 |
+| [#25](https://github.com/zeye-w/Earth-Atlas/pull/25) D 线界面（Codex 1）：图例、来源、手机信息卡 | 待审查 |
 
 ## 审查清单
 

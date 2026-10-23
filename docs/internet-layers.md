@@ -5,7 +5,7 @@
 ## 目标
 
 在地球上叠加五个图层：
-- 海底光缆和登陆站
+- 海底光缆（OSM 没有登陆站标注，不发布登陆站）
 - 互联网交换中心（IXP）
 - 数据中心（互联设施）
 - DNS 根服务器的任播实例
@@ -35,9 +35,9 @@ PeeringDB / TeleGeography / root-servers.org 的适配代码保留在 `scripts/i
 | 解析与校验 | `src/internet/data.ts` | 定稿。生产方用这些解析器测试自己的输出 |
 | 渲染 | `src/internet/internetOverlay.ts`、`flowMaterial.ts` | 完成：光缆辉光与流动脉冲、年份滑块、DNS 查询飞行光点 |
 | 图层 hook | `src/layers/useInternet.ts` | 可用：按需加载，DNS 流每 5 分钟刷新 |
-| 图层面板 | `src/panels/InternetGroup.tsx` | 占位：开关和状态行（D 线完善） |
-| 信息卡 | `src/panels/InternetCard.tsx`、`src/panels/internet.css` | 占位（D 线完善） |
-| Worker 接口 | `worker/ripeAtlas.ts`，路由 `/api/internet/dns-flows` | 完成（PR #17）；改为实时读取 root-servers.org 进行中（`codex/dns-roots`） |
+| 图层面板 | `src/panels/InternetGroup.tsx` | D 线进行中（Codex 1，PR #25）：图例、数据来源折叠区 |
+| 信息卡 | `src/panels/InternetCard.tsx`、`src/panels/internet.css` | D 线进行中（Codex 1，PR #25）：坐标来源标记、手机布局 |
+| Worker 接口 | `worker/ripeAtlas.ts`，路由 `/api/internet/dns-flows` | 完成（PR #17、#18）：根实例在服务端读取 root-servers.org，缓存 24 小时 |
 | 数据管线 | `scripts/internet/`、`public/data/internet/` | 完成（PR #16）：光缆、数据中心、交换中心三个开放数据文件 |
 | 实测根实例 | `src/internet/measuredRoots.ts` | 完成：根服务器图层从实测查询取实例 |
 | 测试假数据 | `tests/e2e/fixtures/internet/*.json` | 合成数据，不是真实基础设施 |
@@ -87,15 +87,15 @@ PeeringDB / TeleGeography / root-servers.org 的适配代码保留在 `scripts/i
 ## 各线的验收标准
 
 **A 数据管线**
-- 四个文件都通过解析器，条目一个不丢，大小在上限内。
-- 数量合理：光缆 > 400 条，登陆站 > 1000 个，IXP > 500 个，设施 > 2000 个；根服务器 13 个字母齐全，实例 > 1000 个。
+- 三个开放数据文件（光缆、数据中心、交换中心）都通过解析器，条目一个不丢，大小在上限内。不发布登陆站和根服务器文件（见"数据源"）。
+- 数量以开放数据实际覆盖为准，如实报告（2026-10-23：光缆约 1200 条、设施约 5000 个、IXP 35 个），不设人为下限；质量报告里的数字写进 PR。
 - 每周自动更新数据的 Action 能手动触发并成功运行。
 - PR 里附各数据源当前许可条款的原文链接和结论。
 
 **B 渲染**（Claude）
 - 光缆带辉光并沿线流动，节点远看聚合、拉近展开，点击能拾取。
-- 光缆随时间轴按投产年份显示；DNS 查询画成从探针飞到实例再返回的光点，飞行速度按实测延迟。
-- 全部图层同时打开时，帧率和现在相比没有明显下降。
+- 带投产年份的光缆超过三成时才显示年份滑块（OSM 目前不到 2%，所以不显示）；DNS 查询画成从探针飞到实例再返回的光点，飞行速度按实测延迟。
+- 全部图层同时打开时，帧率和现在相比没有明显下降（PR #24 已验收：软件渲染下每帧约多 18%）。
 
 **C 实测 DNS 查询流**
 - `/api/internet/dns-flows` 返回能通过 `parseDnsFlowSnapshot` 的数据，`flows` 至少几百条，覆盖多个字母。
