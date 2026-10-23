@@ -1,0 +1,52 @@
+[
+  {
+    "prb_id": 7171,
+    "timestamp": 1792743785,
+    "msm_id": 10311,
+    "af": 4,
+    "result": {
+      "rt": 31.083,
+      "size": 82,
+      "abuf": "SzeEAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGRhwYXIxYS5jLnJvb3Qtc2VydmVycy5vcmfADAACAAMAAAAAAALADA==",
+      "ID": 19255,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "par1a.c.root-servers.org"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 6664,
+    "timestamp": 1792743860,
+    "msm_id": 10311,
+    "af": 4,
+    "result": {
+      "rt": 62.096,
+      "size": 82,
+      "abuf": "6E+EAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGRhmcmExYS5jLnJvb3Qtc2VydmVycy5vcmfADAACAAMAAAAAAALADA==",
+      "ID": 59471,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "fra1a.c.root-servers.org"
+          ]
+        }
+      ]
+    }
+  }
+]

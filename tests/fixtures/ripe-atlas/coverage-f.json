@@ -1,0 +1,52 @@
+[
+  {
+    "prb_id": 7171,
+    "timestamp": 1792743721,
+    "msm_id": 10304,
+    "af": 4,
+    "result": {
+      "rt": 8.463,
+      "size": 69,
+      "abuf": "RFyEAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAADwAGhlPU0wuY2YuZi5yb290LXNlcnZlcnMub3Jn",
+      "ID": 17500,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "OSL.cf.f.root-servers.org"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 6664,
+    "timestamp": 1792743801,
+    "msm_id": 10304,
+    "af": 4,
+    "result": {
+      "rt": 0.448,
+      "size": 82,
+      "abuf": "oFKEAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGRh0bHYxZi5mLnJvb3Qtc2VydmVycy5vcmfADAACAAMAAAAAAALADA==",
+      "ID": 41042,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "tlv1f.f.root-servers.org"
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {selectProbes,probeContinent,PROBE_LIMIT} from '../worker/ripeAtlas/probes.ts';
 import {ROOT_LETTERS} from '../src/internet/types.ts';
-import {DNS_MEASUREMENTS,identifierParsers,matchInstance,buildSnapshot} from '../src/internet/dnsFlows.ts';
+import {DNS_MEASUREMENTS,identifierParsers,matchInstance,buildSnapshot,parseALocation,parseJLocation,parseE} from '../src/internet/dnsFlows.ts';
 import {parseDnsFlowSnapshot} from '../src/internet/data.ts';
 import {parseRootSites} from '../worker/ripeAtlas/roots.ts';
 import {createDnsFlowsHandler} from '../worker/ripeAtlas.ts';
@@ -51,7 +52,7 @@ function harness(){
  calls++;assert.equal(options.headers['User-Agent'],'Earth-Atlas (+https://github.com/zeye-w/Earth-Atlas)');
  if(url.startsWith('https://root-servers.org/')){rootCalls++;return rootFail?new Response('',{status:502}):Response.json(rootFixtures[url.match(/root\/([A-M])/)[1].toLowerCase()]);}
  if(fail)return new Response('',{status:502});
- if(url.includes('/probes/'))return Response.json({results:probeFixture.filter((_,i)=>i%8===['US','BR','ZA','DE','IN','JP','AU','NL'].indexOf(new URL(url).searchParams.get('country_code')))});
+ if(url.includes('/probes/'))return Response.json({results:probeFixture.map(p=>({...p,is_public:true,is_anchor:true,country_code:'NL',status:{id:1}})),next:null});
  const id=Number(url.match(/measurements\/(\d+)/)[1]);
  assert.ok(new URL(url).searchParams.get('probe_ids'));
  const l=ROOT_LETTERS.find(l=>DNS_MEASUREMENTS[l]===id);
@@ -65,10 +66,10 @@ const request=()=>new Request('https://earth.example/api/internet/dns-flows');
 test('single flight, memory cache, edge reuse, five-minute fallback and 503',async()=>{
  const h=harness(),handler=createDnsFlowsHandler(h.network,h.clock,h.edge,async()=>{});
  const responses=await Promise.all([handler(request(),h.assets),handler(request(),h.assets)]);
- assert.equal(responses[0].status,200);assert.equal(h.calls(),34);
+ assert.equal(responses[0].status,200);assert.equal(h.calls(),27);
  const s=await responses[0].json();assert.ok(s.flows.length);assert.equal(parseDnsFlowSnapshot(s).flows.length,s.flows.length);
- await handler(request(),h.assets);assert.equal(h.calls(),34);
- const fresh=createDnsFlowsHandler(h.network,h.clock,h.edge);assert.equal((await fresh(request(),h.assets)).status,200);assert.equal(h.calls(),34);
+ await handler(request(),h.assets);assert.equal(h.calls(),27);
+ const fresh=createDnsFlowsHandler(h.network,h.clock,h.edge);assert.equal((await fresh(request(),h.assets)).status,200);assert.equal(h.calls(),27);
  h.advance(241000);h.fail();assert.equal((await handler(request(),h.assets)).status,200);
  h.advance(60000);assert.equal((await handler(request(),h.assets)).status,503);
  assert.equal((await createDnsFlowsHandler(h.network,h.clock,undefined,async()=>{})(request(),h.assets)).status,503);
@@ -139,4 +140,84 @@ test('23h roots without waitUntil remain available without starting unmanaged wo
  assert.equal((await handler(request(),h.assets)).status,200);assert.equal(h.rootCalls(),13);
  h.advance(3600000);
  assert.equal((await handler(request(),h.assets)).status,503);assert.equal(h.rootCalls(),14);
+});
+
+test('global sampler is permutation-stable, country/continent diverse, bounded and validates anchors',()=>{
+ const nations={AF:['AO','BF','CM','GH','KE','TZ','ZA','UG'],AS:['AE','IN','JP','SG','TH','VN','ID','IL'],EU:['DE','FR','NL','GB','PL','RO','UA','SE'],NA:['US','CA','MX','CR','PA','DO','GT','TT'],SA:['AR','BR','CL','CO','EC','PE','UY','VE'],OC:['AU','NZ','FJ','FM','GU','NC','PW','TV']};
+ let id=1;const rows=[];
+ for(const countries of Object.values(nations))for(const country_code of countries)for(const lon of[-130,-20,100])rows.push({id:id++,country_code,is_public:true,is_anchor:true,status:{id:1},geometry:{coordinates:[lon,20]}});
+ const s=selectProbes(rows,48);
+ assert.deepEqual(s,selectProbes([...rows].reverse(),48));
+ assert.equal(s.length,48);assert.equal(new Set(s.map(p=>p.country)).size,48);assert.equal(new Set(s.map(p=>probeContinent(p.country))).size,6);
+ assert.equal(selectProbes(rows,1000).length,144);
+ assert.equal(selectProbes([...rows,...rows.map(r=>({...r,id:r.id+1000}))],1000).length,200);assert.equal(selectProbes(rows,-1).length,0);
+ const invalid=[{...rows[0],id:900,status:{id:2}},{...rows[0],id:901,is_public:false},{...rows[0],id:902,is_anchor:false},{...rows[0],id:903,geometry:{coordinates:[181,0]}}];
+ assert.deepEqual(selectProbes([...rows,...invalid,...rows],48),s);
+ const conflict={...rows[0],country_code:'ZZ'};
+ assert.deepEqual(selectProbes([...rows,conflict],48),selectProbes([conflict,...rows].reverse(),48));
+});
+test('grid rounds spread a country across cells before reusing one cell',()=>{
+ const row=(id,lon)=>({id,country_code:'AU',is_public:true,is_anchor:true,status:{id:1},geometry:{coordinates:[lon,-20.12345]}});
+ const s=selectProbes([row(1,10),row(2,10.1),row(3,80)],3);
+ assert.deepEqual(s.map(p=>p.id),[1,3,2]);assert.deepEqual(s[0].position,[10,-20.12]);
+});
+test('recorded global anchor projection spans six continents with stable bounded sampling',()=>{
+ const rows=JSON.parse(readFileSync(new URL('./fixtures/ripe-atlas/global-anchors.json',import.meta.url)));
+ const sample=selectProbes(rows);
+ assert.equal(sample.length,12);assert.equal(new Set(sample.map(p=>probeContinent(p.country))).size,6);
+ assert.deepEqual(selectProbes(rows.reverse()),sample);
+});
+for(const letter of ['a','j'])test(`${letter}: documented UN/LOCODE matches one official synthetic site, rejects ambiguity and legacy guesses`,()=>{
+ const parse=letter==='a'?parseALocation:parseJLocation;
+ assert.equal(parse('NNN1-ZZQZX-1a.'),'zz-qzx');assert.equal(parse('rootns-zzqzx-2b'),'zz-qzx');assert.equal(parse('rootns-elgva1'),null);
+ const root={...instance(letter,letter+'-fictional',['a1.zz-qzx.root','n1.zz-qzx.root']),country:'ZZ'};
+ assert.equal(matchInstance(letter,['nnn1-zzqzx-1a'],[root])?.id,root.id);
+ assert.equal(matchInstance(letter,['nnn1-zzqzx-1a'],[root,{...root,id:'another-site'}]),null);
+ assert.equal(matchInstance(letter,['rootns-elgva1'],[root]),null);
+ assert.equal(matchInstance(letter,['nnn1-zzqzx-1a'],[{...root,country:'AA'}]),null);
+});
+test('E prefix forms use the same city rule and never select one of several co-located sites',()=>{
+ for(const value of ['p06.fra.eroot','c01.FRA.eroot','n01.fra.eroot']){
+  assert.equal(parseE(value),'fra');const root=instance('e','fictional-e',[],'Frankfurt');
+  assert.equal(matchInstance('e',[value],[root])?.id,root.id);
+  assert.equal(matchInstance('e',[value],[root,{...root,id:'second-e'}]),null);
+ }
+ assert.equal(matchInstance('e',['c01.XYZ.eroot'],[instance('e','unknown')]),null);
+});
+test('real global DNS recordings survive the output parser without losing flows',()=>{
+ const results=Object.fromEntries(ROOT_LETTERS.map(l=>[l,JSON.parse(readFileSync(new URL(`./fixtures/ripe-atlas/coverage-${l}.json`,import.meta.url)))]));
+ // Explicitly synthetic sites/probe positions isolate output validation from real root redistribution.
+ const roots=ROOT_LETTERS.map(l=>instance(l,'synthetic-'+l,identifiers(results[l][0])));
+ const first=Object.fromEntries(ROOT_LETTERS.map(l=>[l,[results[l][0]]]));
+ const points=new Map(ROOT_LETTERS.map(l=>[results[l][0].prb_id,[1,2]]));
+ const now=Math.max(...Object.values(first).flat().map(r=>r.timestamp*1000));
+ const snapshot=buildSnapshot(first,points,roots,now);
+ assert.equal(snapshot.flows.length,13);assert.deepEqual(parseDnsFlowSnapshot(snapshot),snapshot);
+});
+test('anchor pagination is bounded and old probe-cache keys are not reused',async()=>{
+ const h=harness();let pages=0;
+ const network=async(url,options)=>{
+  if(url.includes('/probes/')){pages++;assert.ok(url.includes('is_anchor=true'));assert.ok(url.includes('fields='));return Response.json({results:[],next:'https://untrusted.invalid/next'});}
+  return h.network(url,options);
+ };
+ const keys=[];const edge={...h.edge,match:async r=>{keys.push(r.url);return h.edge.match(r);}};
+ const r=await createDnsFlowsHandler(network,h.clock,edge,async()=>{})(request(),h.assets);
+ assert.equal(r.status,503);assert.equal(pages,4);
+ assert.ok(keys.some(k=>k.endsWith('/probes-v3')));assert.ok(keys.every(k=>!k.endsWith('/probes-v2')));
+});
+
+test('bounded upstream decoding preserves UTF-8 split across chunks',async()=>{
+ const h=harness();const network=async(url,options)=>{
+  if(!url.endsWith('/root/A/json/'))return h.network(url,options);
+  const raw=structuredClone(rootFixtures.a);raw.Sites[0].Town='试验城市';
+  const encoded=new TextEncoder().encode(JSON.stringify(raw));const first=encoded.indexOf(0xe8);
+  return new Response(new ReadableStream({start(c){c.enqueue(encoded.subarray(0,first+1));c.enqueue(encoded.subarray(first+1));c.close();}}));
+ };
+ assert.equal((await createDnsFlowsHandler(network,h.clock,h.edge,async()=>{})(request(),h.assets)).status,200);
+ const cache=await h.edge.match(new Request('https://earth.example/__atlas-cache/root-sites-v2'));
+ assert.equal((await cache.json()).instances.find(i=>i.letter==='a').city,'试验城市');
+});
+test('oversized upstream bodies remain rejected before JSON parsing',async()=>{
+ const handler=createDnsFlowsHandler(async()=>new Response(' '.repeat(1500001)),Date.now,undefined,async()=>{});
+ assert.equal((await handler(request())).status,503);
 });

@@ -1,0 +1,52 @@
+[
+  {
+    "prb_id": 7171,
+    "timestamp": 1792743957,
+    "msm_id": 10301,
+    "af": 4,
+    "result": {
+      "rt": 33.544,
+      "size": 65,
+      "abuf": "XEqAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAFhVuczEuZGUtaGFtLmsucmlwZS5uZXQ=",
+      "ID": 23626,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "ns1.de-ham.k.ripe.net"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 6664,
+    "timestamp": 1792743795,
+    "msm_id": 10301,
+    "af": 4,
+    "result": {
+      "rt": 57.667,
+      "size": 65,
+      "abuf": "NJCAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAFhVuczMubmwtYW1zLmsucmlwZS5uZXQ=",
+      "ID": 13456,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "ns3.nl-ams.k.ripe.net"
+          ]
+        }
+      ]
+    }
+  }
+]
