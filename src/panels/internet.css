@@ -16,3 +16,38 @@
 .internet-years-row button.active { color:#0b0c0f; background:#38d6ff; border-color:transparent; }
 .internet-card-link { display:inline-block; margin-top:8px; font-size:10px; color:#9ccaff; }
 @media (max-width:760px) { .internet-card.glass-panel { left:10px; right:10px; top:auto; bottom:10px; width:auto; } }
+/* Scoped UI styles: map colors follow the current infrastructure renderer. */
+.internet-legend, .internet-provenance { margin:10px 0; padding:10px; border:1px solid var(--line); border-radius:12px; background:var(--fill); min-width:0; }
+.internet-legend h4, .internet-provenance h4 { margin:0 0 8px; font-size:11px; color:var(--text); }
+.internet-legend ul, .internet-sources ul { list-style:none; padding:0; margin:0; }
+.internet-legend li { display:flex; align-items:flex-start; gap:8px; margin:9px 0; }
+.internet-legend li div { min-width:0; }
+.internet-legend strong { display:block; font-size:10px; color:var(--text); }
+.internet-legend span { display:block; margin-top:3px; font-size:10px; line-height:1.6; color:var(--text-2); overflow-wrap:anywhere; }
+.internet-symbol { flex:none; display:block; width:9px; height:9px; margin-top:4px; border-radius:50%; }
+.internet-symbol.cable { width:16px; height:3px; margin-top:7px; border-radius:2px; background:#38d6ff; box-shadow:0 0 5px #38d6ff66; }
+.internet-symbol.ixp { background:#ffb84d; }
+.internet-symbol.facility { background:#c792ff; }
+.internet-symbol.root { background:conic-gradient(#e69b67,#badb67,#67d5bc,#9781df,#e69b67); }
+.internet-symbol.dns { width:16px; height:8px; border-radius:50% 50% 0 0; border-top:1px solid #ddd; }
+.internet-position-key { display:flex; flex-wrap:wrap; gap:4px 12px; margin:5px 0 10px; padding:0 10px; color:#ffce85; font-size:10px; line-height:1.6; }
+.internet-sources { border-top:1px solid var(--line); padding:8px 0; min-width:0; }
+.internet-sources summary { cursor:pointer; color:var(--text-2); font-size:10px; line-height:1.6; overflow-wrap:anywhere; }
+.internet-sources p, .internet-sources li { font-size:10px; line-height:1.65; color:var(--text-2); overflow-wrap:anywhere; }
+.internet-sources li { margin:8px 0; }
+.internet-sources a { color:#9ccaff; overflow-wrap:anywhere; }
+.internet-sources li span { display:block; }
+.internet-card.glass-panel { max-height:calc(100dvh - 110px); overflow:auto; box-sizing:border-box; }
+.internet-card header strong { overflow-wrap:anywhere; }
+.internet-card header button { flex:none; width:32px; height:32px; cursor:pointer; }
+.internet-card header button:focus-visible, .internet-card a:focus-visible, .internet-sources summary:focus-visible, .internet-sources a:focus-visible { outline:2px solid #38d6ff; outline-offset:3px; }
+.internet-card dl div { grid-template-columns:minmax(64px, 78px) minmax(0, 1fr); }
+.internet-card dd, .internet-card-link { overflow-wrap:anywhere; }
+.internet-card header .internet-position-badge { font-size:10px; line-height:1.6; color:#ffce85; }
+@media (max-width:760px) {
+  .internet-card.glass-panel { bottom:max(10px, env(safe-area-inset-bottom)); max-height:55dvh; }
+  .internet-card header { position:sticky; top:-11px; z-index:1; padding:5px 0; background:var(--bg, #11151e); }
+  .internet-card header strong { font-size:13px; }
+  .internet-card dl { font-size:11px; }
+}
+.internet-card.glass-panel { position:fixed; z-index:20; }

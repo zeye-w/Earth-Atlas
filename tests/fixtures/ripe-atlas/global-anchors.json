@@ -1,0 +1,230 @@
+[
+  {
+    "country_code": "BA",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        18.4005,
+        43.8605
+      ]
+    },
+    "id": 6366,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:48:39Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "AE",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        55.1915,
+        25.0285
+      ]
+    },
+    "id": 6392,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:51:59Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "CA",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        -79.3605,
+        43.6505
+      ]
+    },
+    "id": 6456,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:50:06Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "AT",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        9.6105,
+        47.2705
+      ]
+    },
+    "id": 6476,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:49:43Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "AO",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        13.1785,
+        -8.9085
+      ]
+    },
+    "id": 7239,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-21T12:07:13Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "AU",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        115.8605,
+        -31.9515
+      ]
+    },
+    "id": 7262,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-21T12:08:04Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "AF",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        69.2205,
+        34.5415
+      ]
+    },
+    "id": 7278,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:45:17Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "BF",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        -1.5615,
+        12.2405
+      ]
+    },
+    "id": 7427,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:44:35Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "FM",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        158.2095,
+        6.8515
+      ]
+    },
+    "id": 7448,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-10T23:03:19Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "CR",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        -85.5525,
+        10.4375
+      ]
+    },
+    "id": 7510,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-22T18:48:19Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "BO",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        -66.1585,
+        -17.3895
+      ]
+    },
+    "id": 7586,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:43:54Z"
+    },
+    "type": "Probe"
+  },
+  {
+    "country_code": "AR",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [
+        -72.2625,
+        -50.3395
+      ]
+    },
+    "id": 7617,
+    "is_anchor": true,
+    "is_public": true,
+    "status": {
+      "id": 1,
+      "name": "Connected",
+      "since": "2026-10-06T12:48:22Z"
+    },
+    "type": "Probe"
+  }
+]

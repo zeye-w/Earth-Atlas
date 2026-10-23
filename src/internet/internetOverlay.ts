@@ -40,7 +40,12 @@ const POINT_HEIGHT_M = 3_000;
 // Cables are grouped by length so the pulses keep a similar spacing on all of them.
 const PULSE_SPACING_KM = 900;
 const LENGTH_BUCKETS_KM = [1_500, 4_000, 9_000, 16_000, Infinity];
-const ARC_SAMPLES = 32;
+// Arc vertices: one per ~2° of arc, 6 to 32, so thousands of short hops stay cheap.
+const ARC_MIN_SAMPLES = 6;
+const ARC_MAX_SAMPLES = 32;
+// Pulses and packets advance at most this often. Moving layers keep the scene
+// rendering continuously; half of 60 fps halves that cost and still reads smooth.
+const ANIMATION_FPS = 30;
 
 function densify(path: LonLat[], height = CABLE_HEIGHT_M): Cartesian3[] {
   const out: number[] = [];
@@ -59,16 +64,17 @@ function densify(path: LonLat[], height = CABLE_HEIGHT_M): Cartesian3[] {
 }
 
 /** Great-circle arc between two points, lifted in the middle (higher for longer hops). */
-export function arc(from: LonLat, to: LonLat, samples = ARC_SAMPLES): Cartesian3[] {
+export function arc(from: LonLat, to: LonLat, samples?: number): Cartesian3[] {
   const pa = Cartesian3.fromDegrees(from[0], from[1], 0), pb = Cartesian3.fromDegrees(to[0], to[1], 0);
   // Ellipsoid radius at each end, so the arc starts and ends on the surface.
   const ra = Cartesian3.magnitude(pa), rb = Cartesian3.magnitude(pb);
   const a = Cartesian3.normalize(pa, new Cartesian3()), b = Cartesian3.normalize(pb, new Cartesian3());
   const angle = Math.acos(Math.min(1, Math.max(-1, Cartesian3.dot(a, b))));
   const lift = Math.min(1_200_000, 40_000 + angle * 6_371_000 * 0.18);
+  const n = samples ?? Math.min(ARC_MAX_SAMPLES, Math.max(ARC_MIN_SAMPLES, Math.ceil((angle * 180) / Math.PI / 2)));
   const out: Cartesian3[] = [];
-  for (let i = 0; i <= samples; i++) {
-    const t = i / samples;
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
     // Spherical interpolation of the direction, then a sine-shaped height.
     const s = angle < 1e-6 ? a : Cartesian3.add(
       Cartesian3.multiplyByScalar(a, Math.sin((1 - t) * angle) / Math.sin(angle), new Cartesian3()),
@@ -239,10 +245,12 @@ export class InternetOverlay {
   private updateAnimation(): void {
     const moving = !this.still && ((this.visible.cables && this.cableLines.length > 0) || (this.visible.dnsFlows && this.packets.length > 0));
     if (moving && this.frame === null) {
-      const tick = () => {
+      let last = -Infinity;
+      const tick = (frameMs: number) => {
         if (this.viewer.isDestroyed()) return;
         this.frame = requestAnimationFrame(tick);
-        if (document.visibilityState !== "visible") return;
+        if (document.visibilityState !== "visible" || frameMs - last < 1000 / ANIMATION_FPS - 1) return;
+        last = frameMs;
         const seconds = now() / 1000;
         setFlowTime(this.cableMaterials, seconds);
         if (this.visible.dnsFlows) this.placePackets(seconds);

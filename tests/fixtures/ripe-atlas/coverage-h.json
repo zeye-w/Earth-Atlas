@@ -1,0 +1,52 @@
+[
+  {
+    "prb_id": 7171,
+    "timestamp": 1792743798,
+    "msm_id": 10315,
+    "af": 4,
+    "result": {
+      "rt": 25.975,
+      "size": 70,
+      "abuf": "0qqAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGxowMDEubGN5Lmgucm9vdC1zZXJ2ZXJzLm9yZw==",
+      "ID": 53930,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "001.lcy.h.root-servers.org"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 6664,
+    "timestamp": 1792743879,
+    "msm_id": 10315,
+    "af": 4,
+    "result": {
+      "rt": 55.261,
+      "size": 70,
+      "abuf": "JMGAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGxowMDEuZnJhLmgucm9vdC1zZXJ2ZXJzLm9yZw==",
+      "ID": 9409,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "001.fra.h.root-servers.org"
+          ]
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,52 @@
+[
+  {
+    "prb_id": 7171,
+    "timestamp": 1792743787,
+    "msm_id": 10312,
+    "af": 4,
+    "result": {
+      "rt": 8.575,
+      "size": 70,
+      "abuf": "PFuAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGxpvc25vMi5kcm9vdC5tYXhnaWdhcG9wLm5ldA==",
+      "ID": 15451,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "osno2.droot.maxgigapop.net"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 6664,
+    "timestamp": 1792743868,
+    "msm_id": 10312,
+    "af": 4,
+    "result": {
+      "rt": 0.52,
+      "size": 70,
+      "abuf": "8TCAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGxp0YWlsMS5kcm9vdC5tYXhnaWdhcG9wLm5ldA==",
+      "ID": 61744,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "tail1.droot.maxgigapop.net"
+          ]
+        }
+      ]
+    }
+  }
+]
