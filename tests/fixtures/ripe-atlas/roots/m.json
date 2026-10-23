@@ -1,0 +1,39 @@
+{
+  "ASN": 7500,
+  "BGP Community Convention": "",
+  "BGP Extended Community Convention": "",
+  "BGP Large Community Convention": "",
+  "Contact Email": "as7500@nspixp.wide.ad.jp",
+  "Homepage": "http://m.root-servers.org/",
+  "IPv4": "202.12.27.33",
+  "IPv6": "2001:dc3::35",
+  "Identifier Naming Convention": "",
+  "Operator": "WIDE Project",
+  "Peering Policy": "http://as7500.peeringdb.com/",
+  "RSSAC001": "https://m.root-servers.org/docs/RSSAC001_Response-M-Root-1.0.pdf",
+  "RSSAC002": "https://rssac.wide.ad.jp/rssac002-metrics/",
+  "Sites": [
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "",
+      "Country": "KZ",
+      "Created": "2025-09-29T09:36:30Z",
+      "ID": "Ydy6vO",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "M-ALA-1"
+      ],
+      "Instances": 1,
+      "Latitude": 43.347588,
+      "Longitude": 77.010056,
+      "Status": "operational",
+      "Town": "Almaty",
+      "Type": "Local",
+      "Updated": "2025-09-30T09:50:38Z"
+    }
+  ],
+  "Statistics": "",
+  "Updated": "2026-09-09T00:33:39Z"
+}

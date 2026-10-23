@@ -1,0 +1,42 @@
+{
+  "ASN": 394353,
+  "BGP Community Convention": "",
+  "BGP Extended Community Convention": "",
+  "BGP Large Community Convention": "",
+  "Contact Email": "b-poc@isi.edu",
+  "Homepage": "http://b.root-servers.org/",
+  "IPv4": "170.247.170.2",
+  "IPv6": "2801:1b8:10::b",
+  "Identifier Naming Convention": "b<N>-<IATA Code>",
+  "Operator": "Information Sciences Institute",
+  "Peering Policy": "",
+  "RSSAC001": "https://b.root-servers.org/statements/rssac001.html",
+  "RSSAC002": "http://b.root-servers.org/rssac/",
+  "Sites": [
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": 394353,
+      "BGP Site Identifier": "",
+      "Country": "DE",
+      "Created": "2025-07-14T20:17:41Z",
+      "ID": "fra",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "b1-fra",
+        "b2-fra",
+        "b3-fra",
+        "b4-fra"
+      ],
+      "Instances": 1,
+      "Latitude": 50.111,
+      "Longitude": 8.682,
+      "Status": "operational",
+      "Town": "Frankfurt",
+      "Type": "Global",
+      "Updated": "2025-07-14T20:36:34Z"
+    }
+  ],
+  "Statistics": "https://b.root-servers.org/rssac/",
+  "Updated": "2025-07-14T20:36:34Z"
+}

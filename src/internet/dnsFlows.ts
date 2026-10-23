@@ -39,6 +39,11 @@ export function createInstanceMatcher(instances: RootInstance[]) {
         const matches = new Set<RootInstance>();
         for (const value of identifiers) {
             for (const i of exact.get(letter + ':' + norm(value)) ?? []) matches.add(i);
+            // Netnod publishes site identifiers (e.g. amx), while hostname.bind
+            // prefixes the answering server number (s1.amx). Require that literal
+            // official site identifier rather than expanding a city alias table.
+            const site = letter === 'i' ? parseI(value) : null;
+            if (site) for (const i of exact.get('i:' + site) ?? []) matches.add(i);
             for (const p of patterns) if (p.instance.letter === letter && p.re.test(norm(value))) matches.add(p.instance);
         }
         if (matches.size) return matches.size === 1 ? [...matches][0] : null;

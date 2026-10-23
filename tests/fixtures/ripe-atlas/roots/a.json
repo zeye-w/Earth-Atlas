@@ -1,0 +1,61 @@
+{
+  "ASN": 7342,
+  "BGP Community Convention": "",
+  "BGP Extended Community Convention": "",
+  "BGP Large Community Convention": "",
+  "Contact Email": "rootdns@verisign.com",
+  "Homepage": "https://a.root-servers.org/",
+  "IPv4": "198.41.0.4",
+  "IPv6": "2001:503:ba3e::2:30",
+  "Identifier Naming Convention": "",
+  "Operator": "Verisign, Inc.",
+  "Peering Policy": "https://www.peeringdb.com/net/873",
+  "RSSAC001": "https://a.root-servers.org/aroot-rssac001v2-expectations.pdf",
+  "RSSAC002": "https://a.root-servers.org/rssac-metrics/raw",
+  "Sites": [
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": 396567,
+      "BGP Site Identifier": "",
+      "Country": "NL",
+      "Created": "2024-03-27T22:21:49Z",
+      "ID": "5b9a80e2b393f30718abcb9f",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "a6.nl-ams.root",
+        "n6.nl-ams.root"
+      ],
+      "Instances": 1,
+      "Latitude": 52.3702157,
+      "Longitude": 4.8951679,
+      "Status": "",
+      "Town": "Amsterdam",
+      "Type": "Local",
+      "Updated": "2024-03-27T22:21:50Z"
+    },
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": 396551,
+      "BGP Site Identifier": "",
+      "Country": "GB",
+      "Created": "2024-03-27T22:21:49Z",
+      "ID": "5b61d6c49fa77e0ac249acb1",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "a1.gb-lon.root",
+        "n1.gb-lon.root"
+      ],
+      "Instances": 1,
+      "Latitude": 51.5073509,
+      "Longitude": -0.1277583,
+      "Status": "",
+      "Town": "London",
+      "Type": "Global",
+      "Updated": "2024-03-27T22:21:50Z"
+    }
+  ],
+  "Statistics": "https://a.root-servers.org/metrics/index.html",
+  "Updated": "2026-05-28T16:52:45Z"
+}

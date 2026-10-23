@@ -1,0 +1,39 @@
+{
+  "ASN": 20144,
+  "BGP Community Convention": "",
+  "BGP Extended Community Convention": "",
+  "BGP Large Community Convention": "",
+  "Contact Email": "noc@dns.icann.org",
+  "Homepage": "https://dns.icann.org/imrs/",
+  "IPv4": "199.7.83.42",
+  "IPv6": "2001:500:9f::42",
+  "Identifier Naming Convention": "https://tools.ietf.org/html/rfc7108",
+  "Operator": "ICANN",
+  "Peering Policy": "https://as20144.peeringdb.com",
+  "RSSAC001": "https://www.dns.icann.org/rssac/rssac001-response/",
+  "RSSAC002": "https://stats.dns.icann.org/rssac/",
+  "Sites": [
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "",
+      "Country": "AU",
+      "Created": "2024-03-08T13:36:57Z",
+      "ID": "au-alx",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "au-alx-aa"
+      ],
+      "Instances": 1,
+      "Latitude": -33.9091568,
+      "Longitude": 151.1921281,
+      "Status": "operational",
+      "Town": "Alexandria",
+      "Type": "Global",
+      "Updated": "2024-04-17T12:37:24Z"
+    }
+  ],
+  "Statistics": "https://dns.icann.org/imrs/stats",
+  "Updated": "2026-10-22T09:33:11Z"
+}

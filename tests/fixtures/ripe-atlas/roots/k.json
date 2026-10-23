@@ -1,0 +1,83 @@
+{
+  "ASN": 25152,
+  "BGP Community Convention": "25152:{BGP-SITE-ID}",
+  "BGP Extended Community Convention": "",
+  "BGP Large Community Convention": "25152:{BGP-SITE-ID}:{PEER-ASN}",
+  "Contact Email": "dns@ripe.net",
+  "Homepage": "http://k.root-servers.org/",
+  "IPv4": "193.0.14.129",
+  "IPv6": "2001:7fd::1",
+  "Identifier Naming Convention": "ns/\\d+.{UN-LOCODE-SITE-ID}.k.ripe.net",
+  "Operator": "RIPE NCC",
+  "Peering Policy": "https://www.ripe.net/analyse/dns/k-root/k-root-peering-policy",
+  "RSSAC001": "https://www.ripe.net/publications/docs/ripe-859/",
+  "RSSAC002": "https://www-static.ripe.net/dynamic/rssac002-metrics/",
+  "Sites": [
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "1011",
+      "Country": "AM",
+      "Created": "2000-01-01T01:00:00Z",
+      "ID": "1011",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "ns1.am-abo.k.ripe.net"
+      ],
+      "Instances": 1,
+      "Latitude": 40.2714761,
+      "Longitude": 44.6333951,
+      "Status": "operational",
+      "Town": "Abovyan",
+      "Type": "Global",
+      "Updated": "2024-02-19T13:23:42Z"
+    },
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "1",
+      "Country": "NL",
+      "Created": "2000-01-01T01:00:00Z",
+      "ID": "1",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "ns1.nl-ams.k.ripe.net",
+        "ns2.nl-ams.k.ripe.net",
+        "ns3.nl-ams.k.ripe.net"
+      ],
+      "Instances": 3,
+      "Latitude": 52.3727598,
+      "Longitude": 4.8936041,
+      "Status": "operational",
+      "Town": "Amsterdam",
+      "Type": "Global",
+      "Updated": "2025-01-09T08:05:02Z"
+    },
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "2",
+      "Country": "GB",
+      "Created": "2000-01-01T01:00:00Z",
+      "ID": "2",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "ns1.gb-lon.k.ripe.net",
+        "ns2.gb-lon.k.ripe.net",
+        "ns3.gb-lon.k.ripe.net"
+      ],
+      "Instances": 3,
+      "Latitude": 51.5073219,
+      "Longitude": -0.1276474,
+      "Status": "operational",
+      "Town": "London",
+      "Type": "Global",
+      "Updated": "2025-01-09T08:05:02Z"
+    }
+  ],
+  "Statistics": "https://www.ripe.net/analyse/dns/k-root/statistics",
+  "Updated": "2026-08-07T21:09:25Z"
+}

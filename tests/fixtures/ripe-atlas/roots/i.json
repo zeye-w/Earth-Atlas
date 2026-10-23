@@ -1,0 +1,81 @@
+{
+  "ASN": 29216,
+  "BGP Community Convention": "",
+  "BGP Extended Community Convention": "",
+  "BGP Large Community Convention": "",
+  "Contact Email": "info@netnod.se",
+  "Homepage": "http://i.root-servers.org/",
+  "IPv4": "192.36.148.17",
+  "IPv6": "2001:7fe::53",
+  "Identifier Naming Convention": "Responds to \"hostname.bind. IN TXT\" with \"sN.XXX\", (e.g., \"s1.sth\") which means server N at site with Netnod identifier \"XXX\". These identifiers should _not_ be interpreted as airport codes, though that may coincidentally be the case.",
+  "Operator": "Netnod",
+  "Peering Policy": "http://i.root-servers.org/as-info.html",
+  "RSSAC001": "https://www.netnod.se/sites/default/files/2019-03/netnod-rssac-001-response.pdf",
+  "RSSAC002": "https://www.netnod.se/i-root/statistics",
+  "Sites": [
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "",
+      "Country": "GH",
+      "Created": "2025-03-26T12:29:41Z",
+      "ID": "netnod-gh-acc",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "acc"
+      ],
+      "Instances": 1,
+      "Latitude": 5.621388,
+      "Longitude": -0.185443,
+      "Status": "operational",
+      "Town": "Accra",
+      "Type": "Global",
+      "Updated": "2025-06-04T14:14:37Z"
+    },
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "",
+      "Country": "NL",
+      "Created": "2018-03-08T00:00:00Z",
+      "ID": "netnod-nl-amx",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "amx",
+        "amz"
+      ],
+      "Instances": 2,
+      "Latitude": 52.376051,
+      "Longitude": 4.902197,
+      "Status": "operational",
+      "Town": "Amsterdam",
+      "Type": "Global",
+      "Updated": "2024-02-20T15:24:50Z"
+    },
+    {
+      "BGP Intermediate AS": null,
+      "BGP Origin AS": null,
+      "BGP Site Identifier": "",
+      "Country": "GB",
+      "Created": "2018-03-08T00:00:00Z",
+      "ID": "netnod-gb-lnx",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "lnx",
+        "lon"
+      ],
+      "Instances": 2,
+      "Latitude": 51.505088,
+      "Longitude": -0.119949,
+      "Status": "operational",
+      "Town": "London",
+      "Type": "Global",
+      "Updated": "2024-02-20T15:24:50Z"
+    }
+  ],
+  "Statistics": "",
+  "Updated": "2026-10-21T10:04:14Z"
+}

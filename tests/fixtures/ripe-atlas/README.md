@@ -1,61 +1,86 @@
-# Recorded RIPE Atlas DNS samples
+# Recorded DNS and root-site samples
 
-Recorded on 2026-10-23 from the public RIPE Atlas v2 API with User-Agent
+Recorded on 2026-10-23. All HTTP requests identify
 `Earth-Atlas (+https://github.com/zeye-w/Earth-Atlas)`.
 
-Each letter file contains three actual results from
-`https://atlas.ripe.net/api/v2/measurements/{id}/latest/?probe_ids=...`.
-Only the fields needed by the tests are retained: prb_id, timestamp, msm_id,
-af and result. DNS answer bytes, TXT answers and RTT are unmodified. Historical
-results deliberately remain in the recordings to exercise age filtering.
-`probes.json` retains only public probe IDs and their published geometry from
-`/api/v2/probes/?status=1&is_public=true&country_code=...&page_size=100`.
-Synthetic root instances in unit tests are explicitly test data, not evidence
-of an actual answering location.
+- `a.json` through `m.json`: three real Atlas IPv4 UDP CHAOS TXT
+  hostname.bind results each. Only prb_id, timestamp, msm_id, af and result
+  were retained. Answer bytes, TXT text and RTT are unmodified; historical
+  observations remain to test freshness rejection.
+- `probes.json`: real public probe IDs and published approximate geometry.
+- `roots/a.json` through `roots/m.json`: official per-letter responses from
+  `https://root-servers.org/root/{A..M}/json/`. Only the Sites array was cropped
+  to a few real entries (first usable site, first site with identifiers and
+  selected Amsterdam/London entries where available). All retained fields and
+  values are unchanged. These are test recordings, never production fallback.
 
-IPv4 UDP CHAOS TXT hostname.bind IDs:
-A 10309, B 10310, C 10311, D 10312, E 10313, F 10304, G 10314,
-H 10315, I 10305, J 10316, K 10301, L 10308, M 10306.
+Measurement IDs: A 10309, B 10310, C 10311, D 10312, E 10313, F 10304,
+G 10314, H 10315, I 10305, J 10316, K 10301, L 10308, M 10306.
 
-Sources:
+Sources and terms:
 - https://atlas.ripe.net/docs/getting-started/built-in-measurements/
 - https://atlas.ripe.net/docs/apis/rest-api-manual/measurements/results-and-latest/
 - https://www.ripe.net/about-us/legal/ripe-atlas-service-terms-and-conditions/
+- https://root-servers.org/
+- https://developers.cloudflare.com/workers/platform/limits/
 
-RIPE Atlas data is governed by Service Terms and Conditions v3.5, Article 4;
-it is not labelled CC BY. Research use is permitted under the service terms;
-commercial use requires prior RIPE NCC permission. Attribution: RIPE Atlas / RIPE NCC.
+Atlas: RIPE NCC Service Terms v3.5, Article 4; research use under the terms,
+commercial use requires prior permission. Not CC BY. Root site data:
+operator-supplied Root Server Technical Operations Association JSON; no explicit
+blanket data-reuse licence verified. No claim of CC licensing is made.
 
-The worker samples 13 connected public probes in each of US, BR, ZA, DE, IN,
-JP, AU and NL (at most 104), selected from bounded country pages. This is a
-geographically spread convenience sample, not statistically uniform or
-representative of global Internet users. Probe geometry is approximate and
-rounded to two decimals in the output. Results older than five minutes are
-counted in examined but never drawn. Exact identifiers and explicit '*' globs
-are preferred; city fallback requires one unique same-letter site. G regional
-names and unrecognised codes have no city fallback. A/J therefore had zero
-matches in the recorded integration check. No nearest-probe/site inference.
+The worker now loads the 13 official root responses directly, with one second
+between requests to avoid bursts (an initial unpaced recording encountered 429).
+It retains actual Identifiers and rejects unusable coordinates, inactive sites,
+IPv6-only sites and duplicate IDs. Root data lives only in server-side memory
+and Cache API for at most 24h; refresh begins after 23h, with valid-cache fallback
+on failure. An expired/missing root cache plus upstream failure returns 503.
+There is no ASSETS/static-file dependency. Cache keys were versioned so old
+104-probe or static-root snapshots cannot defeat the new sample bounds.
 
-Reproduce local measurements with an A-line root dataset:
+Samples: at most six connected public IPv4 probes per country (US, BR, ZA, DE,
+IN, JP, AU, NL), at most 48. This convenience sample is not a statistical view of
+global traffic. Results older than five minutes are examined but never drawn.
+Exact identifiers are preferred, and I's sN.site response is compared against the
+literal official site ID. No inferred aliases for A/J's incompatible formats.
+Unknown codes and ambiguous cities remain unmatched. Probe coordinates are
+rounded to two decimals; root coordinates to three. Output contract is unchanged.
 
-    node --experimental-strip-types worker/ripeAtlas/benchmark.mjs public/data/internet/root-servers.json
+The benchmark accepts a private recording of all 13 full upstream root objects
+keyed a..m and optionally a DNS recording {probes:[{id,geometry}],all:{a:[],...}}:
 
-Cold refresh: 21 external requests + 1 ASSETS request. Later refresh with probe
-cache: 13 external + 1 ASSETS. Memory hits: zero external/ASSETS. Cache API
-operations are additional platform operations (up to two lookups/two writes on
-cold fill); the total remains below 50. Cache API is per location, not global.
-In-memory refreshes are coalesced; independent isolates may still refresh.
+    node --experimental-strip-types worker/ripeAtlas/benchmark.mjs ROOT-RESPONSES.json DNS-RECORDING.json
 
-2026-10-23 local Node v24.16.0 replay: 1,575 real root sites, 104 real probes,
-1,352 results, 657 matched across 11 letters (evaluated at newest recorded result).
-A 0/104, B 74/104, C 52/104, D 70/104, E 1/104, F 72/104,
-G 74/104, H 73/104, I 24/104, J 0/104, K 73/104, L 73/104, M 71/104.
-Matching + serialization: 1.56-1.88 ms CPU per snapshot (10 batches of 100).
-Complete cold-handler replay including decoding/parsing: 7.82 ms CPU average
-(100 runs). These are local process CPU averages, not Cloudflare CPU metrics or
-a guarantee of the free-plan limit. The original 200-probe replay took 14.54 ms;
-sampling was reduced before shipping. A separate live handler check returned
-624 validated flows across 11 letters, 22 subrequests, then a memory-cache hit.
-If deployed Cloudflare CPU exceeds the plan budget, the proposed next step is
-a scheduled GitHub Action generating snapshots and a lightweight serving worker;
-that alternative is intentionally not implemented in this change.
+With no DNS recording it requests live Atlas results. Recording mode evaluates
+freshness at the newest observation timestamp for repeatability. The small unit
+fixtures deliberately are not a complete global dataset for rate benchmarking.
+
+Replay of real recorded results against 1,575 full official sites, 48 probes:
+A 0/48, B 29/48, C 22/48, D 29/48, E 0/48, F 29/48,
+G 29/48, H 29/48, I 29/48, J 0/48, K 29/48, L 29/48, M 29/48.
+Total 283/624, ten letters. I improves from 10/48 with city-only fallback to 29/48
+with the literal official identifier. A/J remain incompatible; E lacks useful
+Identifiers and has ambiguous co-located sites. These are replay rates, not a
+claim that old observations remain drawable now.
+
+Local Node v24.16.0 replay, 100 cold handler runs, pretty-printed full root JSON,
+with all three Cache API writes serialized/consumed and cache misses simulated:
+main-thread CPU average 8.44 ms, process-wide CPU 11.10 ms, wall time excluding
+network/rate-limit waits 9.11 ms. Core match+serialization 1.09-1.56 ms per call.
+Node process CPU includes background/runtime work; neither metric is deployed
+Cloudflare CPU accounting. Production CPU and worst-case bursts remain to be
+verified with Cloudflare telemetry. A complete live attempt fetched all 13 root
+responses successfully, then failed TLS connections to Atlas and returned 503;
+that outcome is not reported as a successful live snapshot.
+
+Request counts, including cache operations conservatively as subrequests:
+- Completely cold: 13 root + 8 probe + 13 measurement = 34 HTTP;
+  3 cache reads + 3 cache writes = 40 total. Zero ASSETS.
+- Normal refresh: 13 measurements + 1 snapshot cache write = 14 total.
+- Root refresh with valid probe memory: 13 roots + 13 measurements + 2 writes = 28.
+- Memory snapshot hit: 0. Separate isolate reading a fresh snapshot: 1 cache read.
+Redirects are rejected, retries are not multiplied, and failures stop root loading.
+Root requests are sequential; Workers queues concurrent Atlas fetches under its
+connection limit. Daily root/probe refreshes are staggered at 23h versus 24h.
+If deployed CPU exceeds the free budget, a scheduled snapshot generator remains
+a proposed alternative, not implemented in this PR.
