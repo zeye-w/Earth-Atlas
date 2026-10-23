@@ -23,7 +23,7 @@ function initialToggles(scene: SceneState | null): LayerToggles {
   const defaults: Record<LayerKey, boolean> = {
     clouds: false, geology: false, dayNight: true, cities: true, atmosphere: true, aurora: true, lights: true,
     quakes: false, plates: false, volcanoes: false,
-    satellites: typeof window !== "undefined" && window.innerWidth >= 760, paths: true,
+    satellites: typeof window !== "undefined" && window.innerWidth >= 760, paths: false,
   };
   // Links shared before geographic labels existed keep showing none.
   return { ...(scene ? scene.layers : defaults), geoLabels: scene ? Boolean(scene.layers.geoLabels) : true, trueColor: Boolean(scene?.layers.trueColor), starlink: Boolean(scene?.layers.starlink), solarWind: Boolean(scene?.layers.solarWind), flights: Boolean(scene?.layers.flights), temperature: Boolean(scene?.layers.temperature), shells: Boolean(scene?.options.atmosphereShells) };
