@@ -68,12 +68,12 @@ PeeringDB / TeleGeography / root-servers.org 的适配代码保留在 `scripts/i
 | 线 | 负责方 | 分支 | 只改这些文件 |
 | --- | --- | --- | --- |
 | A 数据管线 | Codex 1 | `codex/internet-data` | `scripts/internet/**`、`public/data/internet/**`、`.github/workflows/internet-data.yml`、`tests/internetDataFiles.test.mjs` |
-| B 渲染 | Claude | `claude/internet-render` | `src/internet/internetOverlay.ts`、`src/internet/flowMaterial.ts`、`src/internet/*Overlay*.ts`、`src/layers/useInternet.ts` |
+| B 渲染 | Claude 开发对话 | `claude/*` | `src/internet/internetOverlay.ts`、`src/internet/flowMaterial.ts`、`src/internet/*Overlay*.ts`、`src/layers/useInternet.ts` |
 | C 实测 DNS 查询流 | Codex 2 | `codex/dns-flows` | `worker/ripeAtlas.ts`、`worker/ripeAtlas/**`、`src/internet/dnsFlows.ts`、`tests/dnsFlows.test.mjs`、`tests/fixtures/ripe-atlas/**` |
 | D 界面 | A 或 C 完成后，交给先空下来的 Codex | `codex/internet-ui` | `src/panels/InternetGroup.tsx`、`src/panels/InternetCard.tsx`、`src/panels/internet.css` |
-| 集成与审查 | Claude | `main` | 下面的热点文件 |
+| 集成与审查 | Claude 集成对话（见 `docs/integrator.md`） | `main` | 下面的热点文件；**只有它合并到 `main`** |
 
-**热点文件只由 Claude 修改**：`src/App.tsx`、`src/hooks/useLayerSettings.ts`、`src/sceneState.ts`、`src/panels/LayerPanel.tsx`、`src/styles.css`、`worker/index.ts`、`tests/e2e/mocks.ts`、`src/internet/types.ts`、`src/internet/data.ts`、`package.json`。需要改这些文件时，在 PR 描述里写清楚要改什么、为什么，由 Claude 来改。
+**热点文件只由 Claude 修改**，清单在 `.github/hotspots.txt`（`src/App.tsx`、`src/internet/types.ts`、`src/internet/data.ts`、`worker/index.ts`、`tests/e2e/mocks.ts`、测试假数据、`package.json` 等）。需要改这些文件时，在 PR 描述里写清楚要改什么、为什么，由 Claude 来改。来自 `codex/*` 分支的 PR 如果改了这些文件，GitHub Actions 的 `ownership` 检查会直接标红。
 
 ## 合并规则
 
@@ -81,7 +81,7 @@ PeeringDB / TeleGeography / root-servers.org 的适配代码保留在 `scripts/i
 2. PR 描述里写清楚：做了什么、怎么验证的（命令和结果）、数据来源和许可证的核实结论、已知问题。
 3. 提交前本地必须通过：`npm run typecheck`、`npm test`、`npm run build`。只要动到界面，再跑 `npx playwright test tests/e2e/internet.spec.ts`。
 4. 不要跳过或删除测试来让测试通过；不要改热点文件。
-5. 合并由 Claude 审查后执行。
+5. 合并由 Claude 集成对话审查后执行。Claude 开发对话的改动同样走 PR。
 
 ## 各线的验收标准
 
