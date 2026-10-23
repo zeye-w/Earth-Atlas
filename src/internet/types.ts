@@ -137,6 +137,9 @@ export interface DnsFlow {
   /** RootInstance.id of the answering site; flows that cannot be matched are not sent. */
   instanceId: string;
   instance: LonLat;
+  /** Where the answering site is, when the producer knows it. */
+  instanceCity?: string;
+  instanceCountry?: string | null;
   rttMs: number;
   /** When the measurement ran, ms since epoch. */
   time: number;
@@ -178,4 +181,12 @@ export type InternetSelection =
   | { kind: "landing"; landing: LandingPoint; cables: Cable[] }
   | { kind: "ixp"; ixp: Ixp; facilities: Facility[] }
   | { kind: "facility"; facility: Facility; ixps: Ixp[] }
-  | { kind: "rootInstance"; instance: RootInstance; server: RootServer | null };
+  | { kind: "rootInstance"; instance: RootInstance; server: RootServer | null; measured?: MeasuredRoot };
+
+/** A root instance seen answering measured queries, with what was measured. */
+export interface MeasuredRoot {
+  instance: RootInstance;
+  queries: number;
+  probes: number;
+  medianRttMs: number;
+}

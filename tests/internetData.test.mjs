@@ -43,3 +43,22 @@ test("internet layers survive a shared link; older links stay valid", () => {
   assert.equal(readScene(sceneHash(withInternet)).layers.cables, true);
   assert.equal(readScene("#scene=" + encodeURIComponent(JSON.stringify({ ...base, layers: { ...base.layers, cables: "yes" } }))), null);
 });
+
+test("the root layer shows the instances measured queries reached, with their statistics", async () => {
+  const { measuredRoots } = await import("../src/internet/measuredRoots.ts");
+  const base = fixture("dns-flows").flows[0];
+  const flows = [
+    { ...base, probeId: 1, rttMs: 10 },
+    { ...base, probeId: 2, rttMs: 30, instanceCity: "Amsterdam", instanceCountry: "NL" },
+    { ...base, probeId: 2, rttMs: 20 },
+    { ...base, instanceId: "other", letter: "f", rttMs: 50 },
+  ];
+  const roots = measuredRoots(flows);
+  assert.equal(roots.length, 2);
+  const k = roots.find((r) => r.instance.id === base.instanceId);
+  assert.equal(k.queries, 3);
+  assert.equal(k.probes, 2);
+  assert.equal(k.medianRttMs, 20);
+  assert.equal(roots.find((r) => r.instance.id === "other").medianRttMs, 50);
+  assert.deepEqual(measuredRoots([]), []);
+});

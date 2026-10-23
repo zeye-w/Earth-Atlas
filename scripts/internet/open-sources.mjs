@@ -71,7 +71,7 @@ export function convertCables(raw, retrievedAt = new Date().toISOString()) {
     group.segments.push(way);
   }
   const cables = [], landings = new Map();
-  let unnamed = 0, conflictingYears = 0, missingGeometry = 0;
+  let unnamed = 0, conflictingYears = 0, missingGeometry = 0, looseEnds = 0;
   const merged = new Map();
   for (const group of groups.values()) {
     const key = group.tags.name ? `name:${group.tags.name.trim().normalize('NFC')}` : group.tags.ref ? `ref:${group.tags.ref}` : group.id;
@@ -92,18 +92,18 @@ export function convertCables(raw, retrievedAt = new Date().toISOString()) {
       }
     }
     if (!paths.length) continue;
+    // OSM has no landing-station tagging to rely on, and the loose ends of a
+    // way are often mid-sea where mapping stops: count them, never publish
+    // them as landing stations.
     const landingIds = [];
-    for (const [id, endpoint] of endpointCounts) if (endpoint.count === 1) {
-      // Topological endpoint inference, not a verified coastal landing station.
-      landings.set(id, { id, name: `Inferred cable endpoint (${id})`, country: null, position: endpoint.position }); landingIds.push(id);
-    }
+    for (const endpoint of endpointCounts.values()) if (endpoint.count === 1) looseEnds++;
     const name = group.tags.name || group.tags.ref || `Unnamed OSM cable (${group.id})`;
     if (!group.tags.name) unnamed++;
     const years = [...new Set([group.tags, ...group.segments.map(s => s.tags || {})].map(t => rfsYear(t.start_date)).filter(y => y !== null))];
     if (years.length > 1) conflictingYears++;
     cables.push({ id: group.id, name, rfsYear: rfsYear(group.tags.start_date) ?? (years.length === 1 ? years[0] : null), lengthKm: null, owners: [...new Set([group.tags, ...group.segments.map(s => s.tags || {})].flatMap(t => [...parts(t.operator), ...parts(t.owner)]))].sort(), landingIds: landingIds.sort(), paths, url: group.url });
   }
-  return { dataset: { ...metadata('OpenStreetMap submarine communication cables (Overpass)', `${OVERPASS}?data=${encodeURIComponent(OSM_QUERIES.cables)}`, OSM_LICENSE, retrievedAt), cables: sort(cables), landings: sort([...landings.values()]) }, quality: { osmBaseTimestamp: raw.osm3s.timestamp_osm_base, queriedElements: raw.elements.length, communicationWays: selected.size, excludedNonCommunicationWays: ways.size - selected.size, unnamed, conflictingYears, missingGeometry, withRfsYear: cables.filter(c => c.rfsYear !== null).length, withOwners: cables.filter(c => c.owners.length).length, inferredEndpoints: landings.size } };
+  return { dataset: { ...metadata('OpenStreetMap submarine communication cables (Overpass)', `${OVERPASS}?data=${encodeURIComponent(OSM_QUERIES.cables)}`, OSM_LICENSE, retrievedAt), cables: sort(cables), landings: sort([...landings.values()]) }, quality: { osmBaseTimestamp: raw.osm3s.timestamp_osm_base, queriedElements: raw.elements.length, communicationWays: selected.size, excludedNonCommunicationWays: ways.size - selected.size, unnamed, conflictingYears, missingGeometry, withRfsYear: cables.filter(c => c.rfsYear !== null).length, withOwners: cables.filter(c => c.owners.length).length, looseEnds } };
 }
 
 export function convertFacilities(raw, retrievedAt = new Date().toISOString()) {

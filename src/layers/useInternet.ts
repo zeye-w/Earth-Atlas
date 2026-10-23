@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Viewer } from "cesium";
 import { DNS_FLOWS_REFRESH_MS, fetchDnsFlows, loadInternetDataset, type InternetDatasets } from "../internet/data";
 import { InternetOverlay } from "../internet/internetOverlay";
-import { INTERNET_ID_PREFIX, type DnsFlowSnapshot, type InternetDatasetKey, type InternetSelection } from "../internet/types";
+import { INTERNET_ID_PREFIX, type DnsFlowSnapshot, type InternetDatasetKey, type InternetSelection, type MeasuredRoot } from "../internet/types";
+import { measuredRoots } from "../internet/measuredRoots";
 import { usePolledData, type PollStatus } from "../hooks/usePolledData";
 import { onClockChange } from "../clock";
 
@@ -25,23 +26,29 @@ export interface InternetState {
   cableYear: number | null;
   /** Earliest and latest ready-for-service years in the cable data. */
   cableYears: [number, number] | null;
+  /** Cables with a known ready-for-service year. */
+  datedCables: number;
+  /** Root instances seen answering the latest measured queries. */
+  measuredRoots: MeasuredRoot[];
 }
 
-const DATASET_FOR: Record<keyof Omit<InternetToggles, "dnsFlows">, InternetDatasetKey> = {
-  cables: "cables", ixps: "ixps", dataCenters: "facilities", rootServers: "rootServers",
+// The root layer has no static file: it shows the instances measured queries reached.
+const DATASET_FOR: Record<"cables" | "ixps" | "dataCenters", InternetDatasetKey> = {
+  cables: "cables", ixps: "ixps", dataCenters: "facilities",
 };
 
 /**
  * Submarine cables, exchanges, data centres, DNS root instances and measured
  * DNS queries. Static datasets load the first time their layer is shown and
  * stay; the DNS flows are live (RIPE Atlas via the Worker) and only run while
- * the timeline is live.
+ * the timeline is live. Root instances come from those flows: the sites that
+ * actually answered.
  */
 export function useInternet(viewer: Viewer | null, toggles: InternetToggles, live: boolean) {
   const overlayRef = useRef<InternetOverlay | null>(null);
   const [data, setData] = useState<Loaded>({});
   const [status, setStatus] = useState<Record<InternetDatasetKey, DatasetStatus>>({ cables: "idle", ixps: "idle", facilities: "idle", rootServers: "idle" });
-  const dns = usePolledData(fetchDnsFlows, { enabled: toggles.dnsFlows && live, intervalMs: DNS_FLOWS_REFRESH_MS, refreshOnVisible: true, keepDataOnError: true });
+  const dns = usePolledData(fetchDnsFlows, { enabled: (toggles.dnsFlows || toggles.rootServers) && live, intervalMs: DNS_FLOWS_REFRESH_MS, refreshOnVisible: true, keepDataOnError: true });
 
   useEffect(() => {
     if (!viewer) return;
@@ -57,7 +64,6 @@ export function useInternet(viewer: Viewer | null, toggles: InternetToggles, liv
 
   // Load each dataset the first time a layer needs it.
   const wanted = (Object.keys(DATASET_FOR) as Array<keyof typeof DATASET_FOR>).filter((k) => toggles[k]).map((k) => DATASET_FOR[k]);
-  if (toggles.dnsFlows) wanted.push("rootServers");
   const wantedKey = [...new Set(wanted)].sort().join(",");
   useEffect(() => {
     const controller = new AbortController();
@@ -80,7 +86,8 @@ export function useInternet(viewer: Viewer | null, toggles: InternetToggles, liv
   useEffect(() => { if (data.cables) overlayRef.current?.setCables(data.cables); }, [data.cables, viewer]);
   useEffect(() => { if (data.ixps) overlayRef.current?.setIxps(data.ixps); }, [data.ixps, viewer]);
   useEffect(() => { if (data.facilities) overlayRef.current?.setFacilities(data.facilities); }, [data.facilities, viewer]);
-  useEffect(() => { if (data.rootServers) overlayRef.current?.setRootServers(data.rootServers); }, [data.rootServers, viewer]);
+  const roots = useMemo(() => measuredRoots(dns.data?.flows ?? []), [dns.data]);
+  useEffect(() => { overlayRef.current?.setRootInstances(roots.map((r) => r.instance)); }, [roots, viewer]);
   useEffect(() => { overlayRef.current?.setDnsFlows(dns.data?.flows ?? []); }, [dns.data, viewer]);
 
   useEffect(() => {
@@ -90,14 +97,14 @@ export function useInternet(viewer: Viewer | null, toggles: InternetToggles, liv
     overlay.setVisible("landings", toggles.cables);
     overlay.setVisible("ixps", toggles.ixps);
     overlay.setVisible("facilities", toggles.dataCenters);
-    overlay.setVisible("rootServers", toggles.rootServers || toggles.dnsFlows);
+    overlay.setVisible("rootServers", (toggles.rootServers || toggles.dnsFlows) && live);
     overlay.setVisible("dnsFlows", toggles.dnsFlows && live);
   }, [toggles.cables, toggles.ixps, toggles.dataCenters, toggles.rootServers, toggles.dnsFlows, live, viewer]);
 
   /** What a picked primitive id refers to, with its related items; null if not ours. */
   const select = (pickedId: unknown): InternetSelection | null => {
     if (typeof pickedId !== "string" || !pickedId.startsWith("internet:")) return null;
-    const { cables, ixps, facilities, rootServers } = data;
+    const { cables, ixps, facilities } = data;
     const id = (prefix: string) => (pickedId.startsWith(prefix) ? pickedId.slice(prefix.length) : null);
     const cableId = id(INTERNET_ID_PREFIX.cable), landingId = id(INTERNET_ID_PREFIX.landing);
     const ixpId = id(INTERNET_ID_PREFIX.ixp), facilityId = id(INTERNET_ID_PREFIX.facility), rootId = id(INTERNET_ID_PREFIX.rootInstance);
@@ -117,9 +124,9 @@ export function useInternet(viewer: Viewer | null, toggles: InternetToggles, liv
       const facility = facilities.facilities.find((f) => String(f.id) === facilityId);
       if (facility) return { kind: "facility", facility, ixps: ixps?.ixps.filter((x) => x.facilityIds.includes(facility.id)) ?? [] };
     }
-    if (rootId && rootServers) {
-      const instance = rootServers.instances.find((r) => r.id === rootId);
-      if (instance) return { kind: "rootInstance", instance, server: rootServers.servers.find((s) => s.letter === instance.letter) ?? null };
+    if (rootId) {
+      const measured = roots.find((r) => r.instance.id === rootId);
+      if (measured) return { kind: "rootInstance", instance: measured.instance, server: null, measured };
     }
     return null;
   };
@@ -128,6 +135,7 @@ export function useInternet(viewer: Viewer | null, toggles: InternetToggles, liv
     const years = (data.cables?.cables ?? []).map((c) => c.rfsYear).filter((y): y is number => y !== null);
     return years.length ? [Math.min(...years), Math.max(...years)] : null;
   }, [data.cables]);
-  const state = useMemo<InternetState>(() => ({ datasets: status, data, dns: { status: dns.status, snapshot: dns.data }, cableYear, cableYears }), [status, data, dns.status, dns.data, cableYear, cableYears]);
+  const datedCables = useMemo(() => (data.cables?.cables ?? []).filter((c) => c.rfsYear !== null).length, [data.cables]);
+  const state = useMemo<InternetState>(() => ({ datasets: status, data, dns: { status: dns.status, snapshot: dns.data }, cableYear, cableYears, datedCables, measuredRoots: roots }), [status, data, dns.status, dns.data, cableYear, cableYears, datedCables, roots]);
   return { state, select, setCableYear };
 }

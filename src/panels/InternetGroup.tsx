@@ -16,6 +16,8 @@ interface Props {
 const count = (n: number) => n.toLocaleString("zh-CN");
 
 const PLAY_MS_PER_YEAR = 260;
+// Below this share of dated cables a year filter would hide most of the map.
+const MIN_DATED_SHARE = 0.3;
 
 /** Cables in service year by year: a slider and a play button that grows the network. */
 function CableYears({ year, years, onYear }: { year: number | null; years: [number, number]; onYear: (year: number | null) => void }) {
@@ -55,21 +57,34 @@ function status(s: DatasetStatus, ready: string): string {
  */
 export function InternetGroup({ layers, setLayer, internet, live, onCableYear }: Props) {
   const { data, datasets, dns } = internet;
+  const cableCount = data.cables?.cables.length ?? 0;
+  const unnamedCables = data.cables?.cables.filter((c) => c.name.startsWith("Unnamed OSM")).length ?? 0;
+  const yearsUsable = cableCount > 0 && internet.datedCables / cableCount >= MIN_DATED_SHARE;
+  const letters = new Set(internet.measuredRoots.map((r) => r.instance.letter)).size;
   return (
     <LayerGroup title="INTERNET" subtitle="互联网基础设施">
-      <ToggleRow icon={<Cable {...ICON} />} title="海底光缆" caption="光缆走向与登陆站 · TeleGeography" checked={layers.cables} onChange={(v) => setLayer("cables", v)} />
+      <ToggleRow icon={<Cable {...ICON} />} title="海底光缆" caption="OpenStreetMap 志愿者标注 · 覆盖不完整" checked={layers.cables} onChange={(v) => setLayer("cables", v)} />
       {layers.cables && (
         <div className="layer-extra">
-          <p className="layer-status" role="status">{status(datasets.cables, count(data.cables?.cables.length ?? 0) + " 条光缆 · " + count(data.cables?.landings.length ?? 0) + " 个登陆站")}</p>
-          {internet.cableYears && <CableYears year={internet.cableYear} years={internet.cableYears} onYear={onCableYear} />}
+          <p className="layer-status" role="status">{status(datasets.cables, count(cableCount) + " 段光缆" + (unnamedCables ? "（其中 " + count(unnamedCables) + " 段未命名）" : ""))}</p>
+          {datasets.cables === "ready" && (yearsUsable && internet.cableYears
+            ? <CableYears year={internet.cableYear} years={internet.cableYears} onYear={onCableYear} />
+            : <p className="layer-note">只有 {count(internet.datedCables)} 段标注了投产年份，暂不提供按年份浏览。OpenStreetMap 里的海底光缆由志愿者逐段标注，并不完整；白色亮点沿光缆流动，表示这是通信线路，不代表实际流量。</p>)}
         </div>
       )}
-      <ToggleRow icon={<Network {...ICON} />} title="互联网交换中心" caption="IXP · PeeringDB" checked={layers.ixps} onChange={(v) => setLayer("ixps", v)} />
+      <ToggleRow icon={<Network {...ICON} />} title="互联网交换中心" caption="Wikidata 收录 · 远少于实际数量" checked={layers.ixps} onChange={(v) => setLayer("ixps", v)} />
       {layers.ixps && <p className="layer-status" role="status">{status(datasets.ixps, count(data.ixps?.ixps.length ?? 0) + " 个交换中心")}</p>}
-      <ToggleRow icon={<Building2 {...ICON} />} title="数据中心" caption="互联设施 · PeeringDB" checked={layers.dataCenters} onChange={(v) => setLayer("dataCenters", v)} />
+      <ToggleRow icon={<Building2 {...ICON} />} title="数据中心" caption="OpenStreetMap 标注的数据中心" checked={layers.dataCenters} onChange={(v) => setLayer("dataCenters", v)} />
       {layers.dataCenters && <p className="layer-status" role="status">{status(datasets.facilities, count(data.facilities?.facilities.length ?? 0) + " 个设施")}</p>}
-      <ToggleRow icon={<Server {...ICON} />} title="DNS 根服务器" caption="13 个根 · 全球任播实例 · root-servers.org" checked={layers.rootServers} onChange={(v) => setLayer("rootServers", v)} />
-      {layers.rootServers && <p className="layer-status" role="status">{status(datasets.rootServers, count(data.rootServers?.instances.length ?? 0) + " 个实例")}</p>}
+      <ToggleRow icon={<Server {...ICON} />} title="DNS 根服务器" caption="此刻实测查询命中的任播实例" checked={layers.rootServers} onChange={(v) => setLayer("rootServers", v)} />
+      {layers.rootServers && (
+        <p className="layer-status" role="status">
+          {!live ? "实例取自最新的实测查询；回到「实时」后显示。" :
+           dns.status === "error" && !dns.snapshot ? "实测数据暂不可用，未显示。" :
+           dns.snapshot ? "此刻实测命中 " + count(internet.measuredRoots.length) + " 个实例 · 13 个根字母中的 " + letters + " 个" :
+           "正在读取 RIPE Atlas 测量结果…"}
+        </p>
+      )}
       <ToggleRow icon={<Activity {...ICON} />} title="DNS 查询（实测）" caption="RIPE Atlas 探针 → 实际应答的根服务器实例" checked={layers.dnsFlows} onChange={(v) => setLayer("dnsFlows", v)} />
       {layers.dnsFlows && (
         <p className="layer-status" role="status">
