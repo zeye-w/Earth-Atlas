@@ -8,7 +8,7 @@ import { contracts, validateBundle } from '../scripts/internet/validate.mjs';
 import { centroid, simplify, splitAntimeridian, position } from '../scripts/internet/geometry.mjs';
 import { build, publicationAllowed } from '../scripts/internet/build.mjs';
 import { getJson, peeringList, USER_AGENT } from '../scripts/internet/http.mjs';
-import { convertCables, convertFacilities, convertIxps, osmNumericId, rfsYear, OSM_LICENSE, WIKIDATA_LICENSE } from '../scripts/internet/open-sources.mjs';
+import { convertCables, convertFacilities, convertIxps, osmNumericId, rfsYear, OSM_LICENSE, WIKIDATA_LICENSE, joinByEndNodes, stitchSegments } from '../scripts/internet/open-sources.mjs';
 
 test('an upstream failure preserves every old output and prevents later requests', async () => {
   const cache = fileURLToPath(new URL('../.cache/', import.meta.url));
@@ -103,6 +103,9 @@ test('all three open-licensed production datasets are present, lossless and with
   assert.ok(bundle['cables.json'].cables.length >= 500);
   assert.ok(bundle['facilities.json'].facilities.length >= 2000);
   assert.ok(bundle['ixps.json'].ixps.length >= 10);
+  // City-estimated exchanges must stay distinguishable from ones with their own coordinates.
+  assert.ok(bundle['ixps.json'].ixps.every(i => i.positionSource === 'item' || i.positionSource === 'city'));
+  assert.ok(bundle['ixps.json'].ixps.some(i => i.positionSource === 'city'));
 });
 
 test('OSM conversion merges route ways, keeps real names and rejects non-communication cables', () => {
@@ -143,6 +146,38 @@ test('Wikidata uses direct coordinates first, city fallback second and preserves
   assert.deepEqual(dataset.ixps[0].position, [10, 20]);
   assert.equal(dataset.ixps[0].members, 123);
   assert.equal(dataset.ixps[1].members, null);
+  assert.deepEqual(dataset.ixps.map(i => i.positionSource), ['item', 'city']);
   assert.equal(quality.cityFallback, 1);
   assert.equal(quality.missingCoordinates, 1);
+});
+
+test('unnamed OSM ways join only through shared end nodes, and join end to end', () => {
+  const way = (id, nodes, coords, tags = {}) => ({ type: 'way', id, nodes, geometry: coords.map(([lon, lat]) => ({ lon, lat })), tags: { communication: 'line', submarine: 'yes', ...tags } });
+  const raw = { osm3s: { timestamp_osm_base: '2026-10-23T00:00:00Z' }, elements: [
+    way(10, [1, 2], [[0, 0], [1, 0]]),
+    way(11, [3, 2], [[2, 0], [1, 0]]),              // shares node 2, drawn the other way round
+    way(12, [3, 4], [[2, 0], [3, 0]]),
+    way(20, [7, 8], [[1.001, 0.001], [5, 5]]),      // a few metres away but not connected: stays apart
+  ] };
+  const { dataset, quality } = convertCables(raw);
+  assert.equal(dataset.cables.length, 2);
+  const joined = dataset.cables.find(c => c.id === 'osm-way-10');
+  assert.equal(joined.paths.length, 1, 'one continuous line');
+  assert.deepEqual(joined.paths[0][0], [0, 0]);
+  assert.deepEqual(joined.paths[0].at(-1), [3, 0]);
+  assert.equal(joined.url, 'https://www.openstreetmap.org/way/10');
+  assert.ok(dataset.cables.find(c => c.id === 'osm-way-20'));
+  assert.equal(quality.joinedUnnamedWays, 3);
+  assert.equal(quality.segments, 4);
+  assert.equal(quality.stitchedPaths, 2);
+});
+
+test('a junction of three ways stays a branch point; ways without node ids stay as drawn', () => {
+  const seg = (id, nodes, coords) => ({ id, nodes, geometry: coords.map(([lon, lat]) => ({ lon, lat })) });
+  const lines = stitchSegments([seg(1, [1, 2], [[0, 0], [1, 0]]), seg(2, [2, 3], [[1, 0], [2, 0]]), seg(3, [2, 4], [[1, 0], [1, 1]])]);
+  assert.equal(lines.length, 3);
+  assert.equal(stitchSegments([seg(1, undefined, [[0, 0], [1, 0]]), seg(2, undefined, [[1, 0], [2, 0]])]).length, 2);
+  // A closed ring is walked once.
+  assert.equal(stitchSegments([seg(1, [1, 2], [[0, 0], [1, 0]]), seg(2, [2, 1], [[1, 0], [0, 0]])]).length, 1);
+  assert.equal(joinByEndNodes([{ id: 5, nodes: [1, 2] }, { id: 6, nodes: [9, 8] }, { id: 7, nodes: [2, 9] }]).length, 1);
 });

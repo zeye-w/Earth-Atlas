@@ -19,6 +19,7 @@
     8.68,
     50.11
    ],
+   "positionSource": "item",
    "members": 1000,
    "portCapacityGbps": 50000,
    "facilityIds": [
@@ -34,6 +35,7 @@
     103.85,
     1.29
    ],
+   "positionSource": "city",
    "members": 300,
    "portCapacityGbps": null,
    "facilityIds": []

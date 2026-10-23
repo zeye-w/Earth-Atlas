@@ -32,6 +32,8 @@ jobs:
       - name: Check external Macrostrat API and production assets
         id: smoke
         continue-on-error: true
+        # bash with pipefail, so tee does not mask a failing smoke script.
+        shell: bash
         run: node --experimental-strip-types scripts/smoke-live.mjs 2>&1 | tee smoke.log
       - name: Report an upstream failure without failing the check
         if: steps.smoke.outcome == 'failure'
