@@ -45,8 +45,8 @@ def check(path):
     p = np.concatenate(positions)
     low, high = p.min(axis=0),p.max(axis=0)
     np.testing.assert_allclose(low,[-20.4,-10.4,-26],atol=.1)
-    np.testing.assert_allclose(high,[20.4,2.1,26],atol=.1)
-    assert len(doc['materials']) == 3 and doc['materials'][1]['doubleSided']
+    np.testing.assert_allclose(high,[20.4,3.6,26],atol=.1)
+    assert doc['materials'][1]['name'] == 'solar array' and doc['materials'][1]['doubleSided']
     print(json.dumps({'sha256':hashlib.sha256(raw).hexdigest(),'triangles':triangles,'min':low.tolist(),'max':high.tolist()}))
 
 

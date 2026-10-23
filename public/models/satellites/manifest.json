@@ -12,13 +12,14 @@
       ],
       "longestDimension": 25.614239003222792
     },
-    "materials": "original"
+    "materials": "original",
+    "meshCompression": "draco"
   },
   {
     "id": "hubble",
     "originalSha256": "e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384",
-    "sha256": "a621ccd5acb8f9118a48b63e03450825eac45b058d845f854462a07048f2347e",
-    "bytes": 1695232,
+    "sha256": "e9101231bd20c2a55c286dce67b715b32f1532c963f296540df58dcb1112d355",
+    "bytes": 240712,
     "normalization": {
       "center": [
         0.04540657997131348,
@@ -27,13 +28,14 @@
       ],
       "longestDimension": 525.4886287550491
     },
-    "materials": "original"
+    "materials": "original; WebP textures only (PNG duplicates removed)",
+    "meshCompression": "draco"
   },
   {
     "id": "terra",
     "originalSha256": "8794857595f7a7d416184fe926ecb50e11bf267dbe471d1cf2728a85e8d017fa",
-    "sha256": "73161fc48cfe986b75fecf5ece45be7bc7eca4e62174721f38c2e7e6f3a0342b",
-    "bytes": 2150608,
+    "sha256": "2d2543728ff0bd2ac5dcd65e5b99bdbfd3439637a10f4e0b5b33ac489a5eed39",
+    "bytes": 267300,
     "normalization": {
       "center": [
         -1.945347275977838e-05,
@@ -42,21 +44,23 @@
       ],
       "longestDimension": 26053.829634893907
     },
-    "materials": "original colors; missing external textures removed"
+    "materials": "original colors; missing external textures removed",
+    "meshCompression": "draco"
   },
   {
     "id": "tiangong",
-    "originalSha256": "8e2bf58a79b8c6d4494ba55268f0a2978715d7dc081fbc6ac2c39f0cbe27f8bf",
-    "sha256": "3d5ca7b5ffc731d6785d4a08013b87070361ce8a21e3a31f7010be11a518e761",
-    "bytes": 137104,
+    "originalSha256": "b130edb11721df214ab95627218b944a13da363597cc7b5ccee12ba61779bca1",
+    "sha256": "2eb9cf1a6afd283ae559b7abceb95dfd596bc69800880a5c5b1f03ca6835c033",
+    "bytes": 26048,
     "normalization": {
       "center": [
         0.0,
-        -4.1499998569488525,
+        -3.3999998569488525,
         0.0
       ],
-      "longestDimension": 52.0
+      "longestDimension": 52.060001373291016
     },
-    "materials": "original"
+    "materials": "schematic",
+    "meshCompression": "draco"
   }
 ]
