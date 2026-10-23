@@ -82,6 +82,7 @@ PeeringDB / TeleGeography / root-servers.org 的适配代码保留在 `scripts/i
 3. 提交前本地必须通过：`npm run typecheck`、`npm test`、`npm run build`。只要动到界面，再跑 `npx playwright test tests/e2e/internet.spec.ts`。
 4. 不要跳过或删除测试来让测试通过；不要改热点文件。
 5. 合并由 Claude 集成对话审查后执行。Claude 开发对话的改动同样走 PR。
+6. 审查意见和追加修改都推到**原来那个 PR 的分支**上，不要另开新 PR；原 PR 已合并或关闭时才开新的。合并不等浏览器测试 `e2e`，它在合并后的 `main` 上跑（细节见 `docs/integrator.md`“合并节奏”）。
 
 ## 各线的验收标准
 
