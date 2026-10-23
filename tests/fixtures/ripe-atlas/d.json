@@ -1,0 +1,77 @@
+[
+  {
+    "prb_id": 1,
+    "timestamp": 1792737266,
+    "msm_id": 10312,
+    "af": 4,
+    "result": {
+      "rt": 21.386,
+      "size": 70,
+      "abuf": "jLSAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGxphbW5sMy5kcm9vdC5tYXhnaWdhcG9wLm5ldA==",
+      "ID": 36020,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "amnl3.droot.maxgigapop.net"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 2049,
+    "timestamp": 1740569893,
+    "msm_id": 10312,
+    "af": 4,
+    "result": {
+      "rt": 17.809,
+      "size": 70,
+      "abuf": "jHGAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGxpmZmRlOC5kcm9vdC5tYXhnaWdhcG9wLm5ldA==",
+      "ID": 35953,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "ffde8.droot.maxgigapop.net"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 3,
+    "timestamp": 1726509293,
+    "msm_id": 10312,
+    "af": 4,
+    "result": {
+      "rt": 11.2,
+      "size": 70,
+      "abuf": "hVaAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAAGxphbW5sNC5kcm9vdC5tYXhnaWdhcG9wLm5ldA==",
+      "ID": 34134,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "amnl4.droot.maxgigapop.net"
+          ]
+        }
+      ]
+    }
+  }
+]
