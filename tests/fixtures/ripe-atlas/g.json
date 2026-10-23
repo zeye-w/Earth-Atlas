@@ -1,0 +1,77 @@
+[
+  {
+    "prb_id": 1,
+    "timestamp": 1792737271,
+    "msm_id": 10314,
+    "af": 4,
+    "result": {
+      "rt": 30.623,
+      "size": 70,
+      "abuf": "CuiEAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAADQxncm9vdC1ldXIxLTLADAACAAMAAAAAAALADA==",
+      "ID": 2792,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "groot-eur1-2"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 2049,
+    "timestamp": 1740569906,
+    "msm_id": 10314,
+    "af": 4,
+    "result": {
+      "rt": 25.687,
+      "size": 70,
+      "abuf": "bWWEAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAADQxncm9vdC1ldXIxLTPADAACAAMAAAAAAALADA==",
+      "ID": 28005,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "groot-eur1-3"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 3,
+    "timestamp": 1726509297,
+    "msm_id": 10314,
+    "af": 4,
+    "result": {
+      "rt": 77.647,
+      "size": 70,
+      "abuf": "fTKEAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAADQxncm9vdC1ldXIyLTPADAACAAMAAAAAAALADA==",
+      "ID": 32050,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "groot-eur2-3"
+          ]
+        }
+      ]
+    }
+  }
+]
