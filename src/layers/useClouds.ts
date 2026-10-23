@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Credit, UrlTemplateImageryProvider, type ImageryLayer, type Viewer } from "cesium";
-import { CLOUD_MAX_AGE_MS, CLOUD_REFRESH_MS, cloudBlend, cloudFrameAt, cloudTileUrl, fetchCloudCatalog } from "../cloudData";
+import { CLOUD_MAX_AGE_MS, CLOUD_REFRESH_MS, NASA_IR_LAYERS, cloudBlend, cloudFrameAt, cloudTileUrl, fetchCloudCatalog, nasaCloudProbeUrl, nasaCloudTileUrl } from "../cloudData";
 import { usePolledData } from "../hooks/usePolledData";
 import { useTimeSelector } from "../hooks/useTimeline";
 import { beginWork } from "../pendingWork";
@@ -11,7 +11,7 @@ import type { TimeController } from "../timeline";
 const MAX_LEVEL = 5;
 const PLAYING_MAX_LEVEL = 3;
 
-export type CloudStatus = "idle" | "loading" | "ready" | "error" | "nodata";
+export type CloudStatus = "idle" | "loading" | "ready" | "error" | "nodata" | "fallback";
 
 /**
  * SSEC infrared cloud composite, following the timeline: live shows the
@@ -24,6 +24,9 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
   const layersRef = useRef<{ layer: ImageryLayer; key: string }[]>([]);
   const opacityRef = useRef(opacity);
   opacityRef.current = opacity;
+  const fallbackLayersRef = useRef<ImageryLayer[]>([]);
+  const [fallbackState, setFallbackState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [fallbackSensors, setFallbackSensors] = useState<string[]>([]);
   const [tileError, setTileError] = useState(false);
   const [displayedTime, setDisplayedTime] = useState<number | null>(null);
   const [tilesLoading, setTilesLoading] = useState(false);
@@ -43,6 +46,71 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
     return selectedTime;
   }, [poll.data, live, selectedTime, minute]);
   const frame = useMemo(() => frameTimestamp === null ? null : new Date(frameTimestamp), [frameTimestamp]);
+
+
+  // SSEC RealEarth may be unreachable for long periods. Display three
+  // *actual* public NASA geostationary infrared feeds as a live-only partial
+  // coverage fallback. Do not synthesize a global cloud mask or invent an
+  // observation timestamp. A successful real PNG preflight is mandatory.
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    const clear = () => {
+      if (!viewer.isDestroyed()) {
+        for (const layer of fallbackLayersRef.current) viewer.imageryLayers.remove(layer, true);
+        viewer.scene.requestRender();
+      }
+      fallbackLayersRef.current = [];
+    };
+    if (!visible || !live || frameTimestamp !== null || !["ready", "error"].includes(poll.status)) {
+      clear();
+      setFallbackState("idle");
+      setFallbackSensors([]);
+      return;
+    }
+    const controller = new AbortController();
+    let active = true;
+    setFallbackState("loading");
+    void (async () => {
+      const available = await Promise.all(NASA_IR_LAYERS.map(async (sensor) => {
+        try {
+          const response = await fetch(nasaCloudProbeUrl(sensor.id), {
+            signal: AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]),
+          });
+          if (!response.ok || !/^image\/png/i.test(response.headers.get("content-type") ?? "")) return null;
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          if (bytes.length < 100 || bytes[0] !== 137 || bytes[1] !== 80 || bytes[2] !== 78 || bytes[3] !== 71) return null;
+          return sensor;
+        } catch {
+          return null;
+        }
+      }));
+      if (!active || viewer.isDestroyed()) return;
+      const sensors = available.filter((sensor): sensor is (typeof NASA_IR_LAYERS)[number] => sensor !== null);
+      if (sensors.length === 0) {
+        setFallbackState("error");
+        return;
+      }
+      clear();
+      fallbackLayersRef.current = sensors.map((sensor) => {
+        const provider = new UrlTemplateImageryProvider({
+          url: nasaCloudTileUrl(sensor.id),
+          maximumLevel: 5,
+          credit: new Credit(`Cloud-top infrared: NASA GIBS / ${sensor.label}. Regional satellite coverage only.`),
+        });
+        const layer = viewer.imageryLayers.addImageryProvider(provider);
+        layer.alpha = (opacityRef.current / 100) * 0.75;
+        return layer;
+      });
+      setFallbackSensors(sensors.map((sensor) => sensor.label));
+      setFallbackState("ready");
+      viewer.scene.requestRender();
+    })();
+    return () => {
+      active = false;
+      controller.abort();
+      clear();
+    };
+  }, [viewer, visible, live, frameTimestamp, poll.status]);
 
   useEffect(() => {
     if (!viewer) return;
@@ -123,10 +191,11 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
     const layers = layersRef.current;
     const blend = cloudBlend(opacity, layers.length > 1);
     layers.forEach(({ layer }, index) => { layer.alpha = index === 0 ? blend.shown : blend.incoming; });
+    fallbackLayersRef.current.forEach((layer) => { layer.alpha = (opacity / 100) * 0.75; });
     viewer?.scene.requestRender();
   }, [viewer, opacity]);
 
-  const status: CloudStatus = tileError ? "error" : tilesLoading ? "loading" : poll.status === "ready" && !frame ? "nodata" : poll.status;
-  const time = displayedTime !== null ? new Date(displayedTime).toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
-  return { status, time };
+  const status: CloudStatus = tileError ? "error" : tilesLoading ? "loading" : fallbackState === "ready" ? "fallback" : fallbackState === "loading" ? "loading" : fallbackState === "error" ? "error" : poll.status === "ready" && !frame ? "nodata" : poll.status;
+  const time = status === "fallback" ? null : displayedTime !== null ? new Date(displayedTime).toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
+  return { status, time, fallbackSensors };
 }
