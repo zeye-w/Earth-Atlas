@@ -18,3 +18,4 @@ wrangler.jsonc
 .github/hotspots.txt
 .github/workflows/ci.yml
 .github/workflows/pr-guard.yml
+scripts/check-hotspots.mjs

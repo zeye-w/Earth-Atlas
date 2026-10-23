@@ -2,6 +2,8 @@
  * Fails a pull request from a codex/* branch that changes a hotspot file
  * (.github/hotspots.txt) unless it carries the "hotspots-approved" label.
  * Env: HEAD_REF, BASE_SHA, LABELS (comma-separated), HOTSPOTS (path, optional).
+ * The list is read from the base commit, so a pull request cannot exempt a
+ * file by editing the list itself.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -27,8 +29,16 @@ export function verdict({ headRef, labels, changed, hotspots }) {
   };
 }
 
+function baseHotspots(baseSha) {
+  try {
+    return execFileSync("git", ["show", `${baseSha}:.github/hotspots.txt`], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+  } catch {
+    return readFileSync(".github/hotspots.txt", "utf8"); // the base predates the list
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const hotspots = readHotspots(readFileSync(process.env.HOTSPOTS || ".github/hotspots.txt", "utf8"));
+  const hotspots = readHotspots(process.env.HOTSPOTS ? readFileSync(process.env.HOTSPOTS, "utf8") : baseHotspots(process.env.BASE_SHA));
   const changed = execFileSync("git", ["diff", "--name-only", `${process.env.BASE_SHA}...HEAD`], { encoding: "utf8" }).split("\n").filter(Boolean);
   const result = verdict({ headRef: process.env.HEAD_REF || "", labels: (process.env.LABELS || "").split(",").filter(Boolean), changed, hotspots });
   console.log(result.message);
