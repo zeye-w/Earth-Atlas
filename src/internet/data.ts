@@ -55,6 +55,7 @@ function ixp(v: unknown): Ixp | null {
   if (!isObject(v) || !finite(v.id) || !isString(v.name) || !isLonLat(v.position)) return null;
   return {
     id: v.id, name: v.name, city: isString(v.city) ? v.city : "", country: orNull(v.country, isString), position: v.position,
+    positionSource: v.positionSource === "item" || v.positionSource === "city" ? v.positionSource : null,
     members: orNull(v.members, finite), portCapacityGbps: orNull(v.portCapacityGbps, finite),
     facilityIds: Array.isArray(v.facilityIds) ? v.facilityIds.filter(finite) : [],
     ...(isString(v.website) ? { website: v.website } : {}),

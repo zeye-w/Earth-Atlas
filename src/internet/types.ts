@@ -58,14 +58,17 @@ export interface CableDataset extends Dataset {
 // ---------------------------------------------------------------- exchanges and facilities
 
 export interface Ixp {
-  /** PeeringDB ix id. */
+  /** Wikidata item number (Q294484 → 294484). */
   id: number;
   name: string;
   city: string;
   country: string | null;
-  /** Centroid of the IXP's facilities with coordinates, else the city. */
   position: LonLat;
-  /** Networks connected (PeeringDB net count); null when unknown. */
+  /** "item": the Wikidata item's own coordinates; "city": the item has none, so the
+   *  coordinates of its city stand in (an estimate, not the exchange's address);
+   *  null when the producer did not say. */
+  positionSource: "item" | "city" | null;
+  /** Networks connected (Wikidata P2124 member count); null when unknown. */
   members: number | null;
   /** Sum of member port speeds, Gbit/s; null when unknown. */
   portCapacityGbps: number | null;
@@ -74,14 +77,14 @@ export interface Ixp {
 }
 
 export interface Facility {
-  /** PeeringDB fac id. */
+  /** OpenStreetMap id × 4 + element type (node 0, way 1, relation 2). */
   id: number;
   name: string;
   operator: string | null;
   city: string;
   country: string | null;
   position: LonLat;
-  /** IXPs present in the facility, and networks present (PeeringDB counts). */
+  /** IXPs present in the facility, and networks present; 0 when the source has no counts (OpenStreetMap). */
   ixCount: number;
   networkCount: number;
 }

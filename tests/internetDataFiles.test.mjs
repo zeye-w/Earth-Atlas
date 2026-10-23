@@ -103,6 +103,9 @@ test('all three open-licensed production datasets are present, lossless and with
   assert.ok(bundle['cables.json'].cables.length >= 500);
   assert.ok(bundle['facilities.json'].facilities.length >= 2000);
   assert.ok(bundle['ixps.json'].ixps.length >= 10);
+  // City-estimated exchanges must stay distinguishable from ones with their own coordinates.
+  assert.ok(bundle['ixps.json'].ixps.every(i => i.positionSource === 'item' || i.positionSource === 'city'));
+  assert.ok(bundle['ixps.json'].ixps.some(i => i.positionSource === 'city'));
 });
 
 test('OSM conversion merges route ways, keeps real names and rejects non-communication cables', () => {
@@ -142,6 +145,7 @@ test('Wikidata uses direct coordinates first, city fallback second and preserves
   assert.deepEqual(dataset.ixps[0].position, [10, 20]);
   assert.equal(dataset.ixps[0].members, 123);
   assert.equal(dataset.ixps[1].members, null);
+  assert.deepEqual(dataset.ixps.map(i => i.positionSource), ['item', 'city']);
   assert.equal(quality.cityFallback, 1);
   assert.equal(quality.missingCoordinates, 1);
 });

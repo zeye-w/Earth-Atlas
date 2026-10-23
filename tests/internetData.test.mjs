@@ -11,7 +11,8 @@ test("the fixtures satisfy the contract", () => {
   const cables = parseCableDataset(fixture("cables"));
   assert.equal(cables.cables.length, 3);
   assert.equal(cables.landings.length, 4);
-  assert.equal(parseIxpDataset(fixture("ixps")).ixps.length, 2);
+  const ixps = parseIxpDataset(fixture("ixps")).ixps;
+  assert.deepEqual(ixps.map((i) => i.positionSource), ["item", "city"]);
   assert.equal(parseFacilityDataset(fixture("facilities")).facilities.length, 2);
   const root = parseRootServerDataset(fixture("root-servers"));
   assert.equal(root.instances.length, 2);
