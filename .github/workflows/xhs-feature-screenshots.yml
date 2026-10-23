@@ -1,0 +1,54 @@
+name: Xiaohongshu Oct 23 Feature Screenshots
+on:
+  push:
+    branches: [docs/xhs-update-20261023]
+    paths:
+      - "scripts/capture-xhs-20261023.mjs"
+      - ".github/workflows/xhs-feature-screenshots.yml"
+permissions:
+  contents: write
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout current application and capture script
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install application
+        run: npm ci --no-audit --no-fund
+      - name: Verify capture script and production build
+        run: |
+          node --check scripts/capture-xhs-20261023.mjs
+          npm run build
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start real TerraScope website locally
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 --strictPort >/tmp/terrascope-xhs.log 2>&1 &
+          for i in $(seq 1 45); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
+          curl -fsSI http://127.0.0.1:4173/
+      - name: Capture new product feature screens
+        env:
+          XHS_SITE: http://127.0.0.1:4173
+        run: node scripts/capture-xhs-20261023.mjs
+      - name: Commit feature screenshot evidence to documentation branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/updates-20261023 || true
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: capture Oct 23 TerraScope actual feature screenshots"
+            git push origin HEAD:docs/xhs-update-20261023
+          fi
+      - name: Upload screenshot images and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terrascope-xhs-update-20261023
+          path: docs/updates-20261023/
+          if-no-files-found: warn
+          retention-days: 20
