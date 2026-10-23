@@ -17,15 +17,16 @@ function rows(s: InternetSelection): { title: string; kind: string; items: Array
     case "cable": return { title: named(s.cable.name, "未命名光缆段"), kind: "海底光缆", link: s.cable.url ? ["在 OpenStreetMap 查看", s.cable.url] : undefined, items: [
       ["投产年份", s.cable.rfsYear ? String(s.cable.rfsYear) : "—"],
       ["长度", s.cable.lengthKm ? count(s.cable.lengthKm) + " km" : "—"],
-      ["登陆站", s.landings.length ? s.landings.map((l) => l.name).join("、") : "—"],
+      ...(s.landings.length ? [["线路端点", s.landings.map((l) => l.name).join("、")]] as Array<[string, string]> : []),
       ["运营方", s.cable.owners.join("、") || "—"],
     ] };
-    case "landing": return { title: s.landing.name, kind: "光缆登陆站", items: [
+    case "landing": return { title: s.landing.name, kind: "光缆端点（按线路推算，非核实的登陆站）", items: [
       ["国家 / 地区", s.landing.country ?? "—"],
       ["接入光缆", s.cables.length ? s.cables.map((c) => c.name).join("、") : "—"],
     ] };
     case "ixp": return { title: s.ixp.name, kind: "互联网交换中心", link: s.ixp.website ? ["官方网站", s.ixp.website] : undefined, items: [
       ["城市", place(s.ixp.city, s.ixp.country)],
+      ...(s.ixp.positionSource === "city" ? [["位置", "所在城市的坐标（推算），不是交换中心的实际地址"]] as Array<[string, string]> : []),
       ["接入网络", s.ixp.members !== null ? count(s.ixp.members) : "—"],
       ["端口总容量", s.ixp.portCapacityGbps !== null ? count(Math.round(s.ixp.portCapacityGbps)) + " Gbit/s" : "—"],
       ["所在设施", s.facilities.length ? s.facilities.map((f) => f.name).join("、") : "—"],

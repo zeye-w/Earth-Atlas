@@ -142,7 +142,7 @@ export function convertIxps(raw, retrievedAt = new Date().toISOString()) {
     const first = rows[0], counts = [...new Set(rows.filter(r => r.members !== undefined).map(r => Number(r.members)).filter(n => Number.isSafeInteger(n) && n >= 0))];
     if (counts.length > 1) conflictingMembers++;
     const websites = [...new Set(rows.map(r => r.website).filter(s => /^https?:\/\//.test(s || '')))].sort();
-    ixps.push({ id, name: first.itemLabel || `Q${id}`, city: first.cityLabel && !/^Q\d+$/.test(first.cityLabel) ? first.cityLabel : '', country: rows.find(r => /^[A-Z]{2}$/.test(r.countryCode || ''))?.countryCode || null, position: candidates[0], members: counts.length === 1 ? counts[0] : null, portCapacityGbps: null, facilityIds: [], ...(websites.length ? { website: websites[0] } : {}) });
+    ixps.push({ id, name: first.itemLabel || `Q${id}`, city: first.cityLabel && !/^Q\d+$/.test(first.cityLabel) ? first.cityLabel : '', country: rows.find(r => /^[A-Z]{2}$/.test(r.countryCode || ''))?.countryCode || null, position: candidates[0], positionSource: direct.length ? 'item' : 'city', members: counts.length === 1 ? counts[0] : null, portCapacityGbps: null, facilityIds: [], ...(websites.length ? { website: websites[0] } : {}) });
   }
   return { dataset: { ...metadata('Wikidata internet exchange points (SPARQL)', `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(IXP_QUERY)}`, WIKIDATA_LICENSE, retrievedAt), ixps: ixps.sort((a, b) => a.id - b.id) }, quality: { queriedItems: groups.size, missingCoordinates, ambiguousCoordinates, cityFallback, cityFallbackQids: fallbackIds.map(id => `Q${id}`).sort(), conflictingMembers, withMembers: ixps.filter(i => i.members !== null).length, withWebsite: ixps.filter(i => i.website).length } };
 }
