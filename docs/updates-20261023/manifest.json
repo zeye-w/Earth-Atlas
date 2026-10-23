@@ -1,0 +1,58 @@
+{
+  "branch": "docs/xhs-update-20261023",
+  "version": "2026-10-23",
+  "method": "Playwright Chromium screenshots of true application; live third-party data; no mock",
+  "shots": [
+    {
+      "file": "01-overview.jpg",
+      "description": "新版首页视角及地球夜光",
+      "source": "real application build and live sources",
+      "captured_utc": "2026-10-23T05:11:29.613Z",
+      "bytes": 256228,
+      "observed": "TerraScope live home UI",
+      "page_errors": []
+    },
+    {
+      "file": "02-global-temperature.jpg",
+      "description": "NOAA GFS 2m 气温热力图",
+      "source": "real application build and live sources",
+      "captured_utc": "2026-10-23T05:11:48.647Z",
+      "bytes": 204566,
+      "observed": "NOAA GFS 模式分析场 · 1° 展示网格有效时间：2026/10/22 UTC 0:00:00−6002550 °C色带受昼夜光照影响。全球数值模式数据，并非逐点实时实测；每 6 小时一个分析周期。暂不提供历史天气。",
+      "page_errors": []
+    },
+    {
+      "file": "03-terminator-tour.jpg",
+      "description": "晨昏线日出日落旅行模式",
+      "source": "real application build and live sources",
+      "captured_utc": "2026-10-23T05:12:41.259Z",
+      "bytes": 205848,
+      "observed": "晨昏线旅行退出旅行追逐日出 · 镜头已暂停日出侧日落侧继续旅行速度 0.5×1×2×4.1° / 8.9° · 当地太阳时 05:47时间与计算说明场景时间 2026-10-23 05:12:11 UTC。依据太阳几何位置计算，不包含大气折射和地形遮挡；太阳时按经度估算，未计均时差，不是行政时区时间。速度只改变镜头巡游速度。拖动或缩放地球会暂停旅行，Esc 退出。",
+      "page_errors": []
+    },
+    {
+      "file": "04-location-weather.jpg",
+      "description": "点击地球查看地点天气、环境及地质分类",
+      "source": "real application build and live sources",
+      "captured_utc": "2026-10-23T05:13:40.497Z",
+      "bytes": 330414,
+      "observed": "LOCATION INSPECTOR 地点信息RECORD FOUNDSELECTED COORDINATES47.9480° N11.0000° E居中地点复制坐标分享地点概览天气地质WEATHER · 地点天气阴1.8 °C体感温度-1.3 °C相对湿度83 %地表气压937.4 hPa云量100 %网格海拔674.0 m所在地时区Europe/Berlin数据时间：2026/10/23 GMT+2 7:00:00（所在地时间）数值模式估计 · 非现场实测数据来源与说明天气来自 Open-Meteo（CC BY 4.0），为数值模式估计，并非该点实测；与气温热力图的数据源和时间可能不同。天气网格距点击坐标约 0.7 km。海拔为服务返回的地形网格高度，海域不能据此推算水深。环境数据：Open-Meteo；地质：Macrostrat。各项来源、时间与覆盖范围见对应分类。",
+      "page_errors": []
+    },
+    {
+      "file": null,
+      "name": "05-infrared-clouds",
+      "error": "TimeoutError: page.waitForFunction: Timeout 95000ms exceeded.",
+      "captured_utc": "2026-10-23T05:15:22.498Z"
+    },
+    {
+      "file": "06-satellite-3d.jpg",
+      "description": "ISS 三维模型近景与真实 SGP4 轨道预测",
+      "source": "real application build and live sources",
+      "captured_utc": "2026-10-23T05:16:00.999Z",
+      "bytes": 276303,
+      "observed": "ISS · 国际空间站跟踪中时间2026-10-23 05:15:41 UTC星下点40.76°S 138.69°E高度430.7 km速度7.65 km/s航向东南 127°光照日照中轨道周期93.0 分钟显示从我的位置看的方位和仰角模型近景轨道远景三维模型已显示。 外形模型；姿态近似、比例仅供展示。模型来源：NASA · ISS (A)CelesTrak 轨道根数 + SGP4 推算，并非实时遥测。拖动可绕卫星旋转视角。",
+      "page_errors": []
+    }
+  ]
+}
