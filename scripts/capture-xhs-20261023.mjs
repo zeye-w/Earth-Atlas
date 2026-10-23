@@ -40,7 +40,7 @@ async function save(name,page,description,errors,observed){
  const data=await page.screenshot({path:resolve(OUT,filename),quality:92,type:"jpeg",animations:"disabled",timeout:150000});
  if(data.byteLength<35000)throw Error("Screenshot too small to verify scene "+name);
  records.push({file:filename,description,source:"real application build and live sources",captured_utc:new Date().toISOString(),bytes:data.byteLength,observed:observed||"",page_errors:errors});
- console.log("SCREENSHOT",filename,"bytes",data.byteLength,"observation",observed||"",flush=true);
+ console.log("SCREENSHOT",filename,"bytes",data.byteLength,"observation",observed||"");
 }
 async function group(page,label){
  const panel=page.locator("#earth-layer-panel");
@@ -54,7 +54,10 @@ async function shot(name,handler){
  try{
    const obj=await handler();page=obj?.page;
  }catch(e){records.push({file:null,name,error:String(e),captured_utc:new Date().toISOString()});console.error("SHOT FAILED",name,String(e));}
- finally{if(page)await page.close().catch(()=>{});}
+ finally{
+   if(page)await page.close().catch(()=>{});
+   for(const ctx of browser.contexts())await ctx.close().catch(()=>{});
+ }
 }
 await shot("01-overview",async()=>{
  const {page,errors}=await openScene({dayNight:true,cities:true,lights:true,atmosphere:true,geoLabels:true},cam(15,32,17000000));
