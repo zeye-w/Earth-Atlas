@@ -146,7 +146,7 @@ Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small W
 - Geologic units are mapped surface units; overlapping map results are shown as candidates.
 - Submarine cables are those OpenStreetMap volunteers have mapped: about 240,000 km against roughly 1.4 million km in service, mostly near coasts and in the North Atlantic and Europe, and many are short unnamed pieces. Few carry a ready-for-service year, so there is no year slider for them.
 - Wikidata lists only a few dozen internet exchanges with a location, far fewer than exist; data centres are the sites OSM has tagged.
-- DNS queries come from a small sample of RIPE Atlas probes (about a hundred, in eight countries), so they show how anycast routing behaves, not where internet traffic flows.
+- DNS queries come from a small sample of RIPE Atlas probes (48, six in each of eight countries), so they show how anycast routing behaves, not where internet traffic flows.
 
 More detail: [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
