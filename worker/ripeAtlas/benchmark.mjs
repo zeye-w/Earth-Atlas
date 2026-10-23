@@ -58,4 +58,3 @@ for(let n=0;n<100;n++){
 }
 const used=process.cpuUsage(cpuStart);
 console.log(JSON.stringify({completeColdHandlerReplayCpuMs:(used.user+used.system)/100000,completeColdHandlerReplayWallMs:(performance.now()-wallStart)/100}));
-

@@ -144,4 +144,3 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
     };
 }
 export const dnsFlowsResponse = createDnsFlowsHandler();
-
