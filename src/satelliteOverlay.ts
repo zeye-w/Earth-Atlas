@@ -19,7 +19,7 @@ import { SatelliteModelOverlay } from "./satelliteModelOverlay.ts";
 import type { SatelliteModelStatus } from "./satelliteModels.ts";
 import { LABEL_FONT } from "./labelFont.ts";
 import { elementsValidAt, orbitPath, positionAt, refinePath, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
-import { telemetryAt, type Observer, type Telemetry } from "./satelliteTelemetry.ts";
+import { derivationAt, telemetryAt, type Derivation, type Observer, type Telemetry } from "./satelliteTelemetry.ts";
 import { now } from "./clock.ts";
 
 // Ground-fixed forecast path is recomputed after this much simulated time.
@@ -306,6 +306,14 @@ export class SatelliteOverlay {
     const time = this.simulatedTime();
     if (!pair || !elementsValidAt(pair.record, time)) return null;
     return telemetryAt(pair.record, time, observer);
+  }
+
+  /** The working behind telemetry(): every intermediate value, same moment. */
+  derivation(id: string, observer: Observer | null): Derivation | null {
+    const pair = this.pairs.find((p) => p.record.choice.id === id);
+    const time = this.simulatedTime();
+    if (!pair || !elementsValidAt(pair.record, time)) return null;
+    return derivationAt(pair.record, time, observer);
   }
 
   get count(): number { return this.pairs.length; }

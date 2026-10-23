@@ -1,0 +1,65 @@
+/* Live working panel (lazy-loaded with KaTeX). */
+.formula-panel.glass-panel {
+  right:16px; top:84px; z-index:11; /* under the tracking card (12), which follows the satellite */ width:min(430px, calc(100% - 32px)); max-height:calc(100% - 200px);
+  display:flex; flex-direction:column; padding:12px 14px 10px; border-radius:18px;
+  animation:formula-in .45s cubic-bezier(.19,1,.22,1);
+}
+@keyframes formula-in { from { opacity:0; transform:translateY(10px) scale(.98); } }
+.formula-panel header { display:flex; align-items:center; gap:9px; margin-bottom:9px; color:#9ccaff; }
+.formula-panel header div { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.formula-panel header strong { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.formula-panel header span { font-size:9px; color:var(--text-3); font-variant-numeric:tabular-nums; letter-spacing:.04em; }
+.formula-panel header button { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; border:0; background:var(--fill); color:var(--text-2); }
+
+/* Data flow: a light pulse runs along the chain. */
+.formula-pipeline { display:flex; gap:4px; margin-bottom:10px; }
+.formula-pipeline span {
+  flex:1; padding:4px 0; border-radius:7px; text-align:center; font-size:9px; letter-spacing:.06em; color:var(--text-2);
+  background:var(--fill); border:1px solid var(--line); animation:formula-pulse 1.8s ease-in-out infinite;
+}
+@keyframes formula-pulse { 0%, 70%, 100% { color:var(--text-2); border-color:var(--line); box-shadow:none; } 15% { color:#dff2ff; border-color:rgba(127,214,255,.7); box-shadow:0 0 12px rgba(77,163,255,.45); } }
+
+/* Only the steps scroll; the header and the pipeline stay put. */
+.formula-steps { flex:1; min-height:0; overflow-y:auto; scrollbar-width:thin; list-style:none; margin:0 -4px 0 0; padding:0 4px 0 0; display:flex; flex-direction:column; gap:7px; }
+.formula-steps > li { flex:none; }
+.formula-steps > li {
+  position:relative; padding:8px 10px 8px 12px; border-radius:11px; background:rgba(255,255,255,.035); border:1px solid var(--line);
+  transition:background-color .35s, border-color .35s, box-shadow .35s;
+}
+.formula-steps > li:before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:2px; border-radius:2px; background:rgba(127,214,255,.25); transition:background-color .35s, box-shadow .35s; }
+.formula-steps > li.is-active { background:rgba(77,163,255,.10); border-color:rgba(127,214,255,.45); box-shadow:0 0 18px rgba(77,163,255,.18); }
+.formula-steps > li.is-active:before { background:#7fd6ff; box-shadow:0 0 8px #7fd6ff; }
+.formula-step-head { display:flex; align-items:baseline; gap:7px; margin-bottom:5px; }
+.formula-index { flex:none; display:grid; place-items:center; width:16px; height:16px; border-radius:50%; font-size:9px; font-weight:700; color:#0b0c0f; background:#7fd6ff; }
+.formula-step-head strong { flex:none; font-size:11px; }
+.formula-step-head em { min-width:0; font-style:normal; font-size:9px; color:var(--text-3); }
+.formula-tex, .formula-live { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+.formula-tex { font-size:12px; color:var(--text); padding:2px 0; }
+.formula-live { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 8px; font-size:11px; color:#7fd6ff; padding:1px 0; }
+.formula-result { color:#7fe0b0; animation:formula-flash .6s ease-out; }
+@keyframes formula-flash { from { color:#ffffff; text-shadow:0 0 10px rgba(127,224,176,.9); } }
+.formula-panel .katex { font-size:1em; white-space:nowrap; }
+
+.formula-diagram { display:block; width:100%; height:auto; margin-top:6px; }
+.fp-axis { stroke:rgba(255,255,255,.18); stroke-dasharray:3 3; }
+.fp-sun line { stroke:#ffc56b; stroke-width:1.5; }
+.fp-sun polygon { fill:#ffc56b; }
+.fp-sun text, .fp-label { font-size:8px; fill:var(--text-3); }
+.fp-guide { stroke:rgba(127,214,255,.6); stroke-dasharray:2 2; }
+.fp-a { stroke:rgba(255,197,107,.6); }
+.fp-trail { fill:none; stroke:rgba(127,214,255,.45); stroke-width:1.2; stroke-linecap:round; }
+.fp-sat { fill:#6f7c90; stroke:#0b0c0f; stroke-width:1; transition:cx .25s linear, cy .25s linear; }
+.fp-sat.sunlit { fill:#ffe08a; filter:drop-shadow(0 0 4px #ffc56b); }
+
+.formula-locate { padding:0!important; border:0!important; background:none!important; }
+.formula-locate:before { display:none; }
+.formula-locate button { width:100%; padding:7px; border-radius:10px; border:1px dashed rgba(127,214,255,.4); background:var(--fill); color:var(--text); font-size:10px; }
+.formula-empty { margin:0; font-size:10px; color:var(--text-2); }
+.formula-note { margin:8px 0 0; font-size:9px; line-height:1.5; color:var(--text-3); }
+
+@media (max-width:760px) {
+  .formula-panel.glass-panel { left:10px; right:10px; top:auto; bottom:10px; width:auto; max-height:56vh; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .formula-panel.glass-panel, .formula-pipeline span, .formula-result { animation:none; }
+}

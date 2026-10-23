@@ -100,6 +100,7 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
   // Read on demand (the tracking card polls), so updates do not re-render React.
   const tracking = useMemo(() => ({
     telemetry: (observer: Observer | null) => (trackedId ? overlayRef.current?.telemetry(trackedId, observer) ?? null : null),
+    derivation: (observer: Observer | null) => (trackedId ? overlayRef.current?.derivation(trackedId, observer) ?? null : null),
     position: () => (trackedId ? overlayRef.current?.markerPosition(trackedId) : undefined),
   }), [trackedId]);
 

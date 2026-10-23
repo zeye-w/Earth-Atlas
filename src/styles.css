@@ -96,6 +96,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .track-look span { font-size:9px; letter-spacing:.06em; color:#9ccaff; }
 .track-look p { margin:3px 0 0; font-size:10px; line-height:1.5; font-variant-numeric:tabular-nums; }
 .track-locate { width:100%; margin-top:8px; padding:6px; border-radius:9px; border:1px solid var(--line); background:var(--fill); color:var(--text); font-size:10px; }
+.track-formulas { display:flex; align-items:center; justify-content:center; gap:5px; color:#9ccaff; border-color:rgba(127,214,255,.3); }
+.track-formulas.active { color:#0b0c0f; background:#7fd6ff; border-color:transparent; }
 .track-empty { margin:0; font-size:10px; line-height:1.6; color:var(--text-2); }
 .track-note { margin:7px 0 0; font-size:9px; line-height:1.5; color:var(--text-3); }
 .satellite-track { flex:none; align-self:center; margin-left:auto; padding:3px 9px; border-radius:999px; border:1px solid var(--line); background:var(--fill); color:var(--text); font-size:9px; }

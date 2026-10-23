@@ -55,6 +55,7 @@ import { now } from "./clock";
 const isNarrow = () => window.innerWidth < 760;
 const TerminatorTour = lazy(() => import("./panels/TerminatorTour"));
 const LivePhotoPanel = lazy(() => import("./panels/LivePhotoPanel"));
+const FormulaPanel = lazy(() => import("./panels/FormulaPanel"));
 
 function App() {
   const [initialScene] = useState(() => readScene(window.location.hash));
@@ -92,6 +93,8 @@ function App() {
   const [selectedVolcano, setSelectedVolcano] = useState<Volcano | null>(null);
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
   const [trackedSatelliteId, setTrackedSatelliteId] = useState<string | null>(null);
+  const [formulasOpen, setFormulasOpen] = useState(false);
+  useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
   const geology = useGeologyQuery();
@@ -388,7 +391,14 @@ function App() {
           {toast && <div className="toast" role="status">{toast}<button type="button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={13} aria-hidden="true" /></button></div>}
           {viewer && trackedSatellite && satellites.status === "ready" && (
             <TrackCard viewer={viewer} title={trackedSatellite.title} satelliteId={trackedSatellite.id} modelStatus={satellites.modelStatus} onViewModel={satellites.viewModel} live={live} tracking={satellites.tracking}
-              location={userLocation.location} onLocate={() => void userLocation.locate()} onStop={() => setTrackedSatelliteId(null)} />
+              location={userLocation.location} onLocate={() => void userLocation.locate()} onStop={() => setTrackedSatelliteId(null)}
+              formulasOpen={formulasOpen} onToggleFormulas={() => setFormulasOpen((open) => !open)} />
+          )}
+          {formulasOpen && trackedSatellite && satellites.status === "ready" && (
+            <Suspense fallback={null}>
+              <FormulaPanel title={trackedSatellite.title} derivation={satellites.tracking.derivation} observer={userLocation.location} live={live}
+                onLocate={() => void userLocation.locate()} onClose={() => setFormulasOpen(false)} />
+            </Suspense>
           )}
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
             onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />

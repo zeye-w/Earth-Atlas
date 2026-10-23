@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Cartesian3, Viewer } from "cesium";
-import { Satellite, X } from "lucide-react";
+import { Satellite, Sigma, X } from "lucide-react";
 import { compassName } from "../compass";
 import type { Observer, Telemetry } from "../satelliteTelemetry";
 import { SATELLITE_MODELS, type SatelliteModelStatus } from "../satelliteModels";
@@ -20,6 +20,8 @@ interface Props {
   location: UserLocation | null;
   onLocate: () => void;
   onStop: () => void;
+  formulasOpen: boolean;
+  onToggleFormulas: () => void;
 }
 
 const lat = (v: number) => Math.abs(v).toFixed(2) + "°" + (v >= 0 ? "N" : "S");
@@ -30,7 +32,7 @@ const number = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 0 });
  * Live readouts beside the tracked satellite: refreshed four times a second
  * and repositioned after every render so it stays next to the marker.
  */
-export function TrackCard({ viewer, title, satelliteId, modelStatus, onViewModel, live, tracking, location, onLocate, onStop }: Props) {
+export function TrackCard({ viewer, title, satelliteId, modelStatus, onViewModel, live, tracking, location, onLocate, onStop, formulasOpen, onToggleFormulas }: Props) {
   const model=SATELLITE_MODELS[satelliteId];
   const cardRef = useRef<HTMLElement>(null);
   const [data, setData] = useState<Telemetry | null>(() => tracking.telemetry(location));
@@ -53,14 +55,17 @@ export function TrackCard({ viewer, title, satelliteId, modelStatus, onViewModel
       if (!screen || window.innerWidth < 760) { card.style.removeProperty("transform"); card.classList.toggle("is-floating", false); return; }
       const width = scene.canvas.clientWidth;
       const height = scene.canvas.clientHeight;
-      const x = Math.min(Math.max(12, screen.x + (modelStatus === "ready" ? 120 : CARD_OFFSET.x)), width - card.offsetWidth - 12);
+      // Keep clear of the formula panel docked on the right.
+      const panel = formulasOpen ? document.querySelector(".formula-panel")?.getBoundingClientRect() : undefined;
+      const right = panel ? Math.min(width, panel.left - scene.canvas.getBoundingClientRect().left) : width;
+      const x = Math.min(Math.max(12, screen.x + (modelStatus === "ready" ? 120 : CARD_OFFSET.x)), right - card.offsetWidth - 12);
       const y = Math.min(Math.max(80, screen.y + CARD_OFFSET.y), height - card.offsetHeight - 12);
       card.style.transform = "translate(" + Math.round(x) + "px, " + Math.round(y) + "px)";
       card.classList.toggle("is-floating", true);
     };
     place();
     return scene.postRender.addEventListener(place);
-  }, [viewer, tracking, modelStatus]);
+  }, [viewer, tracking, modelStatus, formulasOpen]);
 
   return (
     <section ref={cardRef} className="track-card glass-panel" aria-label={"正在跟踪 " + title} aria-live="off">
@@ -91,6 +96,9 @@ export function TrackCard({ viewer, title, satelliteId, modelStatus, onViewModel
           ) : (
             <button type="button" className="track-locate" onClick={onLocate}>显示从我的位置看的方位和仰角</button>
           )}
+          <button type="button" className={"track-locate track-formulas" + (formulasOpen ? " active" : "")} onClick={onToggleFormulas} aria-pressed={formulasOpen}>
+            <Sigma size={11} strokeWidth={2} aria-hidden="true" /> {formulasOpen ? "收起计算公式" : "查看实时计算公式"}
+          </button>
         </>
       )}
       {model ? <div className="track-model">

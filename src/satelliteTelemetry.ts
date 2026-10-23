@@ -3,7 +3,7 @@
  * speed, ground-track heading, sunlight and orbital period, plus where it is
  * in the sky from an observer. SGP4 from CelesTrak elements; Cesium-free.
  */
-import { degreesToRadians, ecfToLookAngles, eciToEcf, eciToGeodetic, gstime, propagate } from "satellite.js";
+import { degreesToRadians, ecfToLookAngles, eciToEcf, eciToGeodetic, geodeticToEcf, gstime, propagate } from "satellite.js";
 import type { OrbitRecord } from "./satelliteOrbits.ts";
 import { subsolarPoint } from "./solar.ts";
 
@@ -99,5 +99,70 @@ export function telemetryAt(record: OrbitRecord, time: Date, observer: Observer 
     // satrec.no: mean motion in radians per minute.
     periodMin: (2 * Math.PI) / record.satrec.no,
     look: observer ? lookAngles(observer, now.ecf) : null,
+  };
+}
+
+/**
+ * Every intermediate value behind the readouts, for showing the working:
+ * the same SGP4 state, frames and formulas as telemetryAt, step by step.
+ */
+export interface Derivation {
+  time: Date;
+  /** SGP4 state in the inertial (TEME) frame, km and km/s. */
+  eci: Vec3;
+  velocity: Vec3;
+  /** Greenwich sidereal angle (radians) and the Earth-fixed position, km. */
+  gmst: number;
+  ecf: Vec3;
+  geodetic: { latitude: number; longitude: number; altitudeKm: number };
+  speedKmS: number;
+  /** Mean motion, radians per minute, and the period it gives. */
+  meanMotion: number;
+  periodMin: number;
+  /** Sub-satellite points now and 10 s later (degrees), and the bearing between them. */
+  heading: { lat1: number; lon1: number; lat2: number; lon2: number; deg: number };
+  /** Cylindrical shadow test: Sun unit vector, distance along it, distance off its axis (km). */
+  shadow: { sun: Vec3; along: number; offAxis: number; sunlit: boolean };
+  /** From the observer: station position, east/north/up components (km), and the angles. */
+  look: { station: Vec3; east: number; north: number; up: number; rangeKm: number; azimuth: number; elevation: number } | null;
+}
+
+export function derivationAt(record: OrbitRecord, time: Date, observer: Observer | null = null): Derivation | null {
+  const now = ecfAt(record, time);
+  if (!now || !now.velocity) return null;
+  const gmst = gstime(time);
+  const here = eciToGeodetic(now.eci, gmst);
+  const later = new Date(time.getTime() + 10_000);
+  const next = ecfAt(record, later);
+  const there = next ? eciToGeodetic(next.eci, gstime(later)) : null;
+  const lat1 = here.latitude * RAD, lon1 = here.longitude * RAD;
+  const lat2 = there ? there.latitude * RAD : Number.NaN, lon2 = there ? there.longitude * RAD : Number.NaN;
+  const sun = subsolarPoint(time);
+  const sLat = sun.latitude / RAD, sLon = sun.longitude / RAD;
+  const s = { x: Math.cos(sLat) * Math.cos(sLon), y: Math.cos(sLat) * Math.sin(sLon), z: Math.sin(sLat) };
+  const r = now.ecf;
+  const along = r.x * s.x + r.y * s.y + r.z * s.z;
+  const offAxis = Math.hypot(r.x - along * s.x, r.y - along * s.y, r.z - along * s.z);
+  let look: Derivation["look"] = null;
+  if (observer) {
+    const φ = degreesToRadians(observer.latitude), λ = degreesToRadians(observer.longitude);
+    const station = geodeticToEcf({ latitude: φ, longitude: λ, height: observer.heightKm ?? 0 });
+    const d = { x: r.x - station.x, y: r.y - station.y, z: r.z - station.z };
+    const east = -Math.sin(λ) * d.x + Math.cos(λ) * d.y;
+    const north = -Math.sin(φ) * Math.cos(λ) * d.x - Math.sin(φ) * Math.sin(λ) * d.y + Math.cos(φ) * d.z;
+    const up = Math.cos(φ) * Math.cos(λ) * d.x + Math.cos(φ) * Math.sin(λ) * d.y + Math.sin(φ) * d.z;
+    const rangeKm = Math.hypot(east, north, up);
+    look = { station, east, north, up, rangeKm, azimuth: ((Math.atan2(east, north) * RAD) % 360 + 360) % 360, elevation: Math.asin(up / rangeKm) * RAD };
+  }
+  const v = now.velocity;
+  return {
+    time, eci: now.eci, velocity: v, gmst, ecf: r,
+    geodetic: { latitude: lat1, longitude: lon1, altitudeKm: here.height },
+    speedKmS: Math.hypot(v.x, v.y, v.z),
+    meanMotion: record.satrec.no,
+    periodMin: (2 * Math.PI) / record.satrec.no,
+    heading: { lat1, lon1, lat2, lon2, deg: there ? bearing(lat1, lon1, lat2, lon2) : Number.NaN },
+    shadow: { sun: s, along, offAxis, sunlit: along > 0 || offAxis > EARTH_RADIUS_KM },
+    look,
   };
 }

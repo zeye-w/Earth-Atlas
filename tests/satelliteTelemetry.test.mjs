@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { json2satrec } from "satellite.js";
 import { positionAt } from "../src/satelliteOrbits.ts";
-import { bearing, telemetryAt } from "../src/satelliteTelemetry.ts";
+import { bearing, derivationAt, telemetryAt } from "../src/satelliteTelemetry.ts";
 
 // Public satellite.js documentation OMM HELIOS 2A record (historical test fixture).
 const omm = {
@@ -44,4 +44,25 @@ test("ground-track heading of a near-polar orbit is roughly north or south", () 
   assert.ok(Math.min(fromNorth, fromSouth) < 45, "heading " + t.headingDeg);
   assert.ok(Math.abs(bearing(0, 0, 0, 10) - 90) < 1e-9);
   assert.ok(Math.abs(bearing(0, 0, 10, 0)) < 1e-9);
+});
+
+test("the shown working reproduces every readout", () => {
+  const observer = { latitude: 48.8, longitude: 2.3 };
+  const t = telemetryAt(record, time, observer);
+  const d = derivationAt(record, time, observer);
+  // ECI to Earth-fixed is a rotation by the sidereal angle about z.
+  const c = Math.cos(d.gmst), s = Math.sin(d.gmst);
+  assert.ok(Math.abs(d.eci.x * c + d.eci.y * s - d.ecf.x) < 1e-6);
+  assert.ok(Math.abs(-d.eci.x * s + d.eci.y * c - d.ecf.y) < 1e-6);
+  assert.equal(d.eci.z, d.ecf.z);
+  assert.ok(Math.abs(d.geodetic.latitude - t.latitude) < 1e-9 && Math.abs(d.geodetic.altitudeKm - t.altitudeKm) < 1e-9);
+  assert.equal(d.speedKmS, t.speedKmS);
+  assert.ok(Math.abs(2 * Math.PI / d.meanMotion - t.periodMin) < 1e-9);
+  assert.equal(d.heading.deg, t.headingDeg);
+  assert.equal(d.shadow.sunlit, t.sunlit);
+  assert.ok(Math.abs(Math.hypot(d.shadow.sun.x, d.shadow.sun.y, d.shadow.sun.z) - 1) < 1e-12);
+  // Hand-written east/north/up agrees with satellite.js's look angles.
+  assert.ok(Math.abs(d.look.azimuth - t.look.azimuth) < 1e-6, d.look.azimuth + " vs " + t.look.azimuth);
+  assert.ok(Math.abs(d.look.elevation - t.look.elevation) < 1e-6);
+  assert.ok(Math.abs(d.look.rangeKm - t.look.rangeKm) < 1e-6);
 });
