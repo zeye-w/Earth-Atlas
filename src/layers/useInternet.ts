@@ -4,6 +4,7 @@ import { DNS_FLOWS_REFRESH_MS, fetchDnsFlows, loadInternetDataset, type Internet
 import { InternetOverlay } from "../internet/internetOverlay";
 import { INTERNET_ID_PREFIX, type DnsFlowSnapshot, type InternetDatasetKey, type InternetSelection } from "../internet/types";
 import { usePolledData, type PollStatus } from "../hooks/usePolledData";
+import { onClockChange } from "../clock";
 
 export interface InternetToggles {
   cables: boolean;
@@ -20,6 +21,10 @@ export interface InternetState {
   datasets: Record<InternetDatasetKey, DatasetStatus>;
   data: Loaded;
   dns: { status: PollStatus; snapshot: DnsFlowSnapshot | null };
+  /** Cables shown up to this ready-for-service year; null shows all, planned included. */
+  cableYear: number | null;
+  /** Earliest and latest ready-for-service years in the cable data. */
+  cableYears: [number, number] | null;
 }
 
 const DATASET_FOR: Record<keyof Omit<InternetToggles, "dnsFlows">, InternetDatasetKey> = {
@@ -42,8 +47,13 @@ export function useInternet(viewer: Viewer | null, toggles: InternetToggles, liv
     if (!viewer) return;
     const overlay = new InternetOverlay(viewer);
     overlayRef.current = overlay;
-    return () => { overlay.dispose(); overlayRef.current = null; };
+    // Recording mode moves the clock frame by frame: follow at once.
+    const offClock = onClockChange(() => overlay.advance());
+    return () => { offClock(); overlay.dispose(); overlayRef.current = null; };
   }, [viewer]);
+
+  const [cableYear, setCableYear] = useState<number | null>(null);
+  useEffect(() => { overlayRef.current?.setCableYear(cableYear); }, [cableYear, viewer]);
 
   // Load each dataset the first time a layer needs it.
   const wanted = (Object.keys(DATASET_FOR) as Array<keyof typeof DATASET_FOR>).filter((k) => toggles[k]).map((k) => DATASET_FOR[k]);
@@ -114,6 +124,10 @@ export function useInternet(viewer: Viewer | null, toggles: InternetToggles, liv
     return null;
   };
 
-  const state = useMemo<InternetState>(() => ({ datasets: status, data, dns: { status: dns.status, snapshot: dns.data } }), [status, data, dns.status, dns.data]);
-  return { state, select };
+  const cableYears = useMemo<[number, number] | null>(() => {
+    const years = (data.cables?.cables ?? []).map((c) => c.rfsYear).filter((y): y is number => y !== null);
+    return years.length ? [Math.min(...years), Math.max(...years)] : null;
+  }, [data.cables]);
+  const state = useMemo<InternetState>(() => ({ datasets: status, data, dns: { status: dns.status, snapshot: dns.data }, cableYear, cableYears }), [status, data, dns.status, dns.data, cableYear, cableYears]);
+  return { state, select, setCableYear };
 }

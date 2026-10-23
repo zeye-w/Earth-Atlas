@@ -9,4 +9,9 @@
 .internet-card dl div { display:grid; grid-template-columns:72px 1fr; gap:8px; }
 .internet-card dt { color:var(--text-3); }
 .internet-card dd { margin:0; color:var(--text); line-height:1.5; word-break:break-word; }
+.internet-years { display:flex; flex-direction:column; gap:5px; }
+.internet-years-row { display:flex; align-items:center; gap:7px; }
+.internet-years-row input { flex:1; min-width:0; }
+.internet-years-row button { flex:none; display:grid; place-items:center; min-width:24px; height:22px; padding:0 7px; border-radius:999px; border:1px solid var(--line); background:var(--fill); color:var(--text); font-size:9px; }
+.internet-years-row button.active { color:#0b0c0f; background:#38d6ff; border-color:transparent; }
 @media (max-width:760px) { .internet-card.glass-panel { left:10px; right:10px; top:auto; bottom:10px; width:auto; } }
