@@ -389,7 +389,7 @@ function App() {
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
             location={userLocation.state} onLocate={userLocation.locate} />
           <FlightsGroup layers={layers} setLayer={setLayer} flights={flights.state} live={live} />
-          <InternetGroup layers={layers} setLayer={setLayer} internet={internet.state} live={live} />
+          <InternetGroup layers={layers} setLayer={setLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
         </LayerPanel>
 
