@@ -31,7 +31,7 @@ Overpass endpoint: https://overpass-api.de/api/interpreter . Wikidata endpoint:
 https://query.wikidata.org/sparql . Each output carries license, retrieval/build
 timestamps and source links; OSM base timestamps are also in the quality report.
 
-## Cables: tags, grouping and inferred endpoints
+## Cables: tags, grouping and endpoints
 
 Query `communication=line` or `telecom=line/cable` with `location=underwater`
 or `submarine=yes`; also query `seamark:type=cable_submarine`, communication/
@@ -46,18 +46,23 @@ power route relations: a submarine seamark alone need not carry communications.
 
 Route relation identity takes precedence over member ways; exact name/ref merges
 split segments and disjoint branches. No fuzzy identity or proximity links.
-Unnamed/unreferenced ways retain separate OSM identities, so their count measures
-mapped fragments, not unique global cable systems. Missing names are explicitly
+Unnamed/unreferenced ways join only when they share an end node (the mapper
+connected them in OSM's own topology; `joinByEndNodes`); the group takes the
+lowest way id. Ways that merely lie close together stay apart, so the count
+still measures mapped fragments, not unique global cable systems. Within a
+cable, ways are stitched end to end through nodes shared by exactly two ways
+(`stitchSegments`), so the line and its pulses run continuously; a junction
+of three or more ways stays a branch point. Missing names are explicitly
 marked as unnamed OSM objects; existing `name` tags are preserved. `start_date`
 provides `rfsYear` if parseable, else null. Conflicting segment dates stay unknown
 unless the route provides a year. OSM start dates are not independently verified
 commercial RFS dates. Operators/owners copy tags; no cable length is invented.
 Existing 0.04-degree Douglas–Peucker simplification and ±180° splitting apply.
 
-Landings are explicitly named **inferred topological cable endpoints**. Endpoints
-shared between split ways are removed. These can be offshore survey fragments,
-not verified coastal landing stations. Unknown countries remain null. No coastal
-station name/location is fabricated or imported from restricted sources.
+No landing stations are published: OSM has no landing-station tagging to rely
+on, and the loose ends of ways are often mid-sea where mapping stops. They are
+only counted (`looseEnds` in the quality report). No coastal station
+name/location is fabricated or imported from restricted sources.
 
 ## Data centers
 

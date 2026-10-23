@@ -39,6 +39,59 @@ function checkOsm(raw) {
   if (raw.remark || !Array.isArray(raw.elements) || !raw.osm3s?.timestamp_osm_base) throw new Error(`Incomplete Overpass response: ${raw.remark || 'missing elements/base timestamp'}`);
 }
 
+const ends = way => (way.nodes?.length >= 2 ? [way.nodes[0], way.nodes.at(-1)] : []);
+
+/**
+ * Unnamed ways that share an end node are one line in OSM's own topology
+ * (the mapper connected them). Groups them by that alone, never by distance.
+ * Returns the groups, each sorted by way id.
+ */
+export function joinByEndNodes(ways) {
+  const parent = new Map(ways.map(w => [w.id, w.id]));
+  const find = id => { while (parent.get(id) !== id) { parent.set(id, parent.get(parent.get(id))); id = parent.get(id); } return id; };
+  const owner = new Map();
+  for (const way of ways) for (const node of ends(way)) {
+    if (!owner.has(node)) { owner.set(node, way.id); continue; }
+    const a = find(owner.get(node)), b = find(way.id);
+    if (a !== b) parent.set(a, b);
+  }
+  const groups = new Map();
+  for (const way of ways) { const root = find(way.id); groups.set(root, [...(groups.get(root) || []), way]); }
+  return [...groups.values()].map(g => g.sort((a, b) => a.id - b.id));
+}
+
+/**
+ * The polylines of one cable: ways joined end to end through nodes they
+ * share with exactly one other way (a junction of three or more stays a
+ * branch point). Ways without node ids stay as they are.
+ */
+export function stitchSegments(segments) {
+  const lines = segments.filter(s => s.geometry?.length >= 2).map(s => ({
+    nodes: s.nodes?.length === s.geometry.length ? s.nodes : null, points: s.geometry.map(p => [p.lon, p.lat]),
+  }));
+  const incident = new Map();
+  lines.forEach((line, i) => { if (line.nodes) for (const node of [line.nodes[0], line.nodes.at(-1)]) incident.set(node, [...(incident.get(node) || []), i]); });
+  const used = new Set(), out = [];
+  const next = (node, from) => { const list = incident.get(node); return list?.length === 2 ? list.find(i => i !== from && !used.has(i)) : undefined; };
+  const extend = (chain, node, from) => {
+    for (let i = next(node, from); i !== undefined; i = next(node, from)) {
+      used.add(i);
+      const line = lines[i], forward = line.nodes[0] === node;
+      chain.push(...(forward ? line.points : [...line.points].reverse()).slice(1));
+      node = forward ? line.nodes.at(-1) : line.nodes[0]; from = i;
+    }
+    return chain;
+  };
+  lines.forEach((line, i) => {
+    if (used.has(i)) return;
+    used.add(i);
+    if (!line.nodes) { out.push(line.points); return; }
+    const forward = extend([...line.points], line.nodes.at(-1), i);
+    out.push(extend(forward.reverse(), line.nodes[0], i).reverse());
+  });
+  return out;
+}
+
 export function convertCables(raw, retrievedAt = new Date().toISOString()) {
   checkOsm(raw);
   const ways = new Map(raw.elements.filter(e => e.type === 'way').map(e => [e.id, e]));
@@ -58,20 +111,31 @@ export function convertCables(raw, retrievedAt = new Date().toISOString()) {
     }
     if (group.segments.length) groups.set(group.id, group);
   }
-  for (const way of [...selected.values()].sort((a, b) => a.id - b.id)) {
-    if (assigned.has(way.id)) continue;
+  const free = [...selected.values()].filter(way => !assigned.has(way.id)).sort((a, b) => a.id - b.id);
+  const isUnnamed = way => !way.tags?.name && !way.tags?.ref;
+  // Unnamed ways join only through shared end nodes; a group is named after its lowest way id.
+  const unnamedGroup = new Map();
+  let joinedUnnamedWays = 0;
+  for (const group of joinByEndNodes(free.filter(isUnnamed))) {
+    for (const way of group) unnamedGroup.set(way.id, group[0].id);
+    if (group.length > 1) joinedUnnamedWays += group.length;
+  }
+  for (const way of free) {
     const tags = way.tags || {};
-    // Exact name/ref identity merges disjoint branches, but never merges unnamed cables.
-    const identity = tags.name ? `name:${tags.name.trim().normalize('NFC')}` : tags.ref ? `ref:${tags.ref}` : `way:${way.id}`;
+    // Exact name/ref identity merges disjoint branches; unnamed ways merge only when connected.
+    const identity = tags.name ? `name:${tags.name.trim().normalize('NFC')}` : tags.ref ? `ref:${tags.ref}` : `way:${unnamedGroup.get(way.id)}`;
     let group = groups.get(identity);
     if (!group) {
       group = [...groups.values()].find(g => tags.name && g.tags.name === tags.name);
-      if (!group) { group = { id: `osm-way-${way.id}`, tags, segments: [], url: `https://www.openstreetmap.org/way/${way.id}` }; groups.set(identity, group); }
+      if (!group) {
+        const first = isUnnamed(way) ? unnamedGroup.get(way.id) : way.id;
+        group = { id: `osm-way-${first}`, tags, segments: [], url: `https://www.openstreetmap.org/way/${first}` }; groups.set(identity, group);
+      }
     }
     group.segments.push(way);
   }
   const cables = [], landings = new Map();
-  let unnamed = 0, conflictingYears = 0, missingGeometry = 0, looseEnds = 0;
+  let unnamed = 0, conflictingYears = 0, missingGeometry = 0, looseEnds = 0, segmentCount = 0, pathCount = 0;
   const merged = new Map();
   for (const group of groups.values()) {
     const key = group.tags.name ? `name:${group.tags.name.trim().normalize('NFC')}` : group.tags.ref ? `ref:${group.tags.ref}` : group.id;
@@ -81,10 +145,11 @@ export function convertCables(raw, retrievedAt = new Date().toISOString()) {
   for (const group of merged.values()) {
     group.segments = [...new Map(group.segments.map(s => [s.id, s])).values()];
     const paths = [], endpointCounts = new Map();
+    for (const line of stitchSegments(group.segments)) paths.push(...splitAntimeridian(line));
     for (const segment of group.segments) {
       if (!segment.geometry?.length) { missingGeometry++; continue; }
+      segmentCount++;
       const points = segment.geometry.map(p => [p.lon, p.lat]);
-      paths.push(...splitAntimeridian(points));
       for (const index of [0, points.length - 1]) {
         const key = segment.nodes?.[index] ? `osm-node-${segment.nodes[index]}` : `osm-endpoint-${points[index].join(',')}`;
         const previous = endpointCounts.get(key);
@@ -92,6 +157,7 @@ export function convertCables(raw, retrievedAt = new Date().toISOString()) {
       }
     }
     if (!paths.length) continue;
+    pathCount += paths.length;
     // OSM has no landing-station tagging to rely on, and the loose ends of a
     // way are often mid-sea where mapping stops: count them, never publish
     // them as landing stations.
@@ -103,7 +169,7 @@ export function convertCables(raw, retrievedAt = new Date().toISOString()) {
     if (years.length > 1) conflictingYears++;
     cables.push({ id: group.id, name, rfsYear: rfsYear(group.tags.start_date) ?? (years.length === 1 ? years[0] : null), lengthKm: null, owners: [...new Set([group.tags, ...group.segments.map(s => s.tags || {})].flatMap(t => [...parts(t.operator), ...parts(t.owner)]))].sort(), landingIds: landingIds.sort(), paths, url: group.url });
   }
-  return { dataset: { ...metadata('OpenStreetMap submarine communication cables (Overpass)', `${OVERPASS}?data=${encodeURIComponent(OSM_QUERIES.cables)}`, OSM_LICENSE, retrievedAt), cables: sort(cables), landings: sort([...landings.values()]) }, quality: { osmBaseTimestamp: raw.osm3s.timestamp_osm_base, queriedElements: raw.elements.length, communicationWays: selected.size, excludedNonCommunicationWays: ways.size - selected.size, unnamed, conflictingYears, missingGeometry, withRfsYear: cables.filter(c => c.rfsYear !== null).length, withOwners: cables.filter(c => c.owners.length).length, looseEnds } };
+  return { dataset: { ...metadata('OpenStreetMap submarine communication cables (Overpass)', `${OVERPASS}?data=${encodeURIComponent(OSM_QUERIES.cables)}`, OSM_LICENSE, retrievedAt), cables: sort(cables), landings: sort([...landings.values()]) }, quality: { osmBaseTimestamp: raw.osm3s.timestamp_osm_base, queriedElements: raw.elements.length, communicationWays: selected.size, excludedNonCommunicationWays: ways.size - selected.size, unnamed, conflictingYears, missingGeometry, withRfsYear: cables.filter(c => c.rfsYear !== null).length, withOwners: cables.filter(c => c.owners.length).length, looseEnds, joinedUnnamedWays, segments: segmentCount, stitchedPaths: pathCount } };
 }
 
 export function convertFacilities(raw, retrievedAt = new Date().toISOString()) {
