@@ -61,7 +61,7 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
       }
       fallbackLayersRef.current = [];
     };
-    if (!visible || !live || frameTimestamp !== null || !["ready", "error"].includes(poll.status)) {
+    if (!visible || !live || (frameTimestamp !== null && !tileError) || !["ready", "error"].includes(poll.status)) {
       clear();
       setFallbackState("idle");
       setFallbackSensors([]);
@@ -110,7 +110,7 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
       controller.abort();
       clear();
     };
-  }, [viewer, visible, live, frameTimestamp, poll.status]);
+  }, [viewer, visible, live, frameTimestamp, poll.status, tileError]);
 
   useEffect(() => {
     if (!viewer) return;
@@ -195,7 +195,7 @@ export function useClouds(viewer: Viewer | null, visible: boolean, opacity: numb
     viewer?.scene.requestRender();
   }, [viewer, opacity]);
 
-  const status: CloudStatus = tileError ? "error" : tilesLoading ? "loading" : fallbackState === "ready" ? "fallback" : fallbackState === "loading" ? "loading" : fallbackState === "error" ? "error" : poll.status === "ready" && !frame ? "nodata" : poll.status;
+  const status: CloudStatus = fallbackState === "ready" ? "fallback" : fallbackState === "loading" ? "loading" : tileError ? "error" : tilesLoading ? "loading" : fallbackState === "error" ? "error" : poll.status === "ready" && !frame ? "nodata" : poll.status;
   const time = status === "fallback" ? null : displayedTime !== null ? new Date(displayedTime).toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
   return { status, time, fallbackSensors };
 }
