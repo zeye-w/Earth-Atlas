@@ -1,0 +1,52 @@
+[
+  {
+    "prb_id": 7171,
+    "timestamp": 1792743779,
+    "msm_id": 10310,
+    "af": 4,
+    "result": {
+      "rt": 31.399,
+      "size": 64,
+      "abuf": "k+2EAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAABwZiNC1mcmHADAACAAMAAAAAAALADA==",
+      "ID": 37869,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "b4-fra"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 6664,
+    "timestamp": 1792743856,
+    "msm_id": 10310,
+    "af": 4,
+    "result": {
+      "rt": 55.54,
+      "size": 50,
+      "abuf": "GMiAAAABAAEAAAAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAABwZiMy1mcmE=",
+      "ID": 6344,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 0,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "b3-fra"
+          ]
+        }
+      ]
+    }
+  }
+]

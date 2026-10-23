@@ -1,4 +1,5 @@
-import { parseDnsFlowSnapshot, parseRootServerDataset, isLonLat } from '../src/internet/data.ts';
+import { parseDnsFlowSnapshot, parseRootServerDataset } from '../src/internet/data.ts';
+import { selectProbes, anchorPageUrl, ANCHOR_PAGE_LIMIT, ANCHOR_PAGE_SIZE, PROBE_LIMIT, type AtlasProbe } from './ripeAtlas/probes.ts';
 import { parseRootSites } from './ripeAtlas/roots.ts';
 import { DNS_MEASUREMENTS, buildSnapshot, type AtlasResult } from '../src/internet/dnsFlows.ts';
 import { ROOT_LETTERS, type LonLat, type RootLetter, type RootInstance } from '../src/internet/types.ts';
@@ -18,15 +19,9 @@ type Entry = {
     body: string;
     at: number;
 };
-type Probe = {
-    id: number;
-    geometry?: {
-        coordinates?: unknown;
-    };
-    is_public?: boolean;
-};
 type EdgeCache = Pick<Cache, 'match' | 'put'>;
-export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Date.now, edge?: EdgeCache, pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))) {
+export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Date.now, edge?: EdgeCache, pause = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms)), probeLimit = PROBE_LIMIT) {
+    const sampleLimit = Math.max(1, Math.min(200, Math.floor(probeLimit) || PROBE_LIMIT));
     let cached: Entry | undefined, pending: Promise<Entry> | undefined;
     let rootPending: Promise<RootInstance[]> | undefined;
     let locations: {
@@ -44,7 +39,8 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         const reader = r.body?.getReader();
         if (!reader)
             throw Error('Empty upstream');
-        const chunks: Uint8Array[] = [];
+        const decoder = new TextDecoder();
+        let body = "";
         let size = 0;
         for (;;) {
             const { done, value } = await reader.read();
@@ -55,15 +51,9 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
                 await reader.cancel();
                 throw Error('Oversized upstream');
             }
-            chunks.push(value);
+            body += decoder.decode(value, { stream: true });
         }
-        const bytes = new Uint8Array(size);
-        let offset = 0;
-        for (const chunk of chunks) {
-            bytes.set(chunk, offset);
-            offset += chunk.length;
-        }
-        return JSON.parse(new TextDecoder().decode(bytes));
+        return JSON.parse(body + decoder.decode());
     }
     async function roots(cache: EdgeCache | undefined, origin: string, ctx?: DnsFlowsContext) {
         const valid = (at: number) => Number.isFinite(at) && at <= clock() && clock() - at < ROOT_TTL;
@@ -123,7 +113,7 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
     async function probes(cache: EdgeCache | undefined, origin: string) {
         if (locations && clock() - locations.at < 86400000)
             return locations.points;
-        const key = new Request(origin + '/__atlas-cache/probes-v2');
+        const key = new Request(origin + '/__atlas-cache/probes-v3');
         const stored = await cache?.match(key).catch(() => undefined);
         if (stored) {
             const data = await stored.json() as {
@@ -138,21 +128,22 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
                 return locations.points;
             }
         }
-        const pages = await Promise.all(COUNTRIES.map(async (c) => {
-            const p = await json(`https://atlas.ripe.net/api/v2/probes/?status=1&is_public=true&country_code=${c}&page_size=6`) as {
-                results?: Probe[];
+        const rows: AtlasProbe[] = [];
+        for (let page = 1; page <= ANCHOR_PAGE_LIMIT; page++) {
+            const data = await json(anchorPageUrl(page)) as {
+                results?: AtlasProbe[];
+                next?: unknown;
             };
-            if (!Array.isArray(p.results))
-                throw Error('Invalid probe list');
-            return p.results.filter(p => p.is_public !== false && Number.isInteger(p.id) && isLonLat(p.geometry?.coordinates));
-        }));
-        const points = new Map<number, LonLat>();
-        for (let i = 0; i < 6; i++)
-            for (const page of pages) {
-                const p = page[i];
-                if (p)
-                    points.set(p.id, (p.geometry!.coordinates as LonLat).map(v => Math.round(v * 100) / 100) as LonLat);
-            }
+            if (!Array.isArray(data.results) || data.results.length > ANCHOR_PAGE_SIZE)
+                throw Error('Invalid anchor page');
+            rows.push(...data.results);
+            if (!data.next)
+                break;
+            if (page === ANCHOR_PAGE_LIMIT)
+                throw Error('Anchor pagination exceeds budget');
+        }
+        const sample = selectProbes(rows, sampleLimit);
+        const points = new Map<number, LonLat>(sample.map(p => [p.id, p.position]));
         if (!points.size)
             throw Error('No public probes');
         locations = { points, at: clock() };
@@ -166,7 +157,7 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         const cache = edge ?? (globalThis.caches as CacheStorage & {
             default?: EdgeCache;
         } | undefined)?.default;
-        const key = new Request(origin + '/__atlas-cache/dns-v2');
+        const key = new Request(origin + '/__atlas-cache/dns-v3');
         try {
             if (!cached) {
                 const stored = await cache?.match(key).catch(() => undefined);
@@ -186,7 +177,7 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
                     const results: Partial<Record<RootLetter, AtlasResult[]>> = {};
                     await Promise.all(Object.entries(DNS_MEASUREMENTS).map(async ([letter, id]) => {
                         const data = await json(`https://atlas.ripe.net/api/v2/measurements/${id}/latest/?probe_ids=${ids}`);
-                        if (!Array.isArray(data) || data.length > 48)
+                        if (!Array.isArray(data) || data.length > sampleLimit)
                             throw Error('Invalid measurement results');
                         results[letter as RootLetter] = data;
                     }));

@@ -1,0 +1,52 @@
+[
+  {
+    "prb_id": 7171,
+    "timestamp": 1792743795,
+    "msm_id": 10314,
+    "af": 4,
+    "result": {
+      "rt": 42.684,
+      "size": 70,
+      "abuf": "6m+EAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAADQxncm9vdC1ldXIxLTHADAACAAMAAAAAAALADA==",
+      "ID": 60015,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "groot-eur1-1"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "prb_id": 6664,
+    "timestamp": 1792743870,
+    "msm_id": 10314,
+    "af": 4,
+    "result": {
+      "rt": 64.778,
+      "size": 70,
+      "abuf": "J22EAAABAAEAAQAACGhvc3RuYW1lBGJpbmQAABAAA8AMABAAAwAAAAAADQxncm9vdC1ldXIxLTHADAACAAMAAAAAAALADA==",
+      "ID": 10093,
+      "ANCOUNT": 1,
+      "QDCOUNT": 1,
+      "NSCOUNT": 1,
+      "ARCOUNT": 0,
+      "answers": [
+        {
+          "TYPE": "TXT",
+          "NAME": "hostname.bind",
+          "RDATA": [
+            "groot-eur1-1"
+          ]
+        }
+      ]
+    }
+  }
+]
