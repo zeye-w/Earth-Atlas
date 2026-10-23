@@ -1,0 +1,44 @@
+{
+ "version": 1,
+ "generatedAt": "2026-10-20T00:00:00Z",
+ "source": {
+  "name": "SYNTHETIC TEST FIXTURE - not real infrastructure data",
+  "url": "https://example.invalid",
+  "license": "test",
+  "retrievedAt": "2026-10-20T00:00:00Z"
+ },
+ "examined": 3,
+ "matched": 2,
+ "flows": [
+  {
+   "probeId": 1,
+   "probe": [
+    2.35,
+    48.86
+   ],
+   "letter": "k",
+   "instanceId": "k-e2e-ams",
+   "instance": [
+    4.9,
+    52.37
+   ],
+   "rttMs": 9.5,
+   "time": 1792627200000
+  },
+  {
+   "probeId": 2,
+   "probe": [
+    121.47,
+    31.23
+   ],
+   "letter": "f",
+   "instanceId": "f-e2e-hkg",
+   "instance": [
+    114.17,
+    22.32
+   ],
+   "rttMs": 38.2,
+   "time": 1792627200000
+  }
+ ]
+}

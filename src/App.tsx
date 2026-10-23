@@ -26,6 +26,8 @@ import { useWeather } from "./layers/useWeather";
 import { WeatherGroup } from "./panels/WeatherGroup";
 import { useSelectedLocationMarker } from "./hooks/useSelectedLocationMarker";
 import { useFlights } from "./layers/useFlights";
+import { useInternet } from "./layers/useInternet";
+import type { InternetSelection } from "./internet/types";
 import { FLIGHT_ID_PREFIX } from "./flightOverlay";
 import { describeFlight } from "./flightData";
 import { subsolarPoint } from "./solar";
@@ -42,6 +44,8 @@ import { EarthViewGroup } from "./panels/EarthViewGroup";
 import { TectonicsGroup } from "./panels/TectonicsGroup";
 import { SatellitesGroup } from "./panels/SatellitesGroup";
 import { FlightsGroup } from "./panels/FlightsGroup";
+import { InternetGroup } from "./panels/InternetGroup";
+import { InternetCard } from "./panels/InternetCard";
 import { GeologyGroup } from "./panels/GeologyGroup";
 import { Inspector } from "./panels/Inspector";
 import { SearchPanel, SharePanel } from "./panels/SceneTools";
@@ -94,6 +98,7 @@ function App() {
   const [selectedSatelliteId, setSelectedSatelliteId] = useState<string | null>(null);
   const [trackedSatelliteId, setTrackedSatelliteId] = useState<string | null>(null);
   const [formulasOpen, setFormulasOpen] = useState(false);
+  const [internetSelection, setInternetSelection] = useState<InternetSelection | null>(null);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -144,6 +149,11 @@ function App() {
       if (flight) setToast(describeFlight(flight, now()));
       return;
     }
+    const internetItem = internet.select(pickedId);
+    if (internetItem) {
+      setInternetSelection(internetItem);
+      return;
+    }
     const entityId = (pickedId as Entity | undefined)?.id;
     if (typeof entityId === "string" && entityId.startsWith("satellite:")) {
       // Clicking a satellite starts tracking it.
@@ -179,6 +189,7 @@ function App() {
   const solarWind = useSolarWind(viewer, layers.solarWind, timeline);
   // Aircraft positions exist only for "now": hidden while viewing another moment.
   const flights = useFlights(viewer, layers.flights && live);
+  const internet = useInternet(viewer, { cables: layers.cables, ixps: layers.ixps, dataCenters: layers.dataCenters, rootServers: layers.rootServers, dnsFlows: layers.dnsFlows }, live);
   const weather = useWeather(viewer, layers.temperature, live);
 
   // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
@@ -378,6 +389,7 @@ function App() {
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
             location={userLocation.state} onLocate={userLocation.locate} />
           <FlightsGroup layers={layers} setLayer={setLayer} flights={flights.state} live={live} />
+          <InternetGroup layers={layers} setLayer={setLayer} internet={internet.state} live={live} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
         </LayerPanel>
 
@@ -394,6 +406,7 @@ function App() {
               location={userLocation.location} onLocate={() => void userLocation.locate()} onStop={() => setTrackedSatelliteId(null)}
               formulasOpen={formulasOpen} onToggleFormulas={() => setFormulasOpen((open) => !open)} />
           )}
+          {internetSelection && !formulasOpen && <InternetCard selection={internetSelection} onClose={() => setInternetSelection(null)} />}
           {formulasOpen && trackedSatellite && satellites.status === "ready" && (
             <Suspense fallback={null}>
               <FormulaPanel title={trackedSatellite.title} derivation={satellites.tracking.derivation} observer={userLocation.location} live={live}
@@ -403,7 +416,7 @@ function App() {
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
             onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />
           {!timebarOpen && !tourOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
-          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>}{layers.cables && <> · Cables: <a href="https://www.submarinecablemap.com/" target="_blank" rel="noreferrer">TeleGeography</a> (CC BY-NC-SA)</>}{(layers.ixps || layers.dataCenters) && <> · IXPs &amp; facilities: <a href="https://www.peeringdb.com/" target="_blank" rel="noreferrer">PeeringDB</a></>}{(layers.rootServers || layers.dnsFlows) && <> · DNS root: <a href="https://root-servers.org/" target="_blank" rel="noreferrer">root-servers.org</a></>}{layers.dnsFlows && <> · <a href="https://atlas.ripe.net/" target="_blank" rel="noreferrer">RIPE Atlas</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
         </section>
 

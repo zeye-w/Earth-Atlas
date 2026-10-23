@@ -1,0 +1,56 @@
+{
+ "version": 1,
+ "generatedAt": "2026-10-20T00:00:00Z",
+ "sources": [
+  {
+   "name": "SYNTHETIC TEST FIXTURE - not real infrastructure data",
+   "url": "https://example.invalid",
+   "license": "test",
+   "retrievedAt": "2026-10-20T00:00:00Z"
+  }
+ ],
+ "servers": [
+  {
+   "letter": "k",
+   "operator": "Test Operator K",
+   "ipv4": "192.0.2.11",
+   "ipv6": "2001:db8::11"
+  },
+  {
+   "letter": "f",
+   "operator": "Test Operator F",
+   "ipv4": "192.0.2.6",
+   "ipv6": "2001:db8::6"
+  }
+ ],
+ "instances": [
+  {
+   "id": "k-e2e-ams",
+   "letter": "k",
+   "city": "Amsterdam",
+   "country": "NL",
+   "position": [
+    4.9,
+    52.37
+   ],
+   "scope": "global",
+   "identifiers": [
+    "k1.e2e-ams"
+   ]
+  },
+  {
+   "id": "f-e2e-hkg",
+   "letter": "f",
+   "city": "Hong Kong",
+   "country": "HK",
+   "position": [
+    114.17,
+    22.32
+   ],
+   "scope": "local",
+   "identifiers": [
+    "hkg1a.f.e2e"
+   ]
+  }
+ ]
+}

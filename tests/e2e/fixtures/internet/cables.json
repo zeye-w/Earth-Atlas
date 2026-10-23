@@ -1,0 +1,143 @@
+{
+ "version": 1,
+ "generatedAt": "2026-10-20T00:00:00Z",
+ "sources": [
+  {
+   "name": "SYNTHETIC TEST FIXTURE - not real infrastructure data",
+   "url": "https://example.invalid",
+   "license": "test",
+   "retrievedAt": "2026-10-20T00:00:00Z"
+  }
+ ],
+ "cables": [
+  {
+   "id": "e2e-atlantic",
+   "name": "E2E Atlantic Test Cable",
+   "rfsYear": 2001,
+   "lengthKm": 6500,
+   "owners": [
+    "Test Carrier A"
+   ],
+   "landingIds": [
+    "e2e-lisbon",
+    "e2e-newyork"
+   ],
+   "paths": [
+    [
+     [
+      -9.1,
+      38.7
+     ],
+     [
+      -30,
+      40
+     ],
+     [
+      -50,
+      41
+     ],
+     [
+      -74.0,
+      40.7
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "e2e-pacific",
+   "name": "E2E Pacific Test Cable",
+   "rfsYear": 2018,
+   "lengthKm": 9000,
+   "owners": [
+    "Test Carrier B",
+    "Test Carrier C"
+   ],
+   "landingIds": [
+    "e2e-tokyo",
+    "e2e-la"
+   ],
+   "paths": [
+    [
+     [
+      139.7,
+      35.6
+     ],
+     [
+      170,
+      38
+     ],
+     [
+      -170,
+      37
+     ],
+     [
+      -118.2,
+      34.0
+     ]
+    ]
+   ]
+  },
+  {
+   "id": "e2e-planned",
+   "name": "E2E Planned Test Cable",
+   "rfsYear": 2030,
+   "lengthKm": null,
+   "owners": [],
+   "landingIds": [],
+   "paths": [
+    [
+     [
+      103.8,
+      1.3
+     ],
+     [
+      80,
+      5
+     ],
+     [
+      72.8,
+      19.0
+     ]
+    ]
+   ]
+  }
+ ],
+ "landings": [
+  {
+   "id": "e2e-lisbon",
+   "name": "Lisbon (test)",
+   "country": "PT",
+   "position": [
+    -9.1,
+    38.7
+   ]
+  },
+  {
+   "id": "e2e-newyork",
+   "name": "New York (test)",
+   "country": "US",
+   "position": [
+    -74.0,
+    40.7
+   ]
+  },
+  {
+   "id": "e2e-tokyo",
+   "name": "Tokyo (test)",
+   "country": "JP",
+   "position": [
+    139.7,
+    35.6
+   ]
+  },
+  {
+   "id": "e2e-la",
+   "name": "Los Angeles (test)",
+   "country": "US",
+   "position": [
+    -118.2,
+    34.0
+   ]
+  }
+ ]
+}

@@ -1,8 +1,11 @@
 import { weatherResponse } from "./weather.ts";
+import { dnsFlowsResponse } from "./ripeAtlas.ts";
 /**
  * Cloudflare Worker in front of the static site. Only /api/* reaches it
  * (see run_worker_first in wrangler.jsonc); everything else is served
  * straight from the assets.
+ *
+ * GET /api/internet/dns-flows — measured root-server queries (worker/ripeAtlas.ts).
  *
  * GET /api/flights — live aircraft positions from adsb.lol (OpenSky as a
  * fallback), trimmed to the fields the globe draws. One upstream request per
@@ -66,6 +69,10 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/data/weather/latest.json") return weatherResponse(request, env.ASSETS);
+    if (url.pathname === "/api/internet/dns-flows") {
+      if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { Allow: "GET, HEAD" } });
+      return dnsFlowsResponse(request, env.ASSETS);
+    }
     if (url.pathname === "/api/flights") {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { Allow: "GET, HEAD" } });
       return flights();

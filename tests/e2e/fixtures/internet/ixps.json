@@ -1,0 +1,42 @@
+{
+ "version": 1,
+ "generatedAt": "2026-10-20T00:00:00Z",
+ "sources": [
+  {
+   "name": "SYNTHETIC TEST FIXTURE - not real infrastructure data",
+   "url": "https://example.invalid",
+   "license": "test",
+   "retrievedAt": "2026-10-20T00:00:00Z"
+  }
+ ],
+ "ixps": [
+  {
+   "id": 9001,
+   "name": "E2E-IX Frankfurt",
+   "city": "Frankfurt",
+   "country": "DE",
+   "position": [
+    8.68,
+    50.11
+   ],
+   "members": 1000,
+   "portCapacityGbps": 50000,
+   "facilityIds": [
+    8001
+   ]
+  },
+  {
+   "id": 9002,
+   "name": "E2E-IX Singapore",
+   "city": "Singapore",
+   "country": "SG",
+   "position": [
+    103.85,
+    1.29
+   ],
+   "members": 300,
+   "portCapacityGbps": null,
+   "facilityIds": []
+  }
+ ]
+}

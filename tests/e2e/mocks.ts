@@ -8,6 +8,8 @@ import type { Page, Route } from "@playwright/test";
  */
 const TRANSPARENT_PNG = readFileSync(new URL("./fixtures/transparent.png", import.meta.url));
 const OCEAN_PNG = readFileSync(new URL("./fixtures/ocean.png", import.meta.url));
+/** Synthetic internet datasets (tests/e2e/fixtures/internet/): the app's static files and the DNS-flow API. */
+const internetFixture = (name: string) => readFileSync(new URL("./fixtures/internet/" + name + ".json", import.meta.url), "utf8");
 
 /** A synthetic earthquake the tests can click on (placed at QUAKE_POINT). */
 export const QUAKE_POINT = { longitude: 142.4, latitude: 38.3 };
@@ -95,6 +97,8 @@ export async function mockNetwork(page: Page): Promise<void> {
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.hostname === "localhost" && url.pathname === "/api/flights") return json(route, flightSnapshot());
+    if (url.hostname === "localhost" && url.pathname === "/api/internet/dns-flows") return json(route, JSON.parse(internetFixture("dns-flows")));
+    if (url.hostname === "localhost" && url.pathname.startsWith("/data/internet/")) return json(route, JSON.parse(internetFixture(url.pathname.slice("/data/internet/".length).replace(/\.json$/, ""))));
     if (url.hostname === "localhost" || url.protocol === "data:" || url.protocol === "blob:") return route.continue();
     if (url.hostname === "gibs.earthdata.nasa.gov") return png(route, url.pathname.includes("Black_Marble") ? TRANSPARENT_PNG : OCEAN_PNG);
     if (url.hostname === "tiles.macrostrat.org") return png(route, TRANSPARENT_PNG);

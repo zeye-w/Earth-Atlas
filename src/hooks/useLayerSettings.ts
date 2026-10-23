@@ -6,7 +6,8 @@ import type { AgeFilter, RockFilter, ThematicMode } from "../mapThematic";
 import type { SatelliteSpeed } from "../satelliteOverlay";
 
 /** Every layer toggle: the shareable scene keys plus geographic labels and the atmosphere shells. */
-export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; trueColor: boolean; starlink: boolean; solarWind: boolean; flights: boolean; temperature: boolean; shells: boolean };
+export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; trueColor: boolean; starlink: boolean; solarWind: boolean; flights: boolean; temperature: boolean; shells: boolean;
+  cables: boolean; ixps: boolean; dataCenters: boolean; rootServers: boolean; dnsFlows: boolean };
 
 export interface LayerOptions {
   cloudOpacity: number;
@@ -26,7 +27,8 @@ function initialToggles(scene: SceneState | null): LayerToggles {
     satellites: typeof window !== "undefined" && window.innerWidth >= 760, paths: false,
   };
   // Links shared before geographic labels existed keep showing none.
-  return { ...(scene ? scene.layers : defaults), geoLabels: scene ? Boolean(scene.layers.geoLabels) : true, trueColor: Boolean(scene?.layers.trueColor), starlink: Boolean(scene?.layers.starlink), solarWind: Boolean(scene?.layers.solarWind), flights: Boolean(scene?.layers.flights), temperature: Boolean(scene?.layers.temperature), shells: Boolean(scene?.options.atmosphereShells) };
+  return { ...(scene ? scene.layers : defaults), geoLabels: scene ? Boolean(scene.layers.geoLabels) : true, trueColor: Boolean(scene?.layers.trueColor), starlink: Boolean(scene?.layers.starlink), solarWind: Boolean(scene?.layers.solarWind), flights: Boolean(scene?.layers.flights), temperature: Boolean(scene?.layers.temperature), shells: Boolean(scene?.options.atmosphereShells),
+    cables: Boolean(scene?.layers.cables), ixps: Boolean(scene?.layers.ixps), dataCenters: Boolean(scene?.layers.dataCenters), rootServers: Boolean(scene?.layers.rootServers), dnsFlows: Boolean(scene?.layers.dnsFlows) };
 }
 
 function initialOptions(scene: SceneState | null): LayerOptions {
@@ -53,5 +55,6 @@ export function useLayerSettings(scene: SceneState | null) {
 
 /** The shareable subset of the layer toggles. */
 export function sceneLayers(layers: LayerToggles): SceneState["layers"] {
-  return { ...Object.fromEntries(LAYER_KEYS.map((key) => [key, layers[key]])), geoLabels: layers.geoLabels, trueColor: layers.trueColor, starlink: layers.starlink, solarWind: layers.solarWind, flights: layers.flights, temperature: layers.temperature } as SceneState["layers"];
+  return { ...Object.fromEntries(LAYER_KEYS.map((key) => [key, layers[key]])), geoLabels: layers.geoLabels, trueColor: layers.trueColor, starlink: layers.starlink, solarWind: layers.solarWind, flights: layers.flights, temperature: layers.temperature,
+    cables: layers.cables, ixps: layers.ixps, dataCenters: layers.dataCenters, rootServers: layers.rootServers, dnsFlows: layers.dnsFlows } as SceneState["layers"];
 }

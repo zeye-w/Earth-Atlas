@@ -1,0 +1,40 @@
+{
+ "version": 1,
+ "generatedAt": "2026-10-20T00:00:00Z",
+ "sources": [
+  {
+   "name": "SYNTHETIC TEST FIXTURE - not real infrastructure data",
+   "url": "https://example.invalid",
+   "license": "test",
+   "retrievedAt": "2026-10-20T00:00:00Z"
+  }
+ ],
+ "facilities": [
+  {
+   "id": 8001,
+   "name": "E2E Datacentre FRA1",
+   "operator": "Test Operator",
+   "city": "Frankfurt",
+   "country": "DE",
+   "position": [
+    8.66,
+    50.12
+   ],
+   "ixCount": 1,
+   "networkCount": 400
+  },
+  {
+   "id": 8002,
+   "name": "E2E Datacentre ASH1",
+   "operator": null,
+   "city": "Ashburn",
+   "country": "US",
+   "position": [
+    -77.49,
+    39.04
+   ],
+   "ixCount": 0,
+   "networkCount": 120
+  }
+ ]
+}
