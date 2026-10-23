@@ -1,0 +1,41 @@
+name: Cloud mirror image test
+on:
+  push:
+    branches: [fix/cloud-imagery-loading-20261023]
+    paths: [.github/workflows/cloud-mirror-quick.yml]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify actual fresh globalir times and tile image on myradar
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json,datetime,urllib.request
+          base='https://myradar.ssec.wisc.edu'
+          def get(url):
+            req=urllib.request.Request(url,headers={'Origin':'https://earth-atlas.edwardlab.workers.dev','User-Agent':'Earth-Atlas-cloud-probe'})
+            with urllib.request.urlopen(req,timeout=13) as r:
+              data=r.read(2000000)
+              print('RESP',r.status,'TYPE',r.headers.get('content-type'),'CORS',r.headers.get('access-control-allow-origin'),'LEN',len(data),'URL',url,flush=True)
+              return data
+          data=json.loads(get(base+'/api/products?products=globalir&timespan=-30d'))
+          print('PRODUCTS',json.dumps(data,ensure_ascii=False)[:2500],flush=True)
+          times=next((x.get('times',[]) for x in data if x.get('id')=='globalir'),[])
+          print('TIME_COUNT',len(times), 'LATEST',times[-3:],flush=True)
+          if times:
+            stamp=times[-1]
+            at=datetime.datetime.strptime(stamp,'%Y%m%d.%H%M%S').replace(tzinfo=datetime.timezone.utc)
+            age=(datetime.datetime.now(datetime.timezone.utc)-at).total_seconds()/3600
+            print('AGE_HOURS',round(age,3),flush=True)
+            image=base+'/api/image?products=globalir_'+stamp[:8]+'_'+stamp[9:]+'&x=0&y=0&z=0'
+            blob=get(image)
+            print('IMAGE_SIGNATURE',blob[:16].hex(),flush=True)
+            assert blob[:8]==b'\x89PNG\r\n\x1a\n','Image is not PNG'
+            assert len(blob)>100,'Image too short'
+          else:
+            print('NO_AVAILABLE_TIMES',flush=True)
+          PY
