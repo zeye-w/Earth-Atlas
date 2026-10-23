@@ -4,7 +4,7 @@ export const USER_AGENT = 'Earth-Atlas data builder (+https://github.com/zeye-w/
 let lastRequest = 0;
 export async function getJson(url, headers = {}) {
   for (let attempt = 0; attempt < 4; attempt++) {
-    await sleep(Math.max(0, 1000 - (Date.now() - lastRequest)));
+    await sleep(Math.max(0, (new URL(url).hostname === 'www.peeringdb.com' ? 2000 : 1000) - (Date.now() - lastRequest)));
     lastRequest = Date.now();
     try {
       const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json', ...headers }, signal: AbortSignal.timeout(60000) });
@@ -20,6 +20,7 @@ export async function getJson(url, headers = {}) {
       return await response.json();
     } catch (error) {
       if (error.permanent || attempt === 3) throw error;
+      console.warn(`Retry ${attempt + 1}/3 for ${url}: ${error.message}`);
       await sleep(2000 * 2 ** attempt);
     }
   }

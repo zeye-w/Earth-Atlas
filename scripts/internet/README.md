@@ -56,7 +56,7 @@ node --experimental-strip-types scripts/internet/build.mjs
 
 The weekly workflow and main dispatch deliberately fail before fetching or
 writing production data until these variables exist. Branch dispatches build
-only an ephemeral `.cache` research preview, validate the actual data and never
+and pull-request runs build only an ephemeral `.cache` research preview, validate the actual data and never
 upload datasets or commit to main; only successful main runs can commit. Merge
 remains subject to Claude review under the collaboration document.
 
