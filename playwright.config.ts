@@ -9,7 +9,9 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 120_000,
   expect: { timeout: 30_000 },
-  fullyParallel: false,
+  // fullyParallel lets CI shards (--shard=i/n) split app.spec.ts by test rather
+  // than by file; with one worker, tests still run one at a time locally.
+  fullyParallel: true,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
