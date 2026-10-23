@@ -14,6 +14,8 @@ import {
   type Entity,
   type Viewer,
 } from "cesium";
+import { SatelliteModelOverlay } from "./satelliteModelOverlay.ts";
+import type { SatelliteModelStatus } from "./satelliteModels.ts";
 import { LABEL_FONT } from "./labelFont.ts";
 import { elementsValidAt, orbitPath, positionAt, type OrbitRecord, type OrbitalPosition } from "./satelliteOrbits.ts";
 import { telemetryAt, type Observer, type Telemetry } from "./satelliteTelemetry.ts";
@@ -78,6 +80,8 @@ interface MarkerPair {
 
 export class SatelliteOverlay {
   private readonly viewer: Viewer;
+  private modelOverlay: SatelliteModelOverlay | null = null;
+  private modelTarget: string | null = null;
   private readonly pairs: MarkerPair[] = [];
   private showPaths = true;
   private lastPathSimMs = Number.NEGATIVE_INFINITY;
@@ -93,9 +97,10 @@ export class SatelliteOverlay {
   private readonly scratchHere = new Cartesian3();
   private readonly scratchAhead = new Cartesian3();
 
-  constructor(viewer: Viewer, records: readonly OrbitRecord[], pathsVisible = true) {
+  constructor(viewer: Viewer, records: readonly OrbitRecord[], pathsVisible = true, onModelStatus?: (status: SatelliteModelStatus) => void) {
     this.viewer = viewer;
     this.showPaths = pathsVisible;
+    if(onModelStatus)this.modelOverlay=new SatelliteModelOverlay(viewer,onModelStatus);
     const now = new Date();
     for (const record of records.slice(0, SATELLITE_MAX_DISPLAY)) {
       const pos = positionAt(record, now);
@@ -212,6 +217,12 @@ export class SatelliteOverlay {
         pair.path.show = points.length > 1;
       }
     }
+    if(this.modelOverlay && this.modelTarget){
+      const pair=this.pairs.find(p=>p.record.choice.id===this.modelTarget);
+      const position=pair?.marker.show?pair.position.getValue():undefined;
+      const next=pair && position?positionAt(pair.record,ahead):null;
+      this.modelOverlay.update(position,next?toCartesian(next):undefined);
+    }
     if (updatePaths) this.lastPathSimMs = now.getTime();
     this.viewer.scene.requestRender();
   }
@@ -234,7 +245,13 @@ export class SatelliteOverlay {
     else if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
   }
 
+  setModelTarget(id: string | null): void {
+    this.modelTarget=id;this.modelOverlay?.setTarget(id,id?this.markerEntity(id):undefined);this.update();
+  }
+  retryModel(): void {this.modelOverlay?.retry();}
+
   dispose(): void {
+    this.modelOverlay?.dispose();
     if (this.frameHandle !== null) cancelAnimationFrame(this.frameHandle);
     this.frameHandle = null;
     if (this.viewer.isDestroyed()) return;

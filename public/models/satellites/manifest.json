@@ -1,0 +1,62 @@
+[
+  {
+    "id": "iss",
+    "originalSha256": "70d0619a69312a45cbf740ba9a491fad854e10226dc5936c213fb1f93f063678",
+    "sha256": "aca210e91f41e91c750005cde73d19abb584d5368ab481a58256c23dcbb63d29",
+    "bytes": 39944,
+    "normalization": {
+      "center": [
+        0.0011155690003761265,
+        1.4890286331880573,
+        -3.8791446542528476
+      ],
+      "longestDimension": 25.614239003222792
+    },
+    "materials": "original"
+  },
+  {
+    "id": "hubble",
+    "originalSha256": "e5ba4de15c7d359ac8fa1ab7e286aff42dec09c0fadae3db99252587f39fa384",
+    "sha256": "a621ccd5acb8f9118a48b63e03450825eac45b058d845f854462a07048f2347e",
+    "bytes": 1695232,
+    "normalization": {
+      "center": [
+        0.04540657997131348,
+        -3.2839506996211014,
+        -0.020999270495678957
+      ],
+      "longestDimension": 525.4886287550491
+    },
+    "materials": "original"
+  },
+  {
+    "id": "terra",
+    "originalSha256": "8794857595f7a7d416184fe926ecb50e11bf267dbe471d1cf2728a85e8d017fa",
+    "sha256": "73161fc48cfe986b75fecf5ece45be7bc7eca4e62174721f38c2e7e6f3a0342b",
+    "bytes": 2150608,
+    "normalization": {
+      "center": [
+        -1.945347275977838e-05,
+        701.9984282780315,
+        7999.999480671411
+      ],
+      "longestDimension": 26053.829634893907
+    },
+    "materials": "original colors; missing external textures removed"
+  },
+  {
+    "id": "tiangong",
+    "originalSha256": "8e2bf58a79b8c6d4494ba55268f0a2978715d7dc081fbc6ac2c39f0cbe27f8bf",
+    "sha256": "3d5ca7b5ffc731d6785d4a08013b87070361ce8a21e3a31f7010be11a518e761",
+    "bytes": 137104,
+    "normalization": {
+      "center": [
+        0.0,
+        -4.1499998569488525,
+        0.0
+      ],
+      "longestDimension": 52.0
+    },
+    "materials": "original"
+  }
+]

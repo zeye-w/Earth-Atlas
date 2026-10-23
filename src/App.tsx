@@ -387,7 +387,7 @@ function App() {
           {tourOpen && viewer && <Suspense fallback={null}><TerminatorTour viewer={viewer} timeline={timeline} timebarOpen={timebarOpen} onClose={closeTour} /></Suspense>}
           {toast && <div className="toast" role="status">{toast}<button type="button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={13} aria-hidden="true" /></button></div>}
           {viewer && trackedSatellite && satellites.status === "ready" && (
-            <TrackCard viewer={viewer} title={trackedSatellite.title} live={live} tracking={satellites.tracking}
+            <TrackCard viewer={viewer} title={trackedSatellite.title} satelliteId={trackedSatellite.id} modelStatus={satellites.modelStatus} onViewModel={satellites.viewModel} live={live} tracking={satellites.tracking}
               location={userLocation.location} onLocate={() => void userLocation.locate()} onStop={() => setTrackedSatelliteId(null)} />
           )}
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}

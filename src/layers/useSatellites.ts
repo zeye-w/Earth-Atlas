@@ -4,6 +4,7 @@ import { Cartesian3, type Viewer } from "cesium";
 import type { OrbitRecord, SatelliteChoice } from "../satelliteOrbits";
 import type { SatelliteOverlay, SatelliteSpeed } from "../satelliteOverlay";
 import type { TimeController } from "../timeline";
+import { SATELLITE_MODELS, type SatelliteModelStatus } from "../satelliteModels";
 import type { Observer } from "../satelliteTelemetry";
 
 export type SatelliteStatus = "idle" | "loading" | "ready" | "error";
@@ -24,6 +25,8 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
   const overlayRef = useRef<SatelliteOverlay | null>(null);
   const latest = useRef(options);
   latest.current = options;
+  const [modelStatus,setModelStatus]=useState<SatelliteModelStatus>("unavailable");
+  const minimumZoom=useRef(15_000);
   const [status, setStatus] = useState<SatelliteStatus>("idle");
   const [catalog, setCatalog] = useState<Array<{ choice: SatelliteChoice; epochLabel: string }>>([]);
   const [records, setRecords] = useState<OrbitRecord[]>([]);
@@ -40,9 +43,10 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
       const { satellites } = await orbits.fetchSatelliteCatalog();
       if (!active || viewer.isDestroyed()) return;
       overlayRef.current?.dispose();
-      const overlay = new overlayModule.SatelliteOverlay(viewer, satellites, latest.current.paths);
+      const overlay = new overlayModule.SatelliteOverlay(viewer, satellites, latest.current.paths, followCamera?setModelStatus:undefined);
       overlayRef.current = overlay;
       overlay.setSelected(latest.current.selectedId);
+      overlay.setModelTarget(followCamera?latest.current.trackedId:null);
       overlay.setSpeed(latest.current.speed);
       followTimeline(overlay, timeline);
       setCatalog(satellites.map(({ choice, epoch }) => ({ choice, epochLabel: orbits.formatEpoch(epoch) })));
@@ -66,6 +70,7 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
   useEffect(() => timeline.subscribe(() => { if (overlayRef.current) followTimeline(overlayRef.current, timeline); }), [timeline]);
   useEffect(() => { overlayRef.current?.setSelected(selectedId); }, [selectedId]);
   useEffect(() => { overlayRef.current?.togglePaths(paths); }, [paths]);
+  useEffect(()=>{overlayRef.current?.setModelTarget(followCamera?trackedId:null);},[trackedId,followCamera]);
 
   // Resynchronize positions when the tab becomes visible again.
   useEffect(() => {
@@ -79,10 +84,14 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
   useEffect(() => {
     const entity = followCamera && trackedId && status === "ready" ? overlayRef.current?.markerEntity(trackedId) : undefined;
     if (!viewer || !entity) return;
+    minimumZoom.current=viewer.scene.screenSpaceCameraController.minimumZoomDistance;
     entity.viewFrom = new Cartesian3(0, -2_400_000, 1_600_000);
     viewer.trackedEntity = entity;
     return () => {
-      if (!viewer.isDestroyed() && viewer.trackedEntity === entity) viewer.trackedEntity = undefined;
+      if (!viewer.isDestroyed()) {
+        if(viewer.trackedEntity === entity)viewer.trackedEntity = undefined;
+        viewer.scene.screenSpaceCameraController.minimumZoomDistance=minimumZoom.current;
+      }
     };
   }, [viewer, trackedId, status, followCamera]);
 
@@ -92,6 +101,15 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
     position: () => (trackedId ? overlayRef.current?.markerPosition(trackedId) : undefined),
   }), [trackedId]);
 
+  const viewModel=(close: boolean)=>{
+    const entity=trackedId?overlayRef.current?.markerEntity(trackedId):undefined;
+    const info=trackedId?SATELLITE_MODELS[trackedId]:undefined;
+    if(!viewer || !entity || !followCamera || !info)return;
+    viewer.scene.screenSpaceCameraController.minimumZoomDistance=close?info.span*1.2:minimumZoom.current;
+    entity.viewFrom=close?new Cartesian3(0,-info.span*5,info.span*2):new Cartesian3(0,-2_400_000,1_600_000);
+    viewer.trackedEntity=undefined;viewer.trackedEntity=entity;
+    overlayRef.current?.retryModel();viewer.scene.requestRender();
+  };
   const telemetryOf = (id: string) => overlayRef.current?.telemetry(id, null) ?? null;
-  return { status, catalog, records, tracking, telemetryOf };
+  return { status, catalog, records, tracking, telemetryOf, modelStatus, viewModel };
 }

@@ -3,6 +3,7 @@ import type { Cartesian3, Viewer } from "cesium";
 import { Satellite, X } from "lucide-react";
 import { compassName } from "../compass";
 import type { Observer, Telemetry } from "../satelliteTelemetry";
+import { SATELLITE_MODELS, type SatelliteModelStatus } from "../satelliteModels";
 import type { UserLocation } from "../hooks/useUserLocation";
 
 const REFRESH_MS = 250;
@@ -11,6 +12,9 @@ const CARD_OFFSET = { x: 26, y: -24 };
 interface Props {
   viewer: Viewer;
   title: string;
+  satelliteId: string;
+  modelStatus: SatelliteModelStatus;
+  onViewModel: (close: boolean) => void;
   live: boolean;
   tracking: { telemetry: (observer: Observer | null) => Telemetry | null; position: () => Cartesian3 | undefined };
   location: UserLocation | null;
@@ -26,7 +30,8 @@ const number = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 0 });
  * Live readouts beside the tracked satellite: refreshed four times a second
  * and repositioned after every render so it stays next to the marker.
  */
-export function TrackCard({ viewer, title, live, tracking, location, onLocate, onStop }: Props) {
+export function TrackCard({ viewer, title, satelliteId, modelStatus, onViewModel, live, tracking, location, onLocate, onStop }: Props) {
+  const model=SATELLITE_MODELS[satelliteId];
   const cardRef = useRef<HTMLElement>(null);
   const [data, setData] = useState<Telemetry | null>(() => tracking.telemetry(location));
 
@@ -48,14 +53,14 @@ export function TrackCard({ viewer, title, live, tracking, location, onLocate, o
       if (!screen || window.innerWidth < 760) { card.style.removeProperty("transform"); card.classList.toggle("is-floating", false); return; }
       const width = scene.canvas.clientWidth;
       const height = scene.canvas.clientHeight;
-      const x = Math.min(Math.max(12, screen.x + CARD_OFFSET.x), width - card.offsetWidth - 12);
+      const x = Math.min(Math.max(12, screen.x + (modelStatus === "ready" ? 120 : CARD_OFFSET.x)), width - card.offsetWidth - 12);
       const y = Math.min(Math.max(80, screen.y + CARD_OFFSET.y), height - card.offsetHeight - 12);
       card.style.transform = "translate(" + Math.round(x) + "px, " + Math.round(y) + "px)";
       card.classList.toggle("is-floating", true);
     };
     place();
     return scene.postRender.addEventListener(place);
-  }, [viewer, tracking]);
+  }, [viewer, tracking, modelStatus]);
 
   return (
     <section ref={cardRef} className="track-card glass-panel" aria-label={"正在跟踪 " + title} aria-live="off">
@@ -88,6 +93,14 @@ export function TrackCard({ viewer, title, live, tracking, location, onLocate, o
           )}
         </>
       )}
+      {model ? <div className="track-model">
+        <div className="track-model-actions">
+          <button type="button" className="track-locate" onClick={()=>onViewModel(true)} disabled={!data}>{modelStatus==="error"?"重试模型":"模型近景"}</button>
+          <button type="button" className="track-locate" onClick={()=>onViewModel(false)}>轨道远景</button>
+        </div>
+        <p className="track-note" role="status">{modelStatus==="loading"?"正在加载三维模型…":modelStatus==="error"?"模型加载失败，已保留卫星图标。":modelStatus==="ready"?"三维模型已显示。":"拉近后按需加载三维模型。"} {model.schematic?"构型示意；":"外形模型；"}姿态近似、比例仅供展示。</p>
+        <a href={model.source} target="_blank" rel="noreferrer">模型来源：{model.credit}</a>
+      </div> : <p className="track-note">暂无已核实的对应型号模型，保留轨道图标。</p>}
       <p className="track-note">CelesTrak 轨道根数 + SGP4 推算，并非实时遥测。拖动可绕卫星旋转视角。</p>
     </section>
   );
