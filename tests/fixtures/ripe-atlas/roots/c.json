@@ -1,0 +1,33 @@
+{
+  "Operator": "SYNTHETIC TEST OPERATOR C",
+  "IPv4": "192.0.2.1",
+  "IPv6": "2001:db8::1",
+  "Sites": [
+    {
+      "ID": "synthetic-c-01",
+      "Town": "Example City C",
+      "Country": "ZZ",
+      "Longitude": 12,
+      "Latitude": -20,
+      "Type": "Global",
+      "Status": "operational",
+      "IPv4": true,
+      "IPv6": true,
+      "Identifiers": [
+        "c.synthetic.invalid"
+      ]
+    },
+    {
+      "ID": "synthetic-c-02",
+      "Town": "Second Example City",
+      "Country": "ZZ",
+      "Longitude": -30,
+      "Latitude": 40,
+      "Type": "Local",
+      "Status": "",
+      "IPv4": true,
+      "IPv6": false,
+      "Identifiers": []
+    }
+  ]
+}
