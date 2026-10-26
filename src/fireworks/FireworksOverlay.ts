@@ -2,7 +2,7 @@ import {
   BoundingSphere, Cartesian3, Color, HeadingPitchRange, Math as CesiumMath, Matrix4, PointPrimitiveCollection,
   Transforms, type PointPrimitive, type Viewer,
 } from "cesium";
-import { createFireworkShow, particleAt, type FireworkShow, type FireworkStyle } from "./physics";
+import { createFireworkShow, particleAt, type FireworkShow, type FireworkStyle } from "./physics.ts";
 
 export interface FireworkSite { longitude: number; latitude: number; label: string }
 
@@ -21,10 +21,16 @@ export class FireworksOverlay {
   private pendingFlight = false;
   private generation = 0;
   private previousMinimumZoom: number | null = null;
+  private removeZoomRestore: (() => void) | null = null;
   private disposed = false;
   private seed = 0;
 
-  constructor(private viewer: Viewer, private onRunning: (running: boolean) => void) {
+  private viewer: Viewer;
+  private onRunning: (running: boolean) => void;
+
+  constructor(viewer: Viewer, onRunning: (running: boolean) => void) {
+    this.viewer = viewer;
+    this.onRunning = onRunning;
     document.addEventListener("visibilitychange", this.onVisibilityChange);
   }
 
@@ -33,9 +39,11 @@ export class FireworksOverlay {
       !Number.isFinite(site.longitude) || Math.abs(site.longitude) > 180 ||
       !Number.isFinite(site.latitude) || Math.abs(site.latitude) > 90) return false;
     this.stop();
+    // A restore still waiting from the last show keeps its original value.
+    const previousMinimumZoom = this.restoreMinimumZoom();
     const token = ++this.generation;
     const cameraController = this.viewer.scene.screenSpaceCameraController;
-    this.previousMinimumZoom = cameraController.minimumZoomDistance;
+    this.previousMinimumZoom = previousMinimumZoom;
     // The side view is about 700 m above ground; do not push it back above 900 m.
     cameraController.minimumZoomDistance = 100;
     this.pendingFlight = true;
@@ -147,12 +155,37 @@ export class FireworksOverlay {
     this.flares = [];
     this.show = null;
     this.lastFrame = 0;
-    if (this.previousMinimumZoom !== null && !this.viewer.isDestroyed()) {
-      this.viewer.scene.screenSpaceCameraController.minimumZoomDistance = this.previousMinimumZoom;
-    }
-    this.previousMinimumZoom = null;
+    this.deferMinimumZoomRestore();
     if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
     if (!this.disposed) this.onRunning(false);
+  }
+
+  /**
+   * Restoring the old minimum zoom while the camera sits below it makes Cesium
+   * yank the camera kilometres up in one frame. Keep the camera where the show
+   * left it and restore once the user has zoomed out past the old minimum.
+   */
+  private deferMinimumZoomRestore() {
+    const previous = this.previousMinimumZoom;
+    if (previous === null || this.removeZoomRestore || this.viewer.isDestroyed()) return;
+    const camera = this.viewer.camera;
+    const restoreWhenAbove = () => {
+      if (this.viewer.isDestroyed()) return;
+      if (camera.positionCartographic.height >= previous) this.restoreMinimumZoom();
+    };
+    this.removeZoomRestore = camera.moveEnd.addEventListener(restoreWhenAbove);
+    restoreWhenAbove();
+  }
+
+  /** Puts back the minimum zoom saved by launch(); returns the current one. */
+  private restoreMinimumZoom(): number {
+    this.removeZoomRestore?.();
+    this.removeZoomRestore = null;
+    const previous = this.previousMinimumZoom;
+    this.previousMinimumZoom = null;
+    const controller = this.viewer.scene.screenSpaceCameraController;
+    if (previous !== null) controller.minimumZoomDistance = previous;
+    return controller.minimumZoomDistance;
   }
 
   dispose() {
@@ -160,5 +193,7 @@ export class FireworksOverlay {
     this.disposed = true;
     document.removeEventListener("visibilitychange", this.onVisibilityChange);
     this.stop();
+    if (!this.viewer.isDestroyed()) this.restoreMinimumZoom();
+    else { this.removeZoomRestore = null; this.previousMinimumZoom = null; }
   }
 }

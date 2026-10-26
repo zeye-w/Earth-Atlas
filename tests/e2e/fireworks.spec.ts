@@ -6,11 +6,6 @@ import { mockNetwork, sceneUrl, waitForGlobe } from "./mocks";
 // Decode Chromium's 8-bit RGB/RGBA PNG screenshots with Node only (no new dependency).
 // Count warm/pink spark pixels in the central view, excluding the panels and toolbar.
 function centralSparkPixels(png: Buffer): number {
-  return sparkScan(png).count;
-}
-
-// TEMPORARY CI diagnostic for PR #31: what do the matching pixels look like after stopping?
-function sparkScan(png: Buffer) {
   const width = png.readUInt32BE(16), height = png.readUInt32BE(20);
   const channels = png[25] === 6 ? 4 : 3;
   expect(png[24]).toBe(8);
@@ -22,8 +17,7 @@ function sparkScan(png: Buffer) {
     offset += size + 12;
   }
   const raw = inflateSync(Buffer.concat(chunks)), stride = width * channels;
-  let previous = Buffer.alloc(stride), count = 0, tight = 0;
-  const sum = [0, 0, 0], box = [Infinity, Infinity, -Infinity, -Infinity], map = new Map<string, number>(), samples: number[][] = [];
+  let previous = Buffer.alloc(stride), count = 0;
   for (let y = 0; y < height; y++) {
     const row = Buffer.alloc(stride), start = y * (stride + 1), filter = raw[start];
     expect(filter).toBeLessThanOrEqual(4);
@@ -36,18 +30,11 @@ function sparkScan(png: Buffer) {
     }
     if (y > height * 0.2 && y < height * 0.75) for (let x = Math.ceil(width * 0.3); x < width * 0.7; x++) {
       const i = x * channels, r = row[i], g = row[i + 1], b = row[i + 2];
-      // Bloom's pink spark colour is (1, 0.57, 0.72): red well above green, blue above green.
-      if (r > 200 && b > 120 && r > g * 1.4 && b > g) tight++;
-      if (r > 180 && b > 100 && r > g * 1.15) {
-        count++; sum[0] += r; sum[1] += g; sum[2] += b;
-        box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y);
-        const cell = Math.floor(x / width * 24) + "," + Math.floor(y / height * 12); map.set(cell, (map.get(cell) ?? 0) + 1);
-        if (samples.length < 8 && count % 7 === 1) samples.push([x, y, r, g, b]);
-      }
+      if (r > 180 && b > 100 && r > g * 1.15) count++;
     }
     previous = row;
   }
-  return { count, tight, mean: sum.map((v) => Math.round(v / Math.max(1, count))), box, cells: [...map.entries()].slice(0, 20), samples };
+  return count;
 }
 
 test("fireworks can be launched and stopped without changing scientific layers", async ({ page }) => {
@@ -93,21 +80,12 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       return centralSparkPixels(screenshot);
     }, { timeout: 30_000, intervals: [200, 300, 500], message: "Visible pink sparks must reach the central view, not only its bottom edge" }).toBeGreaterThan(20);
     await testInfo.attach(`fireworks-${viewport.width}`, { body: screenshot, contentType: "image/png" });
-    { const scan = sparkScan(screenshot); console.log("PR31-VISIBLE", viewport.width, scan.count, scan.tight); }
     await mkdir(".cache", { recursive: true });
     await writeFile(`.cache/fireworks-${viewport.width}.png`, screenshot);
     await page.getByRole("button", { name: "图层", exact: true }).click();
     await group.getByRole("button", { name: "停止烟花表演" }).click();
     await expect(group.getByRole("button", { name: "开始烟花表演" })).toBeVisible();
     await panel.getByRole("button", { name: "收起图层面板" }).click();
-    const t0 = Date.now();
-    for (let k = 0; Date.now() - t0 < 12_000; k++) {
-      const shot = await page.screenshot();
-      const scan = sparkScan(shot);
-      console.log("PR31-DIAG", viewport.width, k, Date.now() - t0, scan.count, scan.tight, scan.count ? JSON.stringify(scan) : "");
-      if (scan.count) await testInfo.attach(`after-stop-${viewport.width}-${k}`, { body: shot, contentType: "image/png" });
-      await page.waitForTimeout(300);
-    }
     await expect.poll(async () => centralSparkPixels(await page.screenshot()), {
       timeout: 10_000, message: "Stopping removes sparks; the pixel check must not mistake the background for fireworks",
     }).toBeLessThanOrEqual(5);
