@@ -1,20 +1,5 @@
 name: Live Geology Smoke
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - "scripts/smoke-live.mjs"
-      - "src/geology.ts"
-      - "src/auroraData.ts"
-      - "src/earthquakeData.ts"
-      - "src/geomagnetic.ts"
-      - "src/trueColorData.ts"
-      - "src/cloudData.ts"
-      - "src/constellationData.ts"
-      - "src/solarWindData.ts"
-      - "src/flightData.ts"
-      - "worker/**"
-      - ".github/workflows/live-smoke.yml"
   workflow_dispatch:
 permissions:
   contents: read

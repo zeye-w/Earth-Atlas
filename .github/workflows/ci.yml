@@ -1,12 +1,8 @@
 name: CI
-# Light checks on every push and pull request: unit tests, types, build and
-# static assets (about half a minute). The full browser suite is run by hand:
-# see .github/workflows/e2e.yml.
+# Automatic CI is temporarily paused at the project owner's request.
+# Run this workflow manually; restore push/PR triggers when resuming CI.
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:

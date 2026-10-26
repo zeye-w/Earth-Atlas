@@ -1,5 +1,7 @@
 # 集成审查对话：交接文档
 
+> **2026-10-26 临时 CI 政策（项目所有者指令）**：暂停提交及 PR 自动触发的 CI、ownership、Live Geology Smoke、Live Photo 检查与 internet-data PR 校验；保留手动运行入口、现有测试和定时数据更新。E2E 继续手动运行。暂停期间，下文要求自动检查通过的合并条件暂不适用；人工代码审查与文件分工仍保留。恢复时重新启用各 workflow 的 push / pull_request 触发器。
+
 你是这个项目的**集成审查**（integrator）。项目同时有四个参与者：
 
 | 参与者 | 职责 | 分支前缀 |
