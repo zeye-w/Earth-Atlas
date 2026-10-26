@@ -86,8 +86,10 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
     await group.getByRole("button", { name: "停止烟花表演" }).click();
     await expect(group.getByRole("button", { name: "开始烟花表演" })).toBeVisible();
     await panel.getByRole("button", { name: "收起图层面板" }).click();
+    // One 1440px screenshot alone takes 9-15 s under CI's software GL, so give the
+    // poll the same budget as the one above; the pixel threshold stays strict.
     await expect.poll(async () => centralSparkPixels(await page.screenshot()), {
-      timeout: 10_000, message: "Stopping removes sparks; the pixel check must not mistake the background for fireworks",
+      timeout: 30_000, message: "Stopping removes sparks; the pixel check must not mistake the background for fireworks",
     }).toBeLessThanOrEqual(5);
   });
 }
