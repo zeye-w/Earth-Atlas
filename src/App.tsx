@@ -24,6 +24,10 @@ import { useConstellation } from "./layers/useConstellation";
 import { useSolarWind } from "./layers/useSolarWind";
 import { useWeather } from "./layers/useWeather";
 import { WeatherGroup } from "./panels/WeatherGroup";
+import { FireworksGroup } from "./panels/FireworksGroup";
+import { useFireworks } from "./fireworks/useFireworks";
+import type { FireworkSite } from "./fireworks/FireworksOverlay";
+import type { FireworkStyle } from "./fireworks/physics";
 import { useSelectedLocationMarker } from "./hooks/useSelectedLocationMarker";
 import { useFlights } from "./layers/useFlights";
 import { useInternet } from "./layers/useInternet";
@@ -99,6 +103,9 @@ function App() {
   const [trackedSatelliteId, setTrackedSatelliteId] = useState<string | null>(null);
   const [formulasOpen, setFormulasOpen] = useState(false);
   const [internetSelection, setInternetSelection] = useState<InternetSelection | null>(null);
+  const [fireworksSite, setFireworksSite] = useState<FireworkSite>({ label: "北京", latitude: 39.9042, longitude: 116.4074 });
+  const [fireworksStyle, setFireworksStyle] = useState<FireworkStyle>("bloom");
+  const [fireworksPicking, setFireworksPicking] = useState(false);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -118,6 +125,15 @@ function App() {
 
   // Clicks pick, in order: volcanoes, earthquakes, satellites, aircraft, then the ground.
   const handleClick = (viewer: Viewer, position: Cartesian2) => {
+    if (fireworksPicking) {
+      const ground = viewer.camera.pickEllipsoid(position, Ellipsoid.WGS84);
+      if (!ground) { setToast("请点击地球表面选择烟花地点"); return; }
+      const coordinates = Cartographic.fromCartesian(ground);
+      setFireworksSite({ label: "自定义地点", latitude: CesiumMath.toDegrees(coordinates.latitude), longitude: CesiumMath.toDegrees(coordinates.longitude) });
+      setFireworksPicking(false);
+      setControlsOpen(true);
+      return;
+    }
     if (tourOpen) return;
     const picked = viewer.scene.pick(position);
     const pickedId: unknown = picked && typeof picked === "object" && "id" in picked ? (picked as { id?: unknown }).id : undefined;
@@ -169,6 +185,7 @@ function App() {
   };
 
   const { viewer, globeError } = useViewer(mountRef, shellRef, initialScene, handleClick);
+  const fireworks = useFireworks(viewer);
   useSceneClock(viewer, timeline);
   const render = useRenderQuality(viewer, (quality, fps) =>
     setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording);
@@ -221,6 +238,23 @@ function App() {
     document.addEventListener("keydown", close);
     return () => document.removeEventListener("keydown", close);
   }, [searchOpen, shareUrl]);
+
+  useEffect(() => {
+    if (!fireworksPicking) return;
+    const cancel = (event: KeyboardEvent) => { if (event.key === "Escape") setFireworksPicking(false); };
+    document.addEventListener("keydown", cancel);
+    return () => document.removeEventListener("keydown", cancel);
+  }, [fireworksPicking]);
+
+  const launchFireworks = () => {
+    closeTour();
+    setTrackedSatelliteId(null);
+    setDetailsOpen(false);
+    setInternetSelection(null);
+    setFireworksPicking(false);
+    if (!fireworks.launch(fireworksSite, fireworksStyle)) { setToast("三维地球尚未就绪，无法开始烟花表演"); return; }
+    if (isNarrow()) setControlsOpen(false);
+  };
 
   // Recording mode (?record): a scripted capture API, see src/recording.ts.
   const telemetryOf = useRef(satellites.telemetryOf);
@@ -331,7 +365,7 @@ function App() {
   const groupProps = { layers, setLayer, options, setOption };
 
   return (
-    <div ref={shellRef} className={"app-shell quality-" + render.quality + (RECORDING ? " recording record-ui-" + recordUi : "")}>
+    <div ref={shellRef} className={"app-shell quality-" + render.quality + (fireworksPicking ? " fireworks-picking" : "") + (RECORDING ? " recording record-ui-" + recordUi : "")}>
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={(place) => {
         if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
         closeTour();
@@ -391,6 +425,10 @@ function App() {
           <FlightsGroup layers={layers} setLayer={setLayer} flights={flights.state} live={live} />
           <InternetGroup layers={layers} setLayer={setLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
+          <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
+            onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
+            onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
+            onLaunch={launchFireworks} onStop={fireworks.stop} />
         </LayerPanel>
 
         <section className="globe-panel" aria-label="可交互三维数字地球">

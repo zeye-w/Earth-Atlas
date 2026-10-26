@@ -1,0 +1,158 @@
+import {
+  Cartesian3, Color, Math as CesiumMath, Matrix4, PointPrimitiveCollection,
+  Transforms, type PointPrimitive, type Viewer,
+} from "cesium";
+import { createFireworkShow, particleAt, type FireworkShow, type FireworkStyle } from "./physics";
+
+export interface FireworkSite { longitude: number; latitude: number; label: string }
+
+/** Transient, georeferenced decoration. No external assets, telemetry or persistent layers. */
+export class FireworksOverlay {
+  private collection: PointPrimitiveCollection | null = null;
+  private points: { head: PointPrimitive; tail: PointPrimitive }[] = [];
+  private flares: PointPrimitive[] = [];
+  private localToWorld = new Matrix4();
+  private show: FireworkShow | null = null;
+  private elapsed = 0;
+  private lastFrame = 0;
+  private animationFrame = 0;
+  private pendingFlight = false;
+  private generation = 0;
+  private previousMinimumZoom: number | null = null;
+  private disposed = false;
+  private seed = 0;
+
+  constructor(private viewer: Viewer, private onRunning: (running: boolean) => void) {
+    document.addEventListener("visibilitychange", this.onVisibilityChange);
+  }
+
+  launch(site: FireworkSite, style: FireworkStyle): boolean {
+    if (this.disposed || this.viewer.isDestroyed() ||
+      !Number.isFinite(site.longitude) || Math.abs(site.longitude) > 180 ||
+      !Number.isFinite(site.latitude) || Math.abs(site.latitude) > 90) return false;
+    this.stop();
+    const token = ++this.generation;
+    const cameraController = this.viewer.scene.screenSpaceCameraController;
+    this.previousMinimumZoom = cameraController.minimumZoomDistance;
+    cameraController.minimumZoomDistance = 900;
+    this.pendingFlight = true;
+    this.onRunning(true);
+    const target = Cartesian3.fromDegrees(site.longitude, site.latitude, 3000);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    this.viewer.camera.flyTo({
+      destination: target,
+      orientation: { heading: 0, pitch: CesiumMath.toRadians(-72), roll: 0 },
+      duration: reducedMotion ? 0 : 1.6,
+      complete: () => {
+        if (this.generation !== token || this.disposed) return;
+        this.pendingFlight = false;
+        this.start(site, style);
+      },
+      cancel: () => { if (this.generation === token) this.stop(); },
+    });
+    return true;
+  }
+
+  private start(site: FireworkSite, style: FireworkStyle) {
+    if (this.viewer.isDestroyed()) return;
+    this.show = createFireworkShow(style, ++this.seed);
+    const origin = Cartesian3.fromDegrees(site.longitude, site.latitude, 0);
+    this.localToWorld = Transforms.eastNorthUpToFixedFrame(origin);
+    const collection = new PointPrimitiveCollection();
+    this.collection = this.viewer.scene.primitives.add(collection);
+    this.flares = this.show.bursts.map(() => collection.add({ position: origin, show: false, pixelSize: 5, color: Color.WHITE }));
+    this.points = this.show.particles.map(() => ({
+      head: collection.add({ position: origin, show: false, pixelSize: 3, color: Color.WHITE }),
+      tail: collection.add({ position: origin, show: false, pixelSize: 2, color: Color.WHITE }),
+    }));
+    this.elapsed = 0;
+    this.lastFrame = 0;
+    this.scheduleFrame();
+  }
+
+  private toWorld(east: number, north: number, height: number, result: Cartesian3): Cartesian3 {
+    return Matrix4.multiplyByPoint(this.localToWorld, new Cartesian3(east, north, Math.max(1, height)), result);
+  }
+
+  private scheduleFrame() {
+    if (!this.animationFrame && !document.hidden && this.show && !this.disposed) {
+      this.animationFrame = requestAnimationFrame(this.frame);
+    }
+  }
+
+  private frame = (timestamp: number) => {
+    this.animationFrame = 0;
+    if (!this.show || this.viewer.isDestroyed() || this.disposed) return;
+    if (this.lastFrame && timestamp - this.lastFrame < 30) { this.scheduleFrame(); return; }
+    if (this.lastFrame) this.elapsed += Math.min(0.1, (timestamp - this.lastFrame) / 1000);
+    this.lastFrame = timestamp;
+    const t = this.elapsed;
+    for (let i = 0; i < this.show.bursts.length; i++) {
+      const burst = this.show.bursts[i], point = this.flares[i];
+      const ascent = t - (burst.start - 0.78);
+      point.show = ascent >= 0 && ascent < 0.78;
+      if (!point.show) continue;
+      const fraction = ascent / 0.78;
+      point.position = this.toWorld(burst.east, burst.north, burst.height * fraction * fraction, point.position);
+      point.color = new Color(1, 0.88, 0.65, 1 - fraction * 0.2);
+    }
+    for (let i = 0; i < this.show.particles.length; i++) {
+      const p = this.show.particles[i], { head, tail } = this.points[i];
+      const current = particleAt(p, t);
+      head.show = current !== null;
+      if (current) {
+        head.position = this.toWorld(current.east, current.north, current.height, head.position);
+        head.color = new Color(...p.rgb, current.opacity);
+        head.pixelSize = p.size;
+      }
+      const trailing = particleAt(p, t - 0.075);
+      tail.show = trailing !== null && current !== null;
+      if (trailing && current) {
+        tail.position = this.toWorld(trailing.east, trailing.north, trailing.height, tail.position);
+        tail.color = new Color(...p.rgb, trailing.opacity * 0.35);
+      }
+    }
+    this.viewer.scene.requestRender();
+    if (t >= this.show.duration) this.stop();
+    else this.scheduleFrame();
+  };
+
+  private onVisibilityChange = () => {
+    if (document.hidden) {
+      if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
+      this.animationFrame = 0;
+    } else {
+      this.lastFrame = 0; // A hidden tab must not fast-forward the show.
+      this.scheduleFrame();
+    }
+  };
+
+  stop() {
+    this.generation++;
+    if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
+    this.animationFrame = 0;
+    if (this.pendingFlight && !this.viewer.isDestroyed()) {
+      this.pendingFlight = false;
+      this.viewer.camera.cancelFlight();
+    }
+    if (this.collection && !this.viewer.isDestroyed()) this.viewer.scene.primitives.remove(this.collection);
+    this.collection = null;
+    this.points = [];
+    this.flares = [];
+    this.show = null;
+    this.lastFrame = 0;
+    if (this.previousMinimumZoom !== null && !this.viewer.isDestroyed()) {
+      this.viewer.scene.screenSpaceCameraController.minimumZoomDistance = this.previousMinimumZoom;
+    }
+    this.previousMinimumZoom = null;
+    if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
+    if (!this.disposed) this.onRunning(false);
+  }
+
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    document.removeEventListener("visibilitychange", this.onVisibilityChange);
+    this.stop();
+  }
+}
