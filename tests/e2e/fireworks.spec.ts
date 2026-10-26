@@ -22,7 +22,7 @@ function sparkScan(png: Buffer) {
     offset += size + 12;
   }
   const raw = inflateSync(Buffer.concat(chunks)), stride = width * channels;
-  let previous = Buffer.alloc(stride), count = 0;
+  let previous = Buffer.alloc(stride), count = 0, tight = 0;
   const sum = [0, 0, 0], box = [Infinity, Infinity, -Infinity, -Infinity], map = new Map<string, number>(), samples: number[][] = [];
   for (let y = 0; y < height; y++) {
     const row = Buffer.alloc(stride), start = y * (stride + 1), filter = raw[start];
@@ -36,6 +36,8 @@ function sparkScan(png: Buffer) {
     }
     if (y > height * 0.2 && y < height * 0.75) for (let x = Math.ceil(width * 0.3); x < width * 0.7; x++) {
       const i = x * channels, r = row[i], g = row[i + 1], b = row[i + 2];
+      // Bloom's pink spark colour is (1, 0.57, 0.72): red well above green, blue above green.
+      if (r > 200 && b > 120 && r > g * 1.4 && b > g) tight++;
       if (r > 180 && b > 100 && r > g * 1.15) {
         count++; sum[0] += r; sum[1] += g; sum[2] += b;
         box[0] = Math.min(box[0], x); box[1] = Math.min(box[1], y); box[2] = Math.max(box[2], x); box[3] = Math.max(box[3], y);
@@ -45,7 +47,7 @@ function sparkScan(png: Buffer) {
     }
     previous = row;
   }
-  return { count, mean: sum.map((v) => Math.round(v / Math.max(1, count))), box, cells: [...map.entries()].slice(0, 20), samples };
+  return { count, tight, mean: sum.map((v) => Math.round(v / Math.max(1, count))), box, cells: [...map.entries()].slice(0, 20), samples };
 }
 
 test("fireworks can be launched and stopped without changing scientific layers", async ({ page }) => {
@@ -91,17 +93,20 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       return centralSparkPixels(screenshot);
     }, { timeout: 30_000, intervals: [200, 300, 500], message: "Visible pink sparks must reach the central view, not only its bottom edge" }).toBeGreaterThan(20);
     await testInfo.attach(`fireworks-${viewport.width}`, { body: screenshot, contentType: "image/png" });
+    { const scan = sparkScan(screenshot); console.log("PR31-VISIBLE", viewport.width, scan.count, scan.tight); }
     await mkdir(".cache", { recursive: true });
     await writeFile(`.cache/fireworks-${viewport.width}.png`, screenshot);
     await page.getByRole("button", { name: "图层", exact: true }).click();
     await group.getByRole("button", { name: "停止烟花表演" }).click();
     await expect(group.getByRole("button", { name: "开始烟花表演" })).toBeVisible();
     await panel.getByRole("button", { name: "收起图层面板" }).click();
-    for (const k of [0, 1, 2, 3, 4, 5]) {
-      await page.waitForTimeout(1000);
+    const t0 = Date.now();
+    for (let k = 0; Date.now() - t0 < 12_000; k++) {
       const shot = await page.screenshot();
-      console.log("PR31-DIAG", viewport.width, k, JSON.stringify(sparkScan(shot)));
-      await testInfo.attach(`after-stop-${viewport.width}-${k}`, { body: shot, contentType: "image/png" });
+      const scan = sparkScan(shot);
+      console.log("PR31-DIAG", viewport.width, k, Date.now() - t0, scan.count, scan.tight, scan.count ? JSON.stringify(scan) : "");
+      if (scan.count) await testInfo.attach(`after-stop-${viewport.width}-${k}`, { body: shot, contentType: "image/png" });
+      await page.waitForTimeout(300);
     }
     await expect.poll(async () => centralSparkPixels(await page.screenshot()), {
       timeout: 10_000, message: "Stopping removes sparks; the pixel check must not mistake the background for fireworks",
