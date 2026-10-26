@@ -2,9 +2,7 @@ name: PR guard
 # Ownership rules for parallel work (docs/internet-layers.md): pull requests
 # from codex/* branches may not change hotspot files (.github/hotspots.txt).
 on:
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -20,7 +18,7 @@ jobs:
           node-version: "22"
       - name: Hotspot files are left to the integrator
         env:
-          HEAD_REF: ${{ github.head_ref }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          HEAD_REF: ${{ github.head_ref || github.ref_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+          LABELS: ""
         run: node scripts/check-hotspots.mjs

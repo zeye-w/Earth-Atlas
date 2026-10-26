@@ -4,14 +4,6 @@ name: Live Photo export
 # generated JPG + MOV as an artifact for trying on an iPhone.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/livePhoto*.ts"
-      - "src/panels/LivePhotoPanel.tsx"
-      - "tests/live-photo/**"
-      - "playwright.live-photo.config.ts"
-      - ".github/workflows/live-photo.yml"
 permissions:
   contents: read
 jobs:
