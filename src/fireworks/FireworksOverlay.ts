@@ -4,6 +4,8 @@ import {
 } from "cesium";
 import { createFireworkShow, particleAt, type FireworkShow, type FireworkStyle } from "./physics.ts";
 import { CityContext, retainCity } from "./cityContext.ts";
+import { RocketOverlay } from "./RocketOverlay.ts";
+import type { ExperienceMode } from "./experience.ts";
 
 export interface FireworkSite { longitude: number; latitude: number; label: string }
 
@@ -57,6 +59,8 @@ export class FireworksOverlay {
   private seed = 0;
   private cityContext: CityContext;
   private removeCityRestore: (() => void) | null = null;
+  private rocketShow: RocketOverlay | null = null;
+  private experience: ExperienceMode = "fireworks";
 
   private viewer: Viewer;
   private onRunning: (running: boolean) => void;
@@ -68,11 +72,12 @@ export class FireworksOverlay {
     document.addEventListener("visibilitychange", this.onVisibilityChange);
   }
 
-  launch(site: FireworkSite, style: FireworkStyle): boolean {
+  launch(site: FireworkSite, style: FireworkStyle, experience: ExperienceMode = "fireworks"): boolean {
     if (this.disposed || this.viewer.isDestroyed() ||
       !Number.isFinite(site.longitude) || Math.abs(site.longitude) > 180 ||
       !Number.isFinite(site.latitude) || Math.abs(site.latitude) > 90) return false;
     this.stop();
+    this.experience = experience;
     this.removeCityRestore?.();
     this.removeCityRestore = null;
     void this.cityContext.show(site);
@@ -85,10 +90,10 @@ export class FireworksOverlay {
     cameraController.minimumZoomDistance = 100;
     this.pendingFlight = true;
     this.onRunning(true);
-    const target = Cartesian3.fromDegrees(site.longitude, site.latitude, 300);
+    const target = Cartesian3.fromDegrees(site.longitude, site.latitude, experience === "rocket" ? 44 : 300);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    this.viewer.camera.flyToBoundingSphere(new BoundingSphere(target, 500), {
-      offset: new HeadingPitchRange(0, CesiumMath.toRadians(-15), 1800),
+    this.viewer.camera.flyToBoundingSphere(new BoundingSphere(target, experience === "rocket" ? 120 : 500), {
+      offset: new HeadingPitchRange(0, CesiumMath.toRadians(-15), experience === "rocket" ? 650 : 1800),
       duration: reducedMotion ? 0 : 1.6,
       complete: () => {
         if (this.generation !== token || this.disposed) return;
@@ -103,6 +108,11 @@ export class FireworksOverlay {
 
   private start(site: FireworkSite, style: FireworkStyle) {
     if (this.viewer.isDestroyed()) return;
+    if (this.experience === "rocket") {
+      this.rocketShow = new RocketOverlay(this.viewer, () => this.stop());
+      this.rocketShow.start(site);
+      return;
+    }
     this.show = createFireworkShow(style, ++this.seed);
     this.trailStep = style === "willow" ? 0.085 : 0.045;
     const origin = Cartesian3.fromDegrees(site.longitude, site.latitude, 0);
@@ -230,6 +240,8 @@ export class FireworksOverlay {
 
   stop() {
     this.generation++;
+    this.rocketShow?.dispose();
+    this.rocketShow = null;
     if (this.animationFrame) cancelAnimationFrame(this.animationFrame);
     this.animationFrame = 0;
     if (this.pendingFlight && !this.viewer.isDestroyed()) {
@@ -273,7 +285,7 @@ export class FireworksOverlay {
     if (this.removeCityRestore || this.viewer.isDestroyed() || this.disposed) return;
     const hideWhenAbove = () => {
       if (this.viewer.isDestroyed()) return;
-      if (!retainCity(this.viewer.camera.positionCartographic.height, Boolean(this.show || this.pendingFlight))) {
+      if (!retainCity(this.viewer.camera.positionCartographic.height, Boolean(this.rocketShow || this.show || this.pendingFlight))) {
         this.removeCityRestore?.();
         this.removeCityRestore = null;
         this.cityContext.hide();

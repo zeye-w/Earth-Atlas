@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Viewer } from "cesium";
 import { FireworksOverlay, type FireworkSite } from "./FireworksOverlay";
 import type { FireworkStyle } from "./physics";
+import { getExperience } from "./experience";
 
 export function useFireworks(viewer: Viewer | null) {
   const overlay = useRef<FireworksOverlay | null>(null);
@@ -17,7 +18,7 @@ export function useFireworks(viewer: Viewer | null) {
     };
   }, [viewer]);
 
-  const launch = useCallback((site: FireworkSite, style: FireworkStyle) => overlay.current?.launch(site, style) ?? false, []);
+  const launch = useCallback((site: FireworkSite, style: FireworkStyle) => overlay.current?.launch(site, style, getExperience().mode) ?? false, []);
   const stop = useCallback(() => overlay.current?.stop(), []);
   return { running, launch, stop };
 }
