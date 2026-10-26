@@ -21,3 +21,18 @@
 .rocket-telemetry { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:9px; border:1px solid var(--line); border-radius:9px; }
 .rocket-telemetry span { display:flex; flex-direction:column; gap:4px; min-width:0; color:var(--text-3); font-size:10px; }
 .rocket-telemetry strong { color:var(--text); font-size:12px; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.space-sites { display:flex; flex-direction:column; gap:9px; min-width:0; margin:0; padding:9px; border:1px solid var(--line); border-radius:9px; }
+.space-sites legend { padding:0 5px; color:var(--text-2); font-size:11px; }
+.space-presets { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.space-site-list { list-style:none; display:flex; flex-direction:column; gap:7px; margin:0; padding:0; }
+.space-site-list li { display:flex; align-items:center; gap:6px; min-width:0; }
+.space-site-name { flex:1; min-width:0; overflow-wrap:anywhere; color:var(--text); font-size:11px; }
+.space-site-name small { display:block; color:var(--text-3); font-size:9px; margin-top:3px; }
+.space-site-list select { max-width:108px; min-width:0; border:1px solid var(--line); border-radius:6px; padding:5px 2px; background:var(--panel); color:var(--text); font-size:10px; }
+.space-site-list option { background:#20252d; color:#f0f2f4; }
+.space-remove { padding:4px 7px; border:1px solid var(--line); border-radius:6px; background:var(--fill); color:var(--text-2); }
+.space-camera { display:flex; flex-direction:column; gap:9px; padding:9px; border:1px solid var(--line); border-radius:9px; }
+.space-camera label { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px; color:var(--text-2); font-size:10px; }
+.space-camera input { flex-basis:100%; width:100%; accent-color:#cf8f81; margin:0; }
+.space-camera output { font-variant-numeric:tabular-nums; }
+.space-message { margin:0; color:#efc19b; font-size:10px; line-height:1.6; }

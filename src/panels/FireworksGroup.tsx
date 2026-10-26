@@ -6,6 +6,7 @@ import type { FireworkSite } from "../fireworks/FireworksOverlay";
 import { FIREWORK_STYLES, type FireworkStyle } from "../fireworks/physics";
 import { getExperience, subscribeExperience, updateExperience, type ExperienceMode } from "../fireworks/experience";
 import "./fireworks.css";
+import { SpaceShowControls } from "./SpaceShowControls";
 
 const PRESETS: FireworkSite[] = [
   { label: "北京", latitude: 39.9042, longitude: 116.4074 },
@@ -33,13 +34,15 @@ export function FireworksGroup({ site, style, picking, running, ready, onChooseS
   const cityStatus = useSyncExternalStore(subscribeCityStatus, getCityStatus, getCityStatus);
   const experience = useSyncExternalStore(subscribeExperience, getExperience, getExperience);
   const rocket = experience.mode === "rocket";
+  const space = experience.mode === "space";
   const phase = { idle: "准备就绪", countdown: `发射倒计时 ${experience.countdown}`, liftoff: "点火 · 垂直升空", ascent: "转向 · 持续爬升", complete: "发射表演结束" }[experience.phase];
   return (
     <LayerGroup title="EXPERIENCES" subtitle="互动体验 · 烟花与火箭">
       <div className="fireworks-controls">
-        <Segmented label="互动体验" options={["fireworks", "rocket"] as const} value={experience.mode}
+        <Segmented label="互动体验" options={["fireworks", "rocket", "space"] as const} value={experience.mode}
           onChange={(mode: ExperienceMode) => { onStop(); updateExperience({ mode, phase: "idle", altitude: 0, speed: 0, countdown: 3 }); }}
-          format={mode => mode === "rocket" ? "虚拟火箭" : "虚拟烟花"} />
+          format={mode => mode === "space" ? "太空观演" : mode === "rocket" ? "虚拟火箭" : "虚拟烟花"} />
+        {space ? <SpaceShowControls site={site} picking={picking} running={running} ready={ready} onTogglePick={onTogglePick} onLaunch={onLaunch} onStop={onStop} /> : <>
         <div className="fireworks-heading">{rocket ? <Rocket size={16} aria-hidden="true" /> : <Sparkles size={16} aria-hidden="true" />}<span>{rocket ? "ROCKET LAUNCH" : "FIREWORKS"} <small>{rocket ? "火箭发射表演" : "烟花表演"}</small></span></div>
         <p className="fireworks-note">{rocket ? "3 秒倒计时后升空，自动转向并爬升至约 52 km，全程约 45 秒。轨迹、速度与尾焰均为艺术模拟，不代表真实发射或精确轨道。" : "在地球上选择城市，进入近景观看三维烟花。效果为艺术模拟，不代表真实事件。"}</p>
         <div className="fireworks-cities" aria-label={rocket ? "火箭发射地点" : "烟花表演地点"}>
@@ -69,6 +72,7 @@ export function FireworksGroup({ site, style, picking, running, ready, onChooseS
         {(!canLoadCity(import.meta.env.VITE_CESIUM_ION_TOKEN) || cityStatus === "disabled" || cityStatus === "failed") && (
           <p className="fireworks-note" role="status">{cityStatus === "failed" ? "城市模型加载失败" : "城市模型未启用"} · {rocket ? "火箭" : "烟花"}仍可正常播放</p>
         )}
+        </>}
       </div>
     </LayerGroup>
   );

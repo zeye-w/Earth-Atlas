@@ -1,4 +1,4 @@
-export type ExperienceMode = "fireworks" | "rocket";
+export type ExperienceMode = "fireworks" | "rocket" | "space";
 export type RocketPhase = "idle" | "countdown" | "liftoff" | "ascent" | "complete";
 // Shared by the existing experience hook and panel, keeping App's wiring intact.
 let snapshot: { mode: ExperienceMode; follow: boolean; phase: RocketPhase; altitude: number; speed: number; countdown: number } = {

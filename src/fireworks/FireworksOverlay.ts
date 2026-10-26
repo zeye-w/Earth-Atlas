@@ -264,6 +264,13 @@ export class FireworksOverlay {
     if (!this.disposed) this.onRunning(false);
   }
 
+  /** Switching to a wide space view must not keep streaming city tiles. */
+  clearBackdrop() {
+    this.removeCityRestore?.();
+    this.removeCityRestore = null;
+    this.cityContext.hide();
+  }
+
   /**
    * Restoring the old minimum zoom while the camera sits below it makes Cesium
    * yank the camera kilometres up in one frame. Keep the camera where the show
