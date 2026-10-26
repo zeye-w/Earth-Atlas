@@ -1,4 +1,6 @@
 import { MapPin, Sparkles, Square } from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { canLoadCity, getCityStatus, subscribeCityStatus } from "../fireworks/cityContext";
 import { LayerGroup, Segmented } from "../ui/controls";
 import type { FireworkSite } from "../fireworks/FireworksOverlay";
 import { FIREWORK_STYLES, type FireworkStyle } from "../fireworks/physics";
@@ -27,6 +29,7 @@ interface Props {
 }
 
 export function FireworksGroup({ site, style, picking, running, ready, onChooseSite, onChooseStyle, onTogglePick, onLaunch, onStop }: Props) {
+  const cityStatus = useSyncExternalStore(subscribeCityStatus, getCityStatus, getCityStatus);
   return (
     <LayerGroup title="EXPERIENCES" subtitle="互动体验 · 虚拟烟花">
       <div className="fireworks-controls">
@@ -50,6 +53,10 @@ export function FireworksGroup({ site, style, picking, running, ready, onChooseS
           <button type="button" className="fireworks-stop" onClick={onStop} disabled={!running} aria-label="停止烟花表演"><Square size={13} aria-hidden="true" /> 停止</button>
         </div>
         <p className="fireworks-note">近景效果最佳 · 自动播放三轮 · 切换或结束后自动清理粒子</p>
+        {canLoadCity(import.meta.env.VITE_CESIUM_ION_TOKEN) && <p className="fireworks-note">夜间窗灯为艺术示意，不代表真实亮灯情况</p>}
+        {(!canLoadCity(import.meta.env.VITE_CESIUM_ION_TOKEN) || cityStatus === "disabled" || cityStatus === "failed") && (
+          <p className="fireworks-note" role="status">{cityStatus === "failed" ? "城市模型加载失败" : "城市模型未启用"} · 烟花仍可正常播放</p>
+        )}
       </div>
     </LayerGroup>
   );
