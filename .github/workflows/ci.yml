@@ -1,4 +1,7 @@
 name: CI
+# Light checks on every push and pull request: unit tests, types, build and
+# static assets (about half a minute). The full browser suite is run by hand:
+# see .github/workflows/e2e.yml.
 on:
   push:
     branches: [main]
@@ -26,43 +29,3 @@ jobs:
         run: find dist -type f | grep -E 'transferTypedArrayTest|approximateTerrainHeights|createVerticesFromHeightmap|createTaskProcessorWorker' || true
       - name: Verify Cesium static asset paths
         run: npm run verify:assets
-  # Browser tests are split across parallel shards (about 4x faster than one
-  # runner). Pull requests may merge before these finish: see docs/integrator.md.
-  e2e-shard:
-    name: e2e (${{ matrix.shard }}/4)
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Production build
-        run: npm run build
-      - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
-      - name: End-to-end tests (all external services mocked)
-        run: npm run test:e2e -- --shard=${{ matrix.shard }}/4
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report-${{ matrix.shard }}
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
-  # One stable check name ("e2e") for all shards, for branch protection later.
-  e2e:
-    runs-on: ubuntu-latest
-    needs: e2e-shard
-    if: always()
-    steps:
-      - name: All e2e shards passed
-        run: test "${{ needs.e2e-shard.result }}" = "success"
