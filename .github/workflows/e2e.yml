@@ -29,8 +29,25 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Production build
         run: npm run build
+      # The runner image already has Chromium's system libraries; --with-deps only
+      # added fonts through apt, which has stalled for minutes. Tests launch the
+      # headless shell, so cache just that per Playwright version.
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-headless-shell
       - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --only-shell chromium
+      - name: Check Chromium starts (install system libraries only if missing)
+        run: |
+          node -e "require('@playwright/test').chromium.launch().then((b) => b.close())" \
+            || npx playwright install-deps chromium
       - name: End-to-end tests (all external services mocked)
         env:
           GREP: ${{ inputs.grep }}
