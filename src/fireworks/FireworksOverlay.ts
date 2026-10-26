@@ -1,5 +1,5 @@
 import {
-  Cartesian3, Color, Math as CesiumMath, Matrix4, PointPrimitiveCollection,
+  BoundingSphere, Cartesian3, Color, HeadingPitchRange, Math as CesiumMath, Matrix4, PointPrimitiveCollection,
   Transforms, type PointPrimitive, type Viewer,
 } from "cesium";
 import { createFireworkShow, particleAt, type FireworkShow, type FireworkStyle } from "./physics";
@@ -12,6 +12,8 @@ export class FireworksOverlay {
   private points: { head: PointPrimitive; tail: PointPrimitive }[] = [];
   private flares: PointPrimitive[] = [];
   private localToWorld = new Matrix4();
+  private localPosition = new Cartesian3();
+  private worldPosition = new Cartesian3();
   private show: FireworkShow | null = null;
   private elapsed = 0;
   private lastFrame = 0;
@@ -34,17 +36,18 @@ export class FireworksOverlay {
     const token = ++this.generation;
     const cameraController = this.viewer.scene.screenSpaceCameraController;
     this.previousMinimumZoom = cameraController.minimumZoomDistance;
-    cameraController.minimumZoomDistance = 900;
+    // The side view is about 700 m above ground; do not push it back above 900 m.
+    cameraController.minimumZoomDistance = 100;
     this.pendingFlight = true;
     this.onRunning(true);
-    const target = Cartesian3.fromDegrees(site.longitude, site.latitude, 3000);
+    const target = Cartesian3.fromDegrees(site.longitude, site.latitude, 230);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    this.viewer.camera.flyTo({
-      destination: target,
-      orientation: { heading: 0, pitch: CesiumMath.toRadians(-72), roll: 0 },
+    this.viewer.camera.flyToBoundingSphere(new BoundingSphere(target, 400), {
+      offset: new HeadingPitchRange(0, CesiumMath.toRadians(-15), 1800),
       duration: reducedMotion ? 0 : 1.6,
       complete: () => {
         if (this.generation !== token || this.disposed) return;
+        this.viewer.camera.lookAtTransform(Matrix4.IDENTITY);
         this.pendingFlight = false;
         this.start(site, style);
       },
@@ -70,8 +73,11 @@ export class FireworksOverlay {
     this.scheduleFrame();
   }
 
-  private toWorld(east: number, north: number, height: number, result: Cartesian3): Cartesian3 {
-    return Matrix4.multiplyByPoint(this.localToWorld, new Cartesian3(east, north, Math.max(1, height)), result);
+  private toWorld(east: number, north: number, height: number): Cartesian3 {
+    // Never mutate point.position in place: Cesium's setter must detect a change
+    // and copy it into _actualPosition / the GPU buffer. Setters copy this scratch.
+    Cartesian3.fromElements(east, north, Math.max(1, height), this.localPosition);
+    return Matrix4.multiplyByPoint(this.localToWorld, this.localPosition, this.worldPosition);
   }
 
   private scheduleFrame() {
@@ -93,7 +99,7 @@ export class FireworksOverlay {
       point.show = ascent >= 0 && ascent < 0.78;
       if (!point.show) continue;
       const fraction = ascent / 0.78;
-      point.position = this.toWorld(burst.east, burst.north, burst.height * fraction * fraction, point.position);
+      point.position = this.toWorld(burst.east, burst.north, burst.height * fraction * fraction);
       point.color = new Color(1, 0.88, 0.65, 1 - fraction * 0.2);
     }
     for (let i = 0; i < this.show.particles.length; i++) {
@@ -101,14 +107,14 @@ export class FireworksOverlay {
       const current = particleAt(p, t);
       head.show = current !== null;
       if (current) {
-        head.position = this.toWorld(current.east, current.north, current.height, head.position);
+        head.position = this.toWorld(current.east, current.north, current.height);
         head.color = new Color(...p.rgb, current.opacity);
         head.pixelSize = p.size;
       }
       const trailing = particleAt(p, t - 0.075);
       tail.show = trailing !== null && current !== null;
       if (trailing && current) {
-        tail.position = this.toWorld(trailing.east, trailing.north, trailing.height, tail.position);
+        tail.position = this.toWorld(trailing.east, trailing.north, trailing.height);
         tail.color = new Color(...p.rgb, trailing.opacity * 0.35);
       }
     }

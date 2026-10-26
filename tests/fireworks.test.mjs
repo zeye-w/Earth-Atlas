@@ -32,3 +32,18 @@ test("particle positions are local, continuous and disappear after lifetime", ()
   assert.ok(Number.isFinite(end.height));
   assert.ok(end.opacity < middle.opacity);
 });
+
+test("falling particles disappear at the ground rather than collecting at a clamped height", () => {
+  const particle = { ...createFireworkShow("willow", 42).particles[0], start: 0, height: 10, vu: 0, gravity: 20, life: 4 };
+  assert.ok(particleAt(particle, 0.99)?.height > 0);
+  assert.equal(particleAt(particle, 1), null);
+  assert.equal(particleAt(particle, 2), null);
+  for (const style of ["bloom", "ring", "willow"]) {
+    for (const p of createFireworkShow(style, 42).particles) {
+      for (let t = p.start; t < p.start + p.life; t += 0.2) {
+        const sample = particleAt(p, t);
+        assert.ok(sample === null || sample.height > 0);
+      }
+    }
+  }
+});

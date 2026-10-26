@@ -87,11 +87,13 @@ export function createFireworkShow(style: FireworkStyle, seed = 2026): FireworkS
 export function particleAt(particle: FireworkParticle, seconds: number) {
   const age = seconds - particle.start;
   if (age < 0 || age >= particle.life) return null;
+  const height = particle.height + particle.vu * age - 0.5 * particle.gravity * age * age;
+  if (height <= 0) return null;
   const fade = Math.min(1, (particle.life - age) / (particle.life * 0.36));
   return {
     east: particle.east + particle.ve * age,
     north: particle.north + particle.vn * age,
-    height: particle.height + particle.vu * age - 0.5 * particle.gravity * age * age,
+    height,
     opacity: Math.max(0, fade),
   };
 }
