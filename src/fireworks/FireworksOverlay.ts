@@ -3,10 +3,11 @@ import {
   Transforms, type PointPrimitive, type Viewer,
 } from "cesium";
 import { createFireworkShow, particleAt, type FireworkShow, type FireworkStyle } from "./physics.ts";
+import { CityContext, retainCity } from "./cityContext.ts";
 
 export interface FireworkSite { longitude: number; latitude: number; label: string }
 
-/** Transient, georeferenced decoration. No external assets, telemetry or persistent layers. */
+/** Transient fireworks with an optional, show-scoped ion city backdrop. */
 export class FireworksOverlay {
   private collection: PointPrimitiveCollection | null = null;
   private points: { head: PointPrimitive; tail: PointPrimitive }[] = [];
@@ -24,6 +25,8 @@ export class FireworksOverlay {
   private removeZoomRestore: (() => void) | null = null;
   private disposed = false;
   private seed = 0;
+  private cityContext: CityContext;
+  private removeCityRestore: (() => void) | null = null;
 
   private viewer: Viewer;
   private onRunning: (running: boolean) => void;
@@ -31,6 +34,7 @@ export class FireworksOverlay {
   constructor(viewer: Viewer, onRunning: (running: boolean) => void) {
     this.viewer = viewer;
     this.onRunning = onRunning;
+    this.cityContext = new CityContext(viewer);
     document.addEventListener("visibilitychange", this.onVisibilityChange);
   }
 
@@ -39,6 +43,9 @@ export class FireworksOverlay {
       !Number.isFinite(site.longitude) || Math.abs(site.longitude) > 180 ||
       !Number.isFinite(site.latitude) || Math.abs(site.latitude) > 90) return false;
     this.stop();
+    this.removeCityRestore?.();
+    this.removeCityRestore = null;
+    void this.cityContext.show(site);
     // A restore still waiting from the last show keeps its original value.
     const previousMinimumZoom = this.restoreMinimumZoom();
     const token = ++this.generation;
@@ -156,6 +163,7 @@ export class FireworksOverlay {
     this.show = null;
     this.lastFrame = 0;
     this.deferMinimumZoomRestore();
+    this.deferCityHide();
     if (!this.viewer.isDestroyed()) this.viewer.scene.requestRender();
     if (!this.disposed) this.onRunning(false);
   }
@@ -177,6 +185,20 @@ export class FireworksOverlay {
     restoreWhenAbove();
   }
 
+  private deferCityHide() {
+    if (this.removeCityRestore || this.viewer.isDestroyed() || this.disposed) return;
+    const hideWhenAbove = () => {
+      if (this.viewer.isDestroyed()) return;
+      if (!retainCity(this.viewer.camera.positionCartographic.height, Boolean(this.show || this.pendingFlight))) {
+        this.removeCityRestore?.();
+        this.removeCityRestore = null;
+        this.cityContext.hide();
+      }
+    };
+    this.removeCityRestore = this.viewer.camera.moveEnd.addEventListener(hideWhenAbove);
+    hideWhenAbove();
+  }
+
   /** Puts back the minimum zoom saved by launch(); returns the current one. */
   private restoreMinimumZoom(): number {
     this.removeZoomRestore?.();
@@ -193,6 +215,9 @@ export class FireworksOverlay {
     this.disposed = true;
     document.removeEventListener("visibilitychange", this.onVisibilityChange);
     this.stop();
+    this.removeCityRestore?.();
+    this.removeCityRestore = null;
+    this.cityContext.dispose();
     if (!this.viewer.isDestroyed()) this.restoreMinimumZoom();
     else { this.removeZoomRestore = null; this.previousMinimumZoom = null; }
   }
