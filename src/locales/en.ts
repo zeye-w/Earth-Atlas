@@ -18,6 +18,7 @@ export const ENGLISH: Readonly<Record<string, string>> = {
   "可交互三维数字地球": "Interactive 3D digital Earth",
   "关闭提示": "Dismiss notification",
   "拖动旋转 · 滚轮缩放 · 点击地表查询地质": "Drag to rotate · Scroll to zoom · Click the surface to explore geology",
+  "拖动旋转 · 双指缩放 · 轻点地表查询地质": "Drag to rotate · Pinch to zoom · Tap the surface to explore geology",
   "三维地球启动失败：": "Unable to initialize the 3D globe:",
   "请检查 WebGL 支持和浏览器环境。": "Check WebGL support and your browser settings.",
   "坐标已复制": "Coordinates copied",
