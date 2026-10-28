@@ -1,5 +1,5 @@
 import {
-  BillboardCollection, BlendOption, BoundingSphere, Cartesian3, Color, Ellipsoid,
+  BillboardCollection, BoundingSphere, Cartesian3, Color, Ellipsoid,
   EllipsoidalOccluder, HeadingPitchRange, LabelCollection, Matrix4, PerspectiveFrustum,
   PointPrimitiveCollection, PolylineCollection, Transforms,
   type Billboard, type Label, type PointPrimitive, type Polyline, type Viewer,
@@ -10,7 +10,7 @@ import { rocketFrame } from "./rocketFlight.ts";
 import { cameraRange, GIANT_SCALE, planCenter, planDuration, planError, siteDelay, siteDistance, SPACE_DURATION, type SpaceSite } from "./spacePlan.ts";
 import { getSpaceState, subscribeSpace, updateSpace } from "./spaceState.ts";
 import { RENDER_PROFILES } from "../performance.ts";
-import { effectTexture } from "./visualTextures.ts";
+import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
 import { cometMaterial, fadeSparks, RibbonCollection, sparkMaterials } from "./visualMaterials.ts";
 import { sparkWake } from "./showVisuals.ts";
 
@@ -74,7 +74,7 @@ export class SpaceShow {
     this.sites = settings.sites.map(site => ({ ...site }));
     this.duration = planDuration(this.sites.length, settings.relay);
     this.points = this.viewer.scene.primitives.add(new PointPrimitiveCollection());
-    this.glows = this.viewer.scene.primitives.add(new BillboardCollection({ blendOption: BlendOption.TRANSLUCENT }));
+    this.glows = this.viewer.scene.primitives.add(new BillboardCollection({ blendOption: EFFECT_BLEND }));
     this.labels = this.viewer.scene.primitives.add(new LabelCollection());
     this.trails = this.viewer.scene.primitives.add(new RibbonCollection());
     const eco = this.viewer.targetFrameRate <= RENDER_PROFILES.eco.targetFrameRate;

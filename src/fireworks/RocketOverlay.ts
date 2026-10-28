@@ -1,15 +1,24 @@
 import {
-  BillboardCollection, BlendOption, Cartesian3, Color, HeadingPitchRange, Material, Matrix3, Matrix4,
+  BillboardCollection, Cartesian3, Color, HeadingPitchRange, Material, Matrix3, Matrix4,
   Primitive, Transforms, type Billboard, type Viewer,
 } from "cesium";
 import { getExperience, updateExperience } from "./experience.ts";
 import { rocketFrame, ROCKET_DURATION } from "./rocketFlight.ts";
 import { cylinderGeometry, exhaustPrimitive, finGeometry, solidPrimitive, type SolidPart } from "./rocketParts.ts";
+import { groundPuff, trailPuff, type Puff } from "./rocketSmoke.ts";
 import { exhaustMaterial } from "./visualMaterials.ts";
-import { effectTexture } from "./visualTextures.ts";
+import { RENDER_PROFILES } from "../performance.ts";
+import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
 
 interface Site { longitude: number; latitude: number }
-const SMOKE_COUNT = 72;
+// Smoke budget (halved at the eco render profile): the rising column and the
+// cloud that billows around the pad while the flame still reaches it.
+const TRAIL_COUNT = 140;
+const GROUND_COUNT = 56;
+const SMOKE = [0.86, 0.87, 0.9] as const;
+const FIRE = [1, 0.6, 0.28] as const;
+// Smoke right at the flame is lit, not burning: a pale warm tint.
+const LIT = [1, 0.86, 0.66] as const;
 
 /** Locally generated geometry and bounded particles; no model downloads. */
 export class RocketOverlay {
@@ -23,7 +32,13 @@ export class RocketOverlay {
   private bodyMatrix = new Matrix4();
   private flameOffset = new Cartesian3(0, 0, -22);
   private particles: BillboardCollection | null = null;
-  private engineGlow: Billboard | null = null;
+  private trail: Billboard[] = [];
+  private ground: Billboard[] = [];
+  private padGlow: Billboard | null = null;
+  private flameGlow: Billboard | null = null;
+  private coreGlow: Billboard | null = null;
+  private color = new Color();
+  private local = new Cartesian3();
   private exhaustMaterial: Material | null = null;
   private plumeScale = new Cartesian3(1, 1, 1);
   private frameId = 0;
@@ -72,13 +87,20 @@ export class RocketOverlay {
     Matrix4.multiplyByTranslation(this.origin, this.flameOffset, this.flameMatrix);
     this.flame = primitives.add(exhaustPrimitive(this.exhaustMaterial, Matrix4.clone(this.flameMatrix)));
     this.flame!.show = false;
-    this.particles = this.viewer.scene.primitives.add(new BillboardCollection({ blendOption: BlendOption.TRANSLUCENT }));
-    for (let i = 0; i < SMOKE_COUNT; i++) {
-      const puff = this.particles!.add({ show: false, position: Cartesian3.ZERO });
-      puff.setImage("rocket-soft-smoke", effectTexture("smoke"));
-    }
-    this.engineGlow = this.particles!.add({ show: false, position: Cartesian3.ZERO });
-    this.engineGlow.setImage("rocket-engine-halo", effectTexture("halo"));
+    const particles = this.particles = this.viewer.scene.primitives.add(new BillboardCollection({ blendOption: EFFECT_BLEND }));
+    // Sized in metres so near smoke is large and distant smoke small. Draw
+    // order is index order: pad light, smoke, then the flame glows on top.
+    const billboard = (id: string, kind: "smoke" | "halo") => {
+      const b = particles.add({ show: false, position: Cartesian3.ZERO, sizeInMeters: true });
+      b.setImage(id, effectTexture(kind));
+      return b;
+    };
+    const eco = this.viewer.targetFrameRate <= RENDER_PROFILES.eco.targetFrameRate;
+    this.padGlow = billboard("rocket-engine-halo", "halo");
+    this.ground = Array.from({ length: eco ? GROUND_COUNT / 2 : GROUND_COUNT }, () => billboard("rocket-soft-smoke", "smoke"));
+    this.trail = Array.from({ length: eco ? TRAIL_COUNT / 2 : TRAIL_COUNT }, () => billboard("rocket-soft-smoke", "smoke"));
+    this.flameGlow = billboard("rocket-engine-halo", "halo");
+    this.coreGlow = billboard("rocket-engine-halo", "halo");
     document.addEventListener("visibilitychange", this.onVisibility);
     updateExperience({ phase: "countdown", altitude: 0, speed: 0, countdown: 3 });
     this.frameId = requestAnimationFrame(this.frame);
@@ -108,28 +130,11 @@ export class RocketOverlay {
     }
     if (this.flame) this.flame.show = state.thrust;
     if (this.exhaustMaterial) this.exhaustMaterial.uniforms.time = this.elapsed;
-    const viewScale = 650 / (650 + Math.min(1500, state.altitude * 0.035));
-    if (this.engineGlow) {
-      this.engineGlow.show = state.thrust;
-      this.engineGlow.position = Matrix4.multiplyByPoint(this.transform, new Cartesian3(0, 0, 4), this.position);
-      this.engineGlow.width = this.engineGlow.height = 48 * viewScale;
-      this.engineGlow.color = new Color(0.72, 0.87, 1, 0.6);
-    }
-    const particles = this.particles!;
-    for (let i = 0; i < SMOKE_COUNT; i++) {
-      const point = particles.get(i);
-      const age = (i / SMOKE_COUNT * 5 + this.elapsed) % 5;
-      const historical = rocketFrame(this.elapsed - age);
-      point.show = state.thrust && historical.thrust;
-      if (!point.show) continue;
-      const spread = 1 + age * 7, angle = i * 2.39996;
-      Cartesian3.fromElements(historical.east + Math.cos(angle) * spread,
-        Math.sin(angle) * spread, Math.max(1, historical.altitude + 3 - age * 5), this.position);
-      point.position = Matrix4.multiplyByPoint(this.origin, this.position, this.position);
-      point.width = (22 + age * 16) * viewScale; point.height = point.width * 1.2;
-      point.rotation = i * 0.73 + age * 0.08;
-      point.color = age < 0.35 ? new Color(1, 0.84, 0.64, 0.5) : new Color(0.78, 0.82, 0.88, 0.6 * (1 - age / 5));
-    }
+    this.drawGlows(state.thrust, state.altitude);
+    for (let i = 0; i < this.trail.length; i++) this.drawPuff(this.trail[i], trailPuff(i, this.trail.length, this.elapsed), 1);
+    // The flame lights the ground cloud only while it still reaches the pad.
+    const padLight = state.thrust ? Math.max(0, 1 - state.altitude / 140) : 0;
+    for (let i = 0; i < this.ground.length; i++) this.drawPuff(this.ground[i], groundPuff(i, this.ground.length, this.elapsed), padLight);
     if (getExperience().follow) {
       const target = Matrix4.multiplyByPoint(this.transform, new Cartesian3(0, 0, 44), this.position);
       this.viewer.camera.lookAt(target, new HeadingPitchRange(0, -0.025, 650 + Math.min(1500, state.altitude * 0.035)));
@@ -144,6 +149,41 @@ export class RocketOverlay {
     if (this.elapsed >= ROCKET_DURATION) this.onComplete();
     else this.schedule();
   };
+
+  private rgba(rgb: readonly number[], warmth: number, alpha: number) {
+    const c = this.color;
+    c.red = rgb[0] + (LIT[0] - rgb[0]) * warmth; c.green = rgb[1] + (LIT[1] - rgb[1]) * warmth;
+    c.blue = rgb[2] + (LIT[2] - rgb[2]) * warmth; c.alpha = alpha;
+    return c;
+  }
+
+  /** Puffs are in pad east-north-up metres; hot ones glow orange near the flame. */
+  private drawPuff(billboard: Billboard, puff: Puff | null, light: number) {
+    billboard.show = puff !== null && puff.alpha > 0.005;
+    if (!puff || !billboard.show) return;
+    Cartesian3.fromElements(puff.east, puff.north, puff.up, this.local);
+    billboard.position = Matrix4.multiplyByPoint(this.origin, this.local, this.position);
+    billboard.width = billboard.height = puff.size;
+    billboard.rotation = puff.rotation;
+    billboard.color = this.rgba(SMOKE, Math.min(1, puff.heat * light), puff.alpha);
+  }
+
+  private drawGlows(thrust: boolean, altitude: number) {
+    const flicker = 0.9 + 0.1 * Math.sin(this.elapsed * 47) * Math.sin(this.elapsed * 13);
+    const glow = (billboard: Billboard | null, local: Cartesian3, frame: Matrix4, size: number, rgb: readonly number[], alpha: number) => {
+      if (!billboard) return;
+      billboard.show = thrust && alpha > 0.01;
+      if (!billboard.show) return;
+      billboard.position = Matrix4.multiplyByPoint(frame, local, this.position);
+      billboard.width = billboard.height = size;
+      billboard.color = this.rgba(rgb, 0, alpha);
+    };
+    // Light on the pad and the smoke around it, fading as the rocket climbs.
+    // Raised so the ground does not slice the glow into a hard edge.
+    glow(this.padGlow, Cartesian3.fromElements(0, 0, 70, this.local), this.origin, 240, FIRE, 0.38 * Math.max(0, 1 - altitude / 160) * flicker);
+    glow(this.flameGlow, Cartesian3.fromElements(0, 0, -10, this.local), this.transform, 90 * flicker, FIRE, 0.8);
+    glow(this.coreGlow, Cartesian3.fromElements(0, 0, 0, this.local), this.transform, 26 * flicker, [0.95, 0.97, 1], 1);
+  }
 
   private schedule() {
     if (!document.hidden && !this.disposed && !this.frameId) this.frameId = requestAnimationFrame(this.frame);
@@ -171,7 +211,9 @@ export class RocketOverlay {
     this.pad = null;
     this.particles = null;
     this.flame = null;
-    this.engineGlow = null;
+    this.trail = [];
+    this.ground = [];
+    this.padGlow = this.flameGlow = this.coreGlow = null;
     this.exhaustMaterial = null;
     if (getExperience().phase !== "complete") updateExperience({ phase: "idle" });
   }
