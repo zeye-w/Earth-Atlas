@@ -512,10 +512,59 @@ h1 em { font-style:normal; color:var(--text-2); }
 .segmented button { overflow-wrap:anywhere; }
 html[lang="en"] .toggle-copy small { line-height:1.5; }
 html[lang="en"] .layer-group summary small { white-space:normal; }
+.action-caption { white-space:nowrap; }
 @media(max-width:1100px) {
   html[lang="en"] .action-caption, html[lang="en"] .brand-caption, html[lang="en"] .brand-divider { display:none; }
+}
+/* Chinese captions are shorter but still do not fit a landscape phone or small tablet. */
+@media(max-width:960px) {
+  .action-caption, .brand-caption, .brand-divider { display:none; }
 }
 @media(max-width:760px) {
   .topbar .brand-symbol { display:none; }
   .language-toggle { flex-shrink:0; padding-inline:2px; }
+}
+
+/* ---------- Bottom controls vs. panels (phones, landscape, tablets) ---------- */
+/* Where the open layer panel ends on the left, for screens that show it as a side card. */
+.app-shell { --sidebar-right: calc(clamp(12px,2vw,28px) + clamp(286px,23vw,344px)); }
+@media(max-width:1120px) { .app-shell { --sidebar-right: calc(clamp(12px,2vw,28px) + min(330px, calc(45vw - 20px))); } }
+/* 761-1220 px wide (tablets, phones in landscape, small laptops): the open side
+   card would sit under the centred dock, hint and attribution. Centre them in
+   the space to its right (the dock shrinks to fit), give the attribution that
+   whole width and move the Cesium logo to the top right, clear of both.
+   Wider screens keep the original layout. */
+@media(min-width:761px) and (max-width:1220px) {
+  .app-shell:has(.sidebar:not(.is-collapsed)) :is(.globe-dock, .globe-guide, .globe-attribution) { left:calc(var(--sidebar-right) + (100% - var(--sidebar-right)) / 2); }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-dock { width:min(440px, calc(100% - var(--sidebar-right) - 24px)); bottom:92px; }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-guide { bottom:142px; }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-attribution { max-width:calc(100% - var(--sidebar-right) - 36px); }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .cesium-viewer-bottom { top:76px!important; bottom:auto!important; }
+}
+/* Short landscape screens: the layer list matters more than the introduction. */
+@media(min-width:761px) and (max-height:520px) {
+  .sidebar .eyebrow, .sidebar h1, .sidebar .lead { display:none; }
+  .sidebar { top:76px; bottom:12px; }
+  .globe-guide { display:none; }
+}
+@media(max-width:760px) {
+  /* Bottom stack, from the edge up: attribution (up to four lines), the dock,
+     then the Cesium logo and the hint, so none of them overlap. */
+  .globe-dock { bottom:60px; }
+  .dock-row { gap:6px; }
+  .dock-button { white-space:nowrap; padding:9px 13px; }
+  .cesium-viewer-bottom { bottom:108px!important; }
+  .globe-guide { bottom:136px; }
+  /* A bottom sheet covers this stack: hide it rather than let it show through the glass. */
+  .globe-dock, .globe-guide, .globe-attribution, .cesium-viewer-bottom { transition:opacity .2s, visibility .2s; }
+  .app-shell:has(.sidebar:not(.is-collapsed), .details-panel:not(.is-collapsed)) :is(.globe-dock, .globe-guide, .globe-attribution, .cesium-viewer-bottom) { opacity:0; visibility:hidden; }
+}
+@media(max-width:400px) {
+  .dock-row { gap:5px; }
+  .dock-button { padding:8px 11px; font-size:10.5px; gap:5px; }
+}
+/* The smallest phones: icons only (each button keeps its accessible name). */
+@media(max-width:345px) {
+  .dock-button span { display:none; }
+  .dock-button { padding:10px; }
 }
