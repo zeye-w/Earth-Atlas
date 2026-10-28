@@ -17,14 +17,19 @@ function applyRenderQuality(viewer: Viewer, quality: RenderQuality, moving = fal
  * sustained low rate there means the device is struggling; step down one
  * level, at most every 6 s.
  */
-export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (quality: RenderQuality, fps: number) => void, suspendAuto = false) {
+/**
+ * `holdQuality` keeps the automatic downgrade from acting (frame-rate dips
+ * during a show, e.g. a one-off shader compile, must not lower the quality
+ * for the rest of the session) without changing the render settings.
+ */
+export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (quality: RenderQuality, fps: number) => void, suspendAuto = false, holdQuality = false) {
   const [quality, setQuality] = useState<RenderQuality>(() => typeof window === "undefined" ? "balanced" : initialRenderQuality(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches, navigator.hardwareConcurrency));
   const [autoQuality, setAutoQuality] = useState(true);
   const qualityRef = useRef(quality);
   const autoRef = useRef(autoQuality);
   const notifyRef = useRef(onAutoDowngrade);
   const suspendRef = useRef(suspendAuto);
-  suspendRef.current = suspendAuto;
+  suspendRef.current = suspendAuto || holdQuality;
   qualityRef.current = quality;
   autoRef.current = autoQuality;
   notifyRef.current = onAutoDowngrade;

@@ -7,6 +7,7 @@ import { FIREWORK_STYLES, type FireworkStyle } from "../fireworks/physics";
 import { getExperience, subscribeExperience, updateExperience, type ExperienceMode } from "../fireworks/experience";
 import "./fireworks.css";
 import { SpaceShowControls } from "./SpaceShowControls";
+import { requestShowWarmup } from "../fireworks/shaderWarmup";
 
 const PRESETS: FireworkSite[] = [
   { label: "北京", latitude: 39.9042, longitude: 116.4074 },
@@ -38,7 +39,7 @@ export function FireworksGroup({ site, style, picking, running, ready, onChooseS
   const phase = { idle: "准备就绪", countdown: `发射倒计时 ${experience.countdown}`, liftoff: "点火 · 垂直升空", ascent: "转向 · 持续爬升", complete: "发射表演结束" }[experience.phase];
   return (
     <LayerGroup title="EXPERIENCES" subtitle="互动体验 · 烟花与火箭">
-      <div className="fireworks-controls">
+      <div className="fireworks-controls" onPointerEnter={requestShowWarmup} onFocus={requestShowWarmup}>
         <Segmented label="互动体验" options={["fireworks", "rocket", "space"] as const} value={experience.mode}
           onChange={(mode: ExperienceMode) => { onStop(); updateExperience({ mode, phase: "idle", altitude: 0, speed: 0, countdown: 3 }); }}
           format={mode => mode === "space" ? "太空观演" : mode === "rocket" ? "虚拟火箭" : "虚拟烟花"} />

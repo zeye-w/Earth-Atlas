@@ -188,7 +188,7 @@ function App() {
   const fireworks = useFireworks(viewer);
   useSceneClock(viewer, timeline);
   const render = useRenderQuality(viewer, (quality, fps) =>
-    setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording);
+    setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording, fireworks.running);
   useEarthView(viewer, layers, timeline);
   const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
   const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity, timeline);
