@@ -1,10 +1,10 @@
 import {
-  BillboardCollection, BlendOption, Cartesian3, Color, LabelCollection, Matrix4, PointPrimitiveCollection, Transforms,
+  BillboardCollection, Cartesian3, Color, LabelCollection, Matrix4, PointPrimitiveCollection, Transforms,
   type Billboard, type Primitive, type Viewer,
 } from "cesium";
 import { cylinderGeometry, exhaustPrimitive, solidPrimitive } from "./rocketParts.ts";
 import { cometMaterial, exhaustMaterial, RibbonCollection, sparkRibbonMaterial } from "./visualMaterials.ts";
-import { effectTexture } from "./visualTextures.ts";
+import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
 
 /**
  * WebGL compiles a shader program the first time something draws with it, and
@@ -62,7 +62,7 @@ export class ShowShaderWarmup {
     // Billboards in the three feature sets the shows use: plain halos
     // (fireworks), rotated smoke (rocket), axis-aligned comets (space).
     const billboards = (extra: Pick<Billboard.ConstructorOptions, "rotation" | "alignedAxis">) => {
-      const collection = add(new BillboardCollection({ blendOption: BlendOption.TRANSLUCENT }));
+      const collection = add(new BillboardCollection({ blendOption: EFFECT_BLEND }));
       collection.add({ position: spot, width: 1, height: 1, color: faint, ...extra }).setImage("terrascope-firework-glow", effectTexture("halo"));
     };
     billboards({});

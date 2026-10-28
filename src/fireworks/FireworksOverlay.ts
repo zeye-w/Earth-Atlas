@@ -1,12 +1,12 @@
 import {
-  BillboardCollection, BlendOption, BoundingSphere, Cartesian3, Color, HeadingPitchRange, Math as CesiumMath, Matrix4,
+  BillboardCollection, BoundingSphere, Cartesian3, Color, HeadingPitchRange, Math as CesiumMath, Matrix4,
   PointPrimitiveCollection, PolylineCollection, Transforms, type Billboard, type PointPrimitive, type Polyline, type Viewer,
 } from "cesium";
 import { createFireworkShow, particleAt, type FireworkShow, type FireworkStyle } from "./physics.ts";
 import { CityContext, retainCity } from "./cityContext.ts";
 import { RocketOverlay } from "./RocketOverlay.ts";
 import type { ExperienceMode } from "./experience.ts";
-import { effectTexture } from "./visualTextures.ts";
+import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
 import { fadeSparks, RibbonCollection, sparkMaterials } from "./visualMaterials.ts";
 import { sparkWake } from "./showVisuals.ts";
 
@@ -106,7 +106,7 @@ export class FireworksOverlay {
     const origin = Cartesian3.fromDegrees(site.longitude, site.latitude, 0);
     this.localToWorld = Transforms.eastNorthUpToFixedFrame(origin);
     const collection = new PointPrimitiveCollection();
-    const glows = new BillboardCollection({ blendOption: BlendOption.TRANSLUCENT });
+    const glows = new BillboardCollection({ blendOption: EFFECT_BLEND });
     this.wakes = this.viewer.scene.primitives.add(new RibbonCollection());
     // Halos first, so the sharp points draw over them.
     this.glows = this.viewer.scene.primitives.add(glows);
