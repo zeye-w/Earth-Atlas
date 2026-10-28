@@ -93,3 +93,27 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
     }).toBeLessThanOrEqual(5);
   });
 }
+
+// The rocket and space shows build Cesium primitives that only fail when drawn
+// (a bad geometry stops all rendering, possibly seconds into the show), so play
+// each one past ignition and pitch-over, watching for Cesium's render error.
+for (const [mode, playing] of [["虚拟火箭", /转向/], ["太空观演", /多点表演进行中/]] as const) {
+  test(`${mode} plays without stopping the renderer`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => { if (message.type() === "error" && message.text().includes("rendering")) errors.push(message.text()); });
+    await mockNetwork(page);
+    await page.goto("/");
+    await waitForGlobe(page);
+    const panel = page.locator("#earth-layer-panel");
+    const group = panel.locator("details.layer-group", { has: page.locator("summary", { hasText: "EXPERIENCES" }) });
+    await group.locator(":scope > summary").click();
+    await group.getByRole("radio", { name: mode }).click();
+    await group.locator("button.fireworks-launch").click();
+    await expect(group).toContainText(playing, { timeout: 60_000 });
+    await page.waitForTimeout(5000);
+    expect(errors).toEqual([]);
+    await expect(page.locator(".cesium-widget-errorPanel")).toHaveCount(0, { timeout: 1000 });
+    await group.locator("button.fireworks-stop").click();
+  });
+}

@@ -1,23 +1,27 @@
 import {
-  BillboardCollection, BlendOption, BoundingSphere, Cartesian3, Color, ColorGeometryInstanceAttribute,
-  ComponentDatatype, CylinderGeometry, Geometry, GeometryAttribute, GeometryAttributes, GeometryInstance, GeometryPipeline,
-  HeadingPitchRange, Material, MaterialAppearance, Matrix3, Matrix4, PerInstanceColorAppearance,
-  Primitive, PrimitiveType, Transforms, type Billboard, type Viewer,
+  BillboardCollection, BlendOption, Cartesian3, Color, HeadingPitchRange, Material, Matrix3, Matrix4,
+  Primitive, Transforms, type Billboard, type Viewer,
 } from "cesium";
 import { getExperience, updateExperience } from "./experience.ts";
 import { rocketFrame, ROCKET_DURATION } from "./rocketFlight.ts";
+import { cylinderGeometry, exhaustPrimitive, finGeometry, solidPrimitive, type SolidPart } from "./rocketParts.ts";
+import { exhaustMaterial } from "./visualMaterials.ts";
 import { effectTexture } from "./visualTextures.ts";
 
 interface Site { longitude: number; latitude: number }
-interface Part { primitive: Primitive; matrix: Matrix4; offset: Cartesian3; exhaust?: boolean }
 const SMOKE_COUNT = 72;
 
 /** Locally generated geometry and bounded particles; no model downloads. */
 export class RocketOverlay {
   private viewer: Viewer;
   private onComplete: () => void;
-  private parts: Part[] = [];
-  private staticParts: Primitive[] = [];
+  // Three draw calls: the moving vehicle, the launch pad and the exhaust plume.
+  private body: Primitive | null = null;
+  private pad: Primitive | null = null;
+  private flameMatrix = new Matrix4();
+  private originInverse = new Matrix4();
+  private bodyMatrix = new Matrix4();
+  private flameOffset = new Cartesian3(0, 0, -22);
   private particles: BillboardCollection | null = null;
   private engineGlow: Billboard | null = null;
   private exhaustMaterial: Material | null = null;
@@ -42,71 +46,32 @@ export class RocketOverlay {
   start(site: Site) {
     if (this.disposed || this.viewer.isDestroyed()) return;
     this.origin = Transforms.eastNorthUpToFixedFrame(Cartesian3.fromDegrees(site.longitude, site.latitude));
-    const part = (geometry: Geometry | CylinderGeometry, offset: Cartesian3, color: Color, anchored = false) => {
-      const matrix = Matrix4.multiplyByTranslation(this.origin, offset, new Matrix4());
-      // Build geometry once. Entity cylinder positions would rebuild geometry
-      // on every change; only these small primitive model matrices move.
-      const primitive = this.viewer.scene.primitives.add(new Primitive({
-        geometryInstances: new GeometryInstance({ geometry, attributes: { color: ColorGeometryInstanceAttribute.fromColor(color) } }),
-        appearance: new PerInstanceColorAppearance({ closed: true, translucent: color.alpha < 1 }),
-        asynchronous: false, modelMatrix: matrix, allowPicking: false,
-      }));
-      if (anchored) this.staticParts.push(primitive);
-      else this.parts.push({ primitive, matrix, offset });
-      return primitive;
-    };
-    const cylinder = (offset: Cartesian3, length: number, topRadius: number, bottomRadius: number, color: Color, anchored = false) => part(new CylinderGeometry({
-      length, topRadius, bottomRadius, slices: 32, vertexFormat: PerInstanceColorAppearance.VERTEX_FORMAT,
-    }), offset, color, anchored);
-    cylinder(new Cartesian3(0, 0, 0.5), 1, 29, 29, Color.fromCssColorString("#71808b"), true);
-    cylinder(new Cartesian3(0, 0, 1.1), 1.2, 26, 26, Color.fromCssColorString("#25343e"), true);
-    for (const x of [-9, 9]) cylinder(new Cartesian3(x, 0, 3.8), 4.2, 1.5, 2, Color.fromCssColorString("#687887"), true);
-    cylinder(new Cartesian3(0, 0, 44), 60, 6, 6, Color.fromCssColorString("#e9edf4"));
-    cylinder(new Cartesian3(0, 0, 84), 20, 0, 6, Color.fromCssColorString("#f0f4ff"));
-    cylinder(new Cartesian3(0, 0, 25), 4, 6.1, 6.1, Color.fromCssColorString("#20354a"));
-    cylinder(new Cartesian3(0, 0, 70), 1, 6.05, 6.05, Color.fromCssColorString("#8596a6"));
-    cylinder(new Cartesian3(0, 0, 17), 1, 6.1, 6.1, Color.fromCssColorString("#cda56a"));
-    cylinder(new Cartesian3(0, 0, 9), 10, 4.2, 5.5, Color.fromCssColorString("#202932"));
-    // Thin triangular fins, with real volume and normals rather than flat decals.
-    for (let fin = 0; fin < 4; fin++) {
-      const angle = fin * Math.PI / 2, values: number[] = [];
-      for (const y of [-0.55, 0.55]) for (const [x, z] of [[5.8, 12], [14, 8], [5.8, 34]]) {
-        values.push(x * Math.cos(angle) - y * Math.sin(angle), x * Math.sin(angle) + y * Math.cos(angle), z);
-      }
-      const positions = new Float64Array(values);
-      const attributes = new GeometryAttributes();
-      attributes.position = new GeometryAttribute({ componentDatatype: ComponentDatatype.DOUBLE, componentsPerAttribute: 3, values: positions });
-      const geometry = GeometryPipeline.computeNormal(new Geometry({
-        attributes,
-        indices: new Uint16Array([0, 1, 2, 3, 5, 4, 0, 4, 1, 0, 3, 4, 1, 5, 2, 1, 4, 5, 2, 3, 0, 2, 5, 3]),
-        primitiveType: PrimitiveType.TRIANGLES, boundingSphere: BoundingSphere.fromVertices(positions),
-      }));
-      part(geometry, Cartesian3.ZERO, Color.fromCssColorString("#45556b"));
-    }
+    const vehicle: SolidPart[] = [], pad: SolidPart[] = [];
+    const cylinder = (list: SolidPart[], offset: Cartesian3, length: number, topRadius: number, bottomRadius: number, color: string | Color) =>
+      list.push({ geometry: cylinderGeometry(length, topRadius, bottomRadius), offset, color: typeof color === "string" ? Color.fromCssColorString(color) : color });
+    cylinder(pad, new Cartesian3(0, 0, 0.5), 1, 29, 29, "#71808b");
+    cylinder(pad, new Cartesian3(0, 0, 1.1), 1.2, 26, 26, "#25343e");
+    for (const x of [-9, 9]) cylinder(pad, new Cartesian3(x, 0, 3.8), 4.2, 1.5, 2, "#687887");
+    cylinder(vehicle, new Cartesian3(0, 0, 44), 60, 6, 6, "#e9edf4");
+    cylinder(vehicle, new Cartesian3(0, 0, 84), 20, 0, 6, "#f0f4ff");
+    cylinder(vehicle, new Cartesian3(0, 0, 25), 4, 6.1, 6.1, "#20354a");
+    cylinder(vehicle, new Cartesian3(0, 0, 70), 1, 6.05, 6.05, "#8596a6");
+    cylinder(vehicle, new Cartesian3(0, 0, 17), 1, 6.1, 6.1, "#cda56a");
+    cylinder(vehicle, new Cartesian3(0, 0, 9), 10, 4.2, 5.5, "#202932");
+    for (let fin = 0; fin < 4; fin++) vehicle.push({ geometry: finGeometry(fin * Math.PI / 2), offset: Cartesian3.ZERO, color: Color.fromCssColorString("#45556b") });
     // Two slim boosters give the silhouette depth from the side camera.
     for (const east of [-9, 9]) {
-      cylinder(new Cartesian3(east, 0, 27), 42, 3, 3, Color.fromCssColorString("#b5c1ce"));
-      cylinder(new Cartesian3(east, 0, 51), 6, 0, 3, Color.WHITE);
+      cylinder(vehicle, new Cartesian3(east, 0, 27), 42, 3, 3, "#b5c1ce");
+      cylinder(vehicle, new Cartesian3(east, 0, 51), 6, 0, 3, Color.WHITE);
     }
-    this.exhaustMaterial = new Material({ fabric: { type: "TerraScopeRocketExhaust", uniforms: { time: 0 },
-      source: `czm_material czm_getMaterial(czm_materialInput materialInput) {
-        czm_material m = czm_getDefaultMaterial(materialInput);
-        float axial = materialInput.st.t;
-        float ripple = 0.85 + 0.15 * sin(time * 37.0 + axial * 24.0 + materialInput.st.s * 13.0);
-        vec3 tint = mix(vec3(1.0, 0.34, 0.07), vec3(0.6, 0.83, 1.0), smoothstep(0.6, 1.0, axial));
-        m.emission = tint * (1.1 + axial * 0.8);
-        m.alpha = smoothstep(0.0, 0.32, axial) * ripple * 0.68;
-        return m;
-      }` } });
-    const exhaustOffset = new Cartesian3(0, 0, -22), exhaustMatrix = Matrix4.multiplyByTranslation(this.origin, exhaustOffset, new Matrix4());
-    this.flame = this.viewer.scene.primitives.add(new Primitive({
-      geometryInstances: new GeometryInstance({ geometry: new CylinderGeometry({ length: 52, topRadius: 3.3, bottomRadius: 0.05,
-        slices: 32, vertexFormat: MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat }) }),
-      appearance: new MaterialAppearance({ material: this.exhaustMaterial, flat: true, faceForward: true, translucent: true, closed: false }),
-      asynchronous: false, modelMatrix: exhaustMatrix, allowPicking: false,
-    }));
-    this.parts.push({ primitive: this.flame!, matrix: exhaustMatrix, offset: exhaustOffset, exhaust: true });
-    this.flame.show = false;
+    const primitives = this.viewer.scene.primitives;
+    this.pad = primitives.add(solidPrimitive(pad, this.origin));
+    this.body = primitives.add(solidPrimitive(vehicle, this.origin));
+    Matrix4.inverseTransformation(this.origin, this.originInverse);
+    this.exhaustMaterial = exhaustMaterial();
+    Matrix4.multiplyByTranslation(this.origin, this.flameOffset, this.flameMatrix);
+    this.flame = primitives.add(exhaustPrimitive(this.exhaustMaterial, Matrix4.clone(this.flameMatrix)));
+    this.flame!.show = false;
     this.particles = this.viewer.scene.primitives.add(new BillboardCollection({ blendOption: BlendOption.TRANSLUCENT }));
     for (let i = 0; i < SMOKE_COUNT; i++) {
       const puff = this.particles!.add({ show: false, position: Cartesian3.ZERO });
@@ -132,16 +97,14 @@ export class RocketOverlay {
     Cartesian3.fromElements(state.east, 0, state.altitude, this.position);
     Matrix4.fromRotationTranslation(this.rotation, this.position, this.transform);
     Matrix4.multiplyTransformation(this.origin, this.transform, this.transform);
-    for (const part of this.parts) {
-      if (part.exhaust) {
-        this.plumeScale.z = Math.min(1, (state.altitude + 4) / 52) * (0.94 + Math.sin(this.elapsed * 31) * 0.06);
-        part.offset.z = 4 - 26 * this.plumeScale.z;
-      }
-      Matrix4.multiplyByTranslation(this.transform, part.offset, part.matrix);
-      if (part.exhaust) {
-        Matrix4.multiplyByScale(part.matrix, this.plumeScale, part.matrix);
-      }
-      part.primitive.modelMatrix = part.matrix;
+    // The vehicle is baked at the pad: move it by pose × inverse(pad frame).
+    if (this.body) this.body.modelMatrix = Matrix4.multiplyTransformation(this.transform, this.originInverse, this.bodyMatrix);
+    if (this.flame) {
+      this.plumeScale.z = Math.min(1, (state.altitude + 4) / 52) * (0.94 + Math.sin(this.elapsed * 31) * 0.06);
+      this.flameOffset.z = 4 - 26 * this.plumeScale.z;
+      Matrix4.multiplyByTranslation(this.transform, this.flameOffset, this.flameMatrix);
+      Matrix4.multiplyByScale(this.flameMatrix, this.plumeScale, this.flameMatrix);
+      this.flame.modelMatrix = this.flameMatrix;
     }
     if (this.flame) this.flame.show = state.thrust;
     if (this.exhaustMaterial) this.exhaustMaterial.uniforms.time = this.elapsed;
@@ -200,13 +163,12 @@ export class RocketOverlay {
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.releaseCamera();
     if (!this.viewer.isDestroyed()) {
-      this.parts.forEach(part => this.viewer.scene.primitives.remove(part.primitive));
-      this.staticParts.forEach(part => this.viewer.scene.primitives.remove(part));
+      for (const primitive of [this.body, this.pad, this.flame]) if (primitive) this.viewer.scene.primitives.remove(primitive);
       if (this.particles) this.viewer.scene.primitives.remove(this.particles);
       this.viewer.scene.requestRender();
     }
-    this.parts = [];
-    this.staticParts = [];
+    this.body = null;
+    this.pad = null;
     this.particles = null;
     this.flame = null;
     this.engineGlow = null;
