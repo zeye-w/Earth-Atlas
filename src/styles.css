@@ -512,8 +512,13 @@ h1 em { font-style:normal; color:var(--text-2); }
 .segmented button { overflow-wrap:anywhere; }
 html[lang="en"] .toggle-copy small { line-height:1.5; }
 html[lang="en"] .layer-group summary small { white-space:normal; }
+.action-caption { white-space:nowrap; }
 @media(max-width:1100px) {
   html[lang="en"] .action-caption, html[lang="en"] .brand-caption, html[lang="en"] .brand-divider { display:none; }
+}
+/* Chinese captions are shorter but still do not fit a landscape phone or small tablet. */
+@media(max-width:960px) {
+  .action-caption, .brand-caption, .brand-divider { display:none; }
 }
 @media(max-width:760px) {
   .topbar .brand-symbol { display:none; }
