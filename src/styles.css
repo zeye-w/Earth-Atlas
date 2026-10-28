@@ -524,12 +524,17 @@ html[lang="en"] .layer-group summary small { white-space:normal; }
 /* Where the open layer panel ends on the left, for screens that show it as a side card. */
 .app-shell { --sidebar-right: calc(clamp(12px,2vw,28px) + clamp(286px,23vw,344px)); }
 @media(max-width:1120px) { .app-shell { --sidebar-right: calc(clamp(12px,2vw,28px) + min(330px, calc(45vw - 20px))); } }
-@media(min-width:761px) {
-  /* Below ~1220 px the 440 px dock no longer fits beside the side card: centre
-     the dock, hint and attribution in the space to its right instead. */
-  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-dock { left:max(50%, calc(var(--sidebar-right) + 236px)); }
-  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-guide { left:max(50%, calc(var(--sidebar-right) + (100% - var(--sidebar-right)) / 2)); }
-  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-attribution { left:max(50%, calc(var(--sidebar-right) + (100% - var(--sidebar-right)) / 2)); max-width:calc(100% - var(--sidebar-right) - 36px); }
+/* 761-1220 px wide (tablets, phones in landscape, small laptops): the open side
+   card would sit under the centred dock, hint and attribution. Centre them in
+   the space to its right (the dock shrinks to fit), give the attribution that
+   whole width and move the Cesium logo to the top right, clear of both.
+   Wider screens keep the original layout. */
+@media(min-width:761px) and (max-width:1220px) {
+  .app-shell:has(.sidebar:not(.is-collapsed)) :is(.globe-dock, .globe-guide, .globe-attribution) { left:calc(var(--sidebar-right) + (100% - var(--sidebar-right)) / 2); }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-dock { width:min(440px, calc(100% - var(--sidebar-right) - 24px)); bottom:92px; }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-guide { bottom:142px; }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .globe-attribution { max-width:calc(100% - var(--sidebar-right) - 36px); }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .cesium-viewer-bottom { top:76px!important; bottom:auto!important; }
 }
 /* Short landscape screens: the layer list matters more than the introduction. */
 @media(min-width:761px) and (max-height:520px) {
@@ -538,13 +543,13 @@ html[lang="en"] .layer-group summary small { white-space:normal; }
   .globe-guide { display:none; }
 }
 @media(max-width:760px) {
-  /* Bottom stack, from the edge up: attribution (up to three lines), the dock,
+  /* Bottom stack, from the edge up: attribution (up to four lines), the dock,
      then the Cesium logo and the hint, so none of them overlap. */
-  .globe-dock { bottom:50px; }
+  .globe-dock { bottom:60px; }
   .dock-row { gap:6px; }
   .dock-button { white-space:nowrap; padding:9px 13px; }
-  .cesium-viewer-bottom { bottom:98px!important; }
-  .globe-guide { bottom:126px; }
+  .cesium-viewer-bottom { bottom:108px!important; }
+  .globe-guide { bottom:136px; }
   /* A bottom sheet covers this stack: hide it rather than let it show through the glass. */
   .globe-dock, .globe-guide, .globe-attribution, .cesium-viewer-bottom { transition:opacity .2s, visibility .2s; }
   .app-shell:has(.sidebar:not(.is-collapsed), .details-panel:not(.is-collapsed)) :is(.globe-dock, .globe-guide, .globe-attribution, .cesium-viewer-bottom) { opacity:0; visibility:hidden; }
