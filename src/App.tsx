@@ -1,3 +1,4 @@
+import { t, useLocale } from "./i18n";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Cartesian2, Cartesian3, Cartographic, Ellipsoid, Math as CesiumMath, type Entity, type Viewer } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
@@ -66,6 +67,7 @@ const LivePhotoPanel = lazy(() => import("./panels/LivePhotoPanel"));
 const FormulaPanel = lazy(() => import("./panels/FormulaPanel"));
 
 function App() {
+  const locale = useLocale();
   const [initialScene] = useState(() => readScene(window.location.hash));
   const { layers, setLayer, options, setOption } = useLayerSettings(initialScene);
   // A shared moment older than the timeline reaches opens live instead.
@@ -186,6 +188,7 @@ function App() {
 
   const { viewer, globeError } = useViewer(mountRef, shellRef, initialScene, handleClick);
   const fireworks = useFireworks(viewer);
+  useEffect(() => { if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender(); }, [viewer, locale]);
   useSceneClock(viewer, timeline);
   const render = useRenderQuality(viewer, (quality, fps) =>
     setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording, fireworks.running);
@@ -303,6 +306,7 @@ function App() {
       options: { cloudOpacity: options.cloudOpacity, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter, quakeRange: options.quakeRange, atmosphereShells: layers.shells ? options.shellScale : 0 },
     };
     const url = new URL(window.location.href);
+    url.searchParams.set("lang", locale);
     try { url.hash = sceneHash(scene); } catch { setToast("当前视角无法分享，请调整视角后重试"); return; }
     setShareUrl(url.toString());
     try { await navigator.clipboard.writeText(url.toString()); setToast("场景链接已复制"); }
@@ -375,7 +379,7 @@ function App() {
         setSearchOpen(false);
       }} />}
       {shareUrl && <SharePanel url={shareUrl} onClose={() => setShareUrl(null)} />}
-      {livePhotoOpen && <Suspense fallback={<div className="toast" role="status">正在打开实况图录制…</div>}><LivePhotoPanel viewer={viewer} allowOrbit={!trackedSatelliteId} onRecordingChange={setLivePhotoRecording}
+      {livePhotoOpen && <Suspense fallback={<div className="toast" role="status">{t("正在打开实况图录制…")}</div>}><LivePhotoPanel viewer={viewer} allowOrbit={!trackedSatelliteId} onRecordingChange={setLivePhotoRecording}
         onClose={closeLivePhoto} getScene={() => ({
           sceneTime: new Date(timeline.getState().time).toISOString(), live: timeline.getState().live,
           layers: sceneLayers(layers), options,
@@ -431,31 +435,31 @@ function App() {
             onLaunch={launchFireworks} onStop={fireworks.stop} />
         </LayerPanel>
 
-        <section className="globe-panel" aria-label="可交互三维数字地球">
+        <section className="globe-panel" aria-label={t("可交互三维数字地球")}>
           <div className="globe-mount" ref={mountRef} />
           <div className="globe-top-left">
             <span className="map-tag"><span className="tag-dot" /> 3D DIGITAL EARTH</span>
             <SceneSubtitle timeline={timeline} dayNight={layers.dayNight} />
           </div>
           {tourOpen && viewer && <Suspense fallback={null}><TerminatorTour viewer={viewer} timeline={timeline} timebarOpen={timebarOpen} onClose={closeTour} /></Suspense>}
-          {toast && <div className="toast" role="status">{toast}<button type="button" onClick={() => setToast(null)} aria-label="关闭提示"><X size={13} aria-hidden="true" /></button></div>}
+          {toast && <div className="toast" role="status">{t(toast)}<button type="button" onClick={() => setToast(null)} aria-label={t("关闭提示")}><X size={13} aria-hidden="true" /></button></div>}
           {viewer && trackedSatellite && satellites.status === "ready" && (
-            <TrackCard viewer={viewer} title={trackedSatellite.title} satelliteId={trackedSatellite.id} modelStatus={satellites.modelStatus} onViewModel={satellites.viewModel} live={live} tracking={satellites.tracking}
+            <TrackCard viewer={viewer} title={t(trackedSatellite.title)} satelliteId={trackedSatellite.id} modelStatus={satellites.modelStatus} onViewModel={satellites.viewModel} live={live} tracking={satellites.tracking}
               location={userLocation.location} onLocate={() => void userLocation.locate()} onStop={() => setTrackedSatelliteId(null)}
               formulasOpen={formulasOpen} onToggleFormulas={() => setFormulasOpen((open) => !open)} />
           )}
           {internetSelection && !formulasOpen && <InternetCard selection={internetSelection} onClose={() => setInternetSelection(null)} />}
           {formulasOpen && trackedSatellite && satellites.status === "ready" && (
             <Suspense fallback={null}>
-              <FormulaPanel title={trackedSatellite.title} derivation={satellites.tracking.derivation} observer={userLocation.location} live={live}
+              <FormulaPanel title={t(trackedSatellite.title)} derivation={satellites.tracking.derivation} observer={userLocation.location} live={live}
                 onLocate={() => void userLocation.locate()} onClose={() => setFormulasOpen(false)} />
             </Suspense>
           )}
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
             onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />
-          {!timebarOpen && !tourOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>拖动旋转 · 滚轮缩放 · 点击地表查询地质</span></div>}
+          {!timebarOpen && !tourOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>{t("拖动旋转 · 滚轮缩放 · 点击地表查询地质")}</span></div>}
           <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>}{(layers.cables || layers.dataCenters) && <> · Cables &amp; data centres: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors (ODbL)</>}{layers.ixps && <> · IXPs: <a href="https://www.wikidata.org/" target="_blank" rel="noreferrer">Wikidata</a> (CC0)</>}{(layers.rootServers || layers.dnsFlows) && <> · DNS: <a href="https://atlas.ripe.net/" target="_blank" rel="noreferrer">RIPE Atlas</a> / <a href="https://root-servers.org/" target="_blank" rel="noreferrer">root-servers.org</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
-          {globeError && <div className="globe-error" role="alert">三维地球启动失败：{globeError}<p>请检查 WebGL 支持和浏览器环境。</p></div>}
+          {globeError && <div className="globe-error" role="alert">{t("三维地球启动失败：")}{t(globeError)}<p>{t("请检查 WebGL 支持和浏览器环境。")}</p></div>}
         </section>
 
         <Inspector live={live} onCenter={() => {

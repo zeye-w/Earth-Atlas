@@ -18,6 +18,8 @@ import {
 import { maxLabelDistance, minLabelDistance, spacedName, type GeoLabel, type GeoLabelKind } from "./geoLabelData.ts";
 import { layoutLabels, type LabelBox } from "./labelLayout.ts";
 import { LABEL_FONT } from "./labelFont";
+import { getLocale, subscribeLocale } from "./i18n.ts";
+const labelText = (label: GeoLabel) => getLocale() === "en" ? label.english : spacedName(label);
 
 export const GEO_LABEL_ID_PREFIX = "geolabel:";
 
@@ -46,6 +48,7 @@ export class GeoLabelOverlay {
   private readonly scratch = new Cartesian2();
   private readonly occluder = new EllipsoidalOccluder(Ellipsoid.WGS84, Cartesian3.ZERO);
   private readonly removePreRender: () => void;
+  private readonly removeLocale: () => void;
 
   constructor(viewer: Viewer, labels: readonly GeoLabel[]) {
     this.viewer = viewer;
@@ -55,10 +58,10 @@ export class GeoLabelOverlay {
       const style = STYLE[label.kind];
       const position = Cartesian3.fromDegrees(label.longitude, label.latitude, label.kind === "range" ? 6_000 : 2_000);
       measure.font = style.font[label.tier - 1] + " " + LABEL_FONT;
-      this.items.push({ position, data: label, boxWidth: measure.measureText(spacedName(label)).width + 20, boxHeight: parseInt(style.font[label.tier - 1].split(" ")[1]) + 14, label: this.labels.add({
+      this.items.push({ position, data: label, boxWidth: measure.measureText(labelText(label)).width + 20, boxHeight: parseInt(style.font[label.tier - 1].split(" ")[1]) + 14, label: this.labels.add({
         id: GEO_LABEL_ID_PREFIX + label.kind + ":" + label.english,
         position,
-        text: spacedName(label),
+        text: labelText(label),
         font: style.font[label.tier - 1] + " " + LABEL_FONT,
         style: LabelStyle.FILL_AND_OUTLINE,
         fillColor: Color.fromCssColorString(style.color).withAlpha(style.alpha),
@@ -75,6 +78,15 @@ export class GeoLabelOverlay {
     // that sticks out past the limb into space, so hide labels beyond the
     // horizon before each frame.
     this.removePreRender = viewer.scene.preRender.addEventListener(() => this.cullBehindHorizon());
+    this.removeLocale = subscribeLocale(() => {
+      if (viewer.isDestroyed()) return;
+      for (const item of this.items) {
+        item.label.text = labelText(item.data);
+        measure.font = STYLE[item.data.kind].font[item.data.tier - 1] + " " + LABEL_FONT;
+        item.boxWidth = measure.measureText(item.label.text).width + 20;
+      }
+      this.dirty = true; viewer.scene.requestRender();
+    });
     viewer.scene.requestRender();
   }
 
@@ -132,6 +144,7 @@ export class GeoLabelOverlay {
   }
 
   dispose(): void {
+    this.removeLocale();
     this.removePreRender();
     if (this.viewer.isDestroyed()) return;
     this.viewer.scene.primitives.remove(this.labels);

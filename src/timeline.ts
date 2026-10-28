@@ -1,3 +1,4 @@
+import type { Locale } from "./i18n/core.ts";
 /**
  * The scene's clock. "Live" follows real UTC; otherwise the user has moved
  * the timeline to a fixed moment, or is replaying forward from one. Layers
@@ -50,13 +51,18 @@ export function formatTime(time: number): string {
 }
 
 /** "现在", "1 天 6 小时前", "3 小时后", "25 分钟前". */
-export function relativeTime(time: number, now: number): string {
+export function relativeTime(time: number, now: number, locale: Locale = "zh"): string {
   const delta = time - now;
   const abs = Math.abs(delta);
-  if (abs < 60_000) return "现在";
+  if (abs < 60_000) return locale === "en" ? "Now" : "现在";
   const days = Math.floor(abs / DAY);
   const hours = Math.floor((abs % DAY) / HOUR);
   const minutes = Math.floor((abs % HOUR) / 60_000);
+  if (locale === "en") {
+    const unit = (n: number, name: string) => n + " " + name + (n === 1 ? "" : "s");
+    const text = days ? unit(days, "day") + (hours ? " " + unit(hours, "hour") : "") : hours ? unit(hours, "hour") + (minutes ? " " + unit(minutes, "minute") : "") : unit(minutes, "minute");
+    return delta < 0 ? text + " ago" : "in " + text;
+  }
   const text = days > 0 ? days + " 天" + (hours ? " " + hours + " 小时" : "") : hours > 0 ? hours + " 小时" + (minutes ? " " + minutes + " 分" : "") : minutes + " 分钟";
   return text + (delta < 0 ? "前" : "后");
 }

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
@@ -19,8 +20,8 @@ export function ToggleRow({ icon, title, caption, checked, onChange }: ToggleRow
   return (
     <label className="toggle-row">
       <span className="layer-icon" aria-hidden="true">{icon}</span>
-      <span className="toggle-copy"><strong>{title}</strong><small>{caption}</small></span>
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={title} />
+      <span className="toggle-copy"><strong>{t(title)}</strong><small>{t(caption)}</small></span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} aria-label={t(title)} />
       <span className="switch" aria-hidden="true" />
     </label>
   );
@@ -37,10 +38,10 @@ interface SegmentedProps<T extends string | number> {
 /** Radio group styled as a segmented control. */
 export function Segmented<T extends string | number>({ label, options, value, onChange, format }: SegmentedProps<T>) {
   return (
-    <div className="segmented" role="radiogroup" aria-label={label}>
+    <div className="segmented" role="radiogroup" aria-label={t(label)}>
       {options.map((option) => (
         <button key={option} type="button" role="radio" aria-checked={value === option} className={value === option ? "selected" : ""} onClick={() => onChange(option)}>
-          {format(option)}
+          {t(format(option))}
         </button>
       ))}
     </div>
@@ -51,7 +52,7 @@ export function Segmented<T extends string | number>({ label, options, value, on
 export function LayerGroup({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
     <details className="layer-group">
-      <summary><span>{title}<small>{subtitle}</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
+      <summary><span>{t(title)}<small>{t(subtitle)}</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
       {children}
     </details>
   );

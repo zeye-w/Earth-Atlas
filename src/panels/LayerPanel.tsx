@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { ReactNode } from "react";
 import { ArrowUpRight, Info, LocateFixed, X } from "lucide-react";
 import { LayerGroup } from "../ui/controls";
@@ -16,21 +17,21 @@ const REGIONS: Region[] = [
 /** The left glass card: intro, the layer groups (children), capitals and sources. */
 export function LayerPanel({ open, onClose, onFlyTo, children }: { open: boolean; onClose: () => void; onFlyTo: (region: Region) => void; children: ReactNode }) {
   return (
-    <aside id="earth-layer-panel" aria-label="地球图层" aria-hidden={!open} inert={!open} className={"sidebar glass-panel" + (!open ? " is-collapsed" : "")}>
-      <button type="button" className="panel-dismiss" onClick={onClose} aria-label="收起图层面板"><X size={15} aria-hidden="true" /></button>
+    <aside id="earth-layer-panel" aria-label={t("地球图层")} aria-hidden={!open} inert={!open} className={"sidebar glass-panel" + (!open ? " is-collapsed" : "")}>
+      <button type="button" className="panel-dismiss" onClick={onClose} aria-label={t("收起图层面板")}><X size={15} aria-hidden="true" /></button>
       <div className="side-content">
         <div className="eyebrow"><span className="serial">01</span> DIGITAL EARTH EXPLORER</div>
-        <h1>观察一颗<br /><em>实时运转的地球。</em></h1>
-        <p className="lead">真实的昼夜交替、在轨卫星、全球城市与地表地质，汇聚在同一颗可交互的三维地球上。</p>
+        <h1>{t("观察一颗")}<br /><em>{t("实时运转的地球。")}</em></h1>
+        <p className="lead">{t("真实的昼夜交替、在轨卫星、全球城市与地表地质，汇聚在同一颗可交互的三维地球上。")}</p>
 
         {children}
 
-        <LayerGroup title="CAPITALS" subtitle="首都快速定位">
+        <LayerGroup title="CAPITALS" subtitle={t("首都快速定位")}>
           <div className="regions">
             {REGIONS.map((region) => (
               <button key={region.label} className="region-btn" onClick={() => onFlyTo(region)}>
                 <LocateFixed size={16} strokeWidth={1.7} className="region-mark" aria-hidden="true" />
-                <span><strong>{region.label}</strong><small>{region.subtitle}</small></span>
+                <span><strong>{t(region.label)}</strong><small>{t(region.subtitle)}</small></span>
                 <ArrowUpRight size={14} className="region-arrow" aria-hidden="true" />
               </button>
             ))}
@@ -39,7 +40,7 @@ export function LayerPanel({ open, onClose, onFlyTo, children }: { open: boolean
 
         <div className="sidebar-note">
           <Info size={14} className="note-icon" aria-hidden="true" />
-          <p>影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报与太阳风来自 NOAA SWPC，航班位置来自 adsb.lol（ODbL）志愿者 ADS-B 接收网，地震来自 USGS，火山来自 Smithsonian GVP，板块边界来自 Bird (2003) PB2002（Nordpil 整理，ODC-BY），地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。</p>
+          <p>{t("影像与城市夜光来自 NASA GIBS（Blue / Black Marble）与 Natural Earth，卫星轨道来自 CelesTrak，极光预报与太阳风来自 NOAA SWPC，航班位置来自 adsb.lol（ODbL）志愿者 ADS-B 接收网，地震来自 USGS，火山来自 Smithsonian GVP，板块边界来自 Bird (2003) PB2002（Nordpil 整理，ODC-BY），地质数据来自 Macrostrat。卫星位置为轨道推算；地质图反映地表单元，不代表地下岩层。")}</p>
         </div>
       </div>
       <div className="sidebar-bottom">TERRASCOPE <span>—</span> MVP 0.2</div>

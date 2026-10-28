@@ -505,3 +505,17 @@ h1 em { font-style:normal; color:var(--text-2); }
 .track-model-actions { display:flex; gap:12px; flex-wrap:wrap; }
 .track-model-actions .track-locate { flex:1; width:auto; }
 .track-model a { color:var(--text-3); font-size:10px; }
+
+/* Language labels grow without squeezing controls off a narrow screen. */
+.language-toggle { font-size:10px; letter-spacing:.02em; font-weight:600; white-space:nowrap; }
+.layer-group summary > span, .toggle-copy, .segmented button { min-width:0; }
+.segmented button { overflow-wrap:anywhere; }
+html[lang="en"] .toggle-copy small { line-height:1.5; }
+html[lang="en"] .layer-group summary small { white-space:normal; }
+@media(max-width:1100px) {
+  html[lang="en"] .action-caption, html[lang="en"] .brand-caption, html[lang="en"] .brand-divider { display:none; }
+}
+@media(max-width:760px) {
+  .topbar .brand-symbol { display:none; }
+  .language-toggle { flex-shrink:0; padding-inline:2px; }
+}

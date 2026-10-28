@@ -18,6 +18,7 @@ import {
 import { WORLD_CITIES } from "./worldCities";
 import { layoutLabels, type LabelBox } from "./labelLayout.ts";
 import { LABEL_FONT } from "./labelFont";
+import { getLocale } from "./i18n.ts";
 
 /**
  * A single static, bounded Cesium entity set. City labels follow the globe
@@ -44,7 +45,7 @@ export function addWorldCityMarkers(viewer: Viewer): Entity[] {
         disableDepthTestDistance: 0,
       },
       label: {
-        text: city.chinese,
+        text: getLocale() === "en" ? city.english : city.chinese,
         font: isMajor ? "500 12px " + LABEL_FONT : "11px " + LABEL_FONT,
         style: LabelStyle.FILL_AND_OUTLINE,
         fillColor: isMajor ? major : minor,
@@ -65,10 +66,20 @@ export function addWorldCityMarkers(viewer: Viewer): Entity[] {
 
 /** City names share the same padded screen-space collision policy as areas. */
 export function declutterCityLabels(viewer: Viewer, markers: readonly Entity[]): () => void {
+  const names = new Map(WORLD_CITIES.map(city => ["city:" + city.id, city]));
+  let previousLocale = getLocale();
   const matrix = new Matrix4();
   const occluder = new EllipsoidalOccluder(Ellipsoid.WGS84,Cartesian3.ZERO);
   let previous = "";
   return viewer.scene.preRender.addEventListener(() => {
+    const locale = getLocale();
+    if (locale !== previousLocale) {
+      for (const marker of markers) {
+        const city = names.get(String(marker.id));
+        if (city && marker.label) marker.label.text = new ConstantProperty(locale === "en" ? city.english : city.chinese);
+      }
+      previousLocale = locale; previous = "";
+    }
     const {camera,canvas,clock,scene} = viewer;
     const signature = `${canvas.clientWidth}:${canvas.clientHeight}:${markers.map(m=>Number(m.show)).join("")}`;
     if (previous === signature && Matrix4.equalsEpsilon(matrix,camera.viewMatrix,1e-8)) return;

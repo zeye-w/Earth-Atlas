@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -29,7 +30,8 @@ const deg = (radians: number) => (radians * 180) / Math.PI;
 
 /** A formula rendered once (it never changes). */
 function Static({ source }: { source: string }) {
-  const html = useMemo(() => tex(source), [source]);
+  const localized = t(source);
+  const html = useMemo(() => tex(localized), [localized]);
   return <div className="formula-tex" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
@@ -37,8 +39,8 @@ function Static({ source }: { source: string }) {
 function Live({ source, result }: { source: string; result?: string }) {
   return (
     <div className="formula-live">
-      <span dangerouslySetInnerHTML={{ __html: tex(source) }} />
-      {result !== undefined && <span key={result} className="formula-result" dangerouslySetInnerHTML={{ __html: tex(result) }} />}
+      <span dangerouslySetInnerHTML={{ __html: tex(t(source)) }} />
+      {result !== undefined && <span key={result} className="formula-result" dangerouslySetInnerHTML={{ __html: tex(t(result)) }} />}
     </div>
   );
 }
@@ -81,7 +83,7 @@ const STEPS: Step[] = [
     id: "shadow", title: "日照 / 地影", note: "把地影当作圆柱：在太阳背面且离轴不到一个地球半径就在影子里",
     formula: "a = \\vec r'\\cdot\\hat s,\\quad d_\\perp = \\lVert \\vec r' - a\\,\\hat s\\rVert,\\quad \\text{日照} \\iff a>0 \\ \\lor\\ d_\\perp > R_\\oplus",
     body: (d) => <Live source={"a = " + f(d.shadow.along, 0) + "\\ \\text{km},\\ d_\\perp = " + f(d.shadow.offAxis, 0) + "\\ \\text{km}\\ " + (d.shadow.offAxis > EARTH_RADIUS_KM ? ">" : "<") + "\\ " + EARTH_RADIUS_KM}
-      result={d.shadow.sunlit ? "\\Rightarrow \\textbf{日照中}" : "\\Rightarrow \\textbf{地影中}"} />,
+      result={d.shadow.sunlit ? t("\\Rightarrow \\textbf{日照中}") : t("\\Rightarrow \\textbf{地影中}")} />,
   },
   {
     id: "look", title: "从我的位置看", note: "卫星相对观测点的向量转到当地东–北–天坐标",
@@ -100,7 +102,7 @@ function ShadowDiagram({ d, trail }: { d: Derivation; trail: Array<[number, numb
   const [sx, sy] = point([d.shadow.along, d.shadow.offAxis]);
   const R = EARTH_RADIUS_KM * k;
   return (
-    <svg className="formula-diagram" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="地影圆柱示意">
+    <svg className="formula-diagram" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t("地影圆柱示意")}>
       <defs>
         <linearGradient id="fp-shadow" x1="1" x2="0"><stop offset="0" stopColor="#0d1424" stopOpacity=".95" /><stop offset="1" stopColor="#0d1424" stopOpacity="0" /></linearGradient>
         <radialGradient id="fp-earth" cx=".7" cy=".4"><stop offset="0" stopColor="#4ea3ff" /><stop offset="1" stopColor="#123058" /></radialGradient>
@@ -108,14 +110,14 @@ function ShadowDiagram({ d, trail }: { d: Derivation; trail: Array<[number, numb
       <rect x={0} y={cy - R} width={cx} height={2 * R} fill="url(#fp-shadow)" />
       <line x1={0} y1={cy} x2={W} y2={cy} className="fp-axis" />
       <circle cx={cx} cy={cy} r={R} fill="url(#fp-earth)" />
-      <g className="fp-sun"><line x1={W - 8} y1={cy - 20} x2={W - 40} y2={cy - 20} /><polygon points={`${W - 44},${cy - 20} ${W - 36},${cy - 24} ${W - 36},${cy - 16}`} /><text x={W - 8} y={cy - 28} textAnchor="end">ŝ 太阳方向</text></g>
+      <g className="fp-sun"><line x1={W - 8} y1={cy - 20} x2={W - 40} y2={cy - 20} /><polygon points={`${W - 44},${cy - 20} ${W - 36},${cy - 24} ${W - 36},${cy - 16}`} /><text x={W - 8} y={cy - 28} textAnchor="end">{t("ŝ 太阳方向")}</text></g>
       <polyline className="fp-trail" points={trail.map((t) => point(t).join(",")).join(" ")} />
       <line x1={sx} y1={sy} x2={sx} y2={cy} className="fp-guide" />
       <line x1={cx} y1={cy + 2} x2={sx} y2={cy + 2} className="fp-guide fp-a" />
       <text x={sx + 5} y={(sy + cy) / 2} className="fp-label">d⊥</text>
       <text x={(cx + sx) / 2} y={cy + 13} className="fp-label" textAnchor="middle">a</text>
       <circle cx={sx} cy={sy} r={4.5} className={d.shadow.sunlit ? "fp-sat sunlit" : "fp-sat"} />
-      <text x={6} y={cy - R - 5} className="fp-label">地影圆柱（半径 R⊕）</text>
+      <text x={6} y={cy - R - 5} className="fp-label">{t("地影圆柱（半径 R⊕）")}</text>
     </svg>
   );
 }
@@ -147,32 +149,32 @@ export default function FormulaPanel({ title, derivation, observer, live, onLoca
   const active = Math.floor(tick / SCAN_TICKS) % (steps.length + 1);
 
   return (
-    <section className="formula-panel glass-panel" aria-label={title + " 的实时计算"}>
+    <section className="formula-panel glass-panel" aria-label={t(title + " 的实时计算")}>
       <header>
         <Sigma size={15} strokeWidth={1.8} aria-hidden="true" />
         <div>
-          <strong>实时计算 · {title}</strong>
-          <span>{d ? d.time.toISOString().slice(0, 19).replace("T", " ") + " UTC" + (live ? "" : " · 时间轴") : "—"}</span>
+          <strong>{t("实时计算 ·{0}", t(title))}</strong>
+          <span>{t(d ? d.time.toISOString().slice(0, 19).replace("T", " ") + " UTC" + (live ? "" : " · 时间轴") : "—")}</span>
         </div>
-        <button type="button" onClick={onClose} aria-label="关闭实时计算"><X size={13} aria-hidden="true" /></button>
+        <button type="button" onClick={onClose} aria-label={t("关闭实时计算")}><X size={13} aria-hidden="true" /></button>
       </header>
       <div className="formula-pipeline" aria-hidden="true">
-        {["轨道根数", "SGP4", "惯性系", "地固系", "读数"].map((label, i) => <span key={label} style={{ animationDelay: i * 0.18 + "s" }}>{label}</span>)}
+        {[t("轨道根数"), "SGP4", t("惯性系"), t("地固系"), t("读数")].map((label, i) => <span key={label} style={{ animationDelay: i * 0.18 + "s" }}>{t(label)}</span>)}
       </div>
-      {!d ? <p className="formula-empty">这一时刻离轨道根数历元太远，没有可靠的位置。</p> : (
+      {!d ? <p className="formula-empty">{t("这一时刻离轨道根数历元太远，没有可靠的位置。")}</p> : (
         <ol className="formula-steps">
           {steps.map((step, i) => (
             <li key={step.id} className={i === active ? "is-active" : undefined}>
-              <div className="formula-step-head"><span className="formula-index">{i + 1}</span><strong>{step.title}</strong><em>{step.note}</em></div>
+              <div className="formula-step-head"><span className="formula-index">{i + 1}</span><strong>{t(step.title)}</strong><em>{t(step.note)}</em></div>
               <Static source={step.formula} />
               {step.body(d)}
               {step.id === "shadow" && <ShadowDiagram d={d} trail={trail.current} />}
             </li>
           ))}
-          {!d.look && <li className="formula-locate"><button type="button" onClick={onLocate}>加上我的位置：算方位角和仰角</button></li>}
+          {!d.look && <li className="formula-locate"><button type="button" onClick={onLocate}>{t("加上我的位置：算方位角和仰角")}</button></li>}
         </ol>
       )}
-      <p className="formula-note">每秒刷新 4 次，数值即时代入。位置来自轨道根数 + SGP4 推算，不是实时遥测；姿态不在计算之列。</p>
+      <p className="formula-note">{t("每秒刷新 4 次，数值即时代入。位置来自轨道根数 + SGP4 推算，不是实时遥测；姿态不在计算之列。")}</p>
     </section>
   );
 }

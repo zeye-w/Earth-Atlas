@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n.ts";
 import { useCallback, useEffect, useState } from "react";
 import { Cartesian2, Cartesian3, Color, HorizontalOrigin, LabelStyle, NearFarScalar, VerticalOrigin, type Entity, type Viewer } from "cesium";
 import { LABEL_FONT } from "../labelFont";
@@ -60,6 +61,7 @@ const MARKER_COLOR = Color.fromCssColorString("#4da3ff");
 
 /** A blue dot (with the accuracy circle when it is meaningful) at the user's position. */
 export function useUserLocationMarker(viewer: Viewer | null, location: UserLocation | null) {
+  const locale = useLocale();
   useEffect(() => {
     if (!viewer || !location) return;
     const position = Cartesian3.fromDegrees(location.longitude, location.latitude, 0);
@@ -78,11 +80,11 @@ export function useUserLocationMarker(viewer: Viewer | null, location: UserLocat
     }
     entities.push(viewer.entities.add({
       id: "user-location",
-      name: "我的位置",
+      name: t("我的位置"),
       position: Cartesian3.fromDegrees(location.longitude, location.latitude, 5_000),
       point: { pixelSize: 11, color: MARKER_COLOR, outlineColor: Color.WHITE, outlineWidth: 2.5, disableDepthTestDistance: 0 },
       label: {
-        text: "我的位置",
+        text: t("我的位置"),
         font: "500 12px " + LABEL_FONT,
         style: LabelStyle.FILL_AND_OUTLINE,
         fillColor: Color.fromCssColorString("#d6e9ff"),
@@ -102,5 +104,5 @@ export function useUserLocationMarker(viewer: Viewer | null, location: UserLocat
         viewer.scene.requestRender();
       }
     };
-  }, [viewer, location]);
+  }, [viewer, location, locale]);
 }

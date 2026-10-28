@@ -1,3 +1,4 @@
+import { getLocale, t } from "./i18n.ts";
 import {
   ArcType,
   CallbackProperty,
@@ -93,6 +94,7 @@ export class SatelliteOverlay {
   private modelOverlay: SatelliteModelOverlay | null = null;
   private modelTarget: string | null = null;
   private readonly pairs: MarkerPair[] = [];
+  private locale = getLocale();
   private showPaths = true;
   private lastPathSimMs = Number.NEGATIVE_INFINITY;
   private selectedId: string | null = null;
@@ -133,7 +135,7 @@ export class SatelliteOverlay {
           distanceDisplayCondition: new DistanceDisplayCondition(0, 65_000_000),
         },
         label: {
-          text: record.choice.title.split(" · ")[0].split("（")[0],
+          text: t(record.choice.title.split(" · ")[0].split("（")[0]),
           font: "11px " + LABEL_FONT,
           style: LabelStyle.FILL_AND_OUTLINE,
           fillColor: LABEL_COLOR,
@@ -202,6 +204,12 @@ export class SatelliteOverlay {
 
   update(forcePaths = false): void {
     if (this.viewer.isDestroyed()) return;
+    if (this.locale !== getLocale()) {
+      this.locale = getLocale();
+      for (const pair of this.pairs) {
+        if (pair.marker.label) pair.marker.label.text = new ConstantProperty(t(pair.record.choice.title.split(" · ")[0].split("（")[0]));
+      }
+    }
     const now = this.simulatedTime();
     const updatePaths = forcePaths || (this.showPaths && Math.abs(now.getTime() - this.lastPathSimMs) > SATELLITE_PATH_UPDATE_MS);
     const ahead = new Date(now.getTime() + HEADING_SAMPLE_MS);

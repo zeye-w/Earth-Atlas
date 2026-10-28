@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import { Cartesian3, type Viewer } from "cesium";
 import type { TimeController } from "../timeline";
@@ -86,40 +87,33 @@ export default function TerminatorTour({
     <section
       className="terminator-tour glass-panel"
       style={timebarOpen ? { bottom: 280 } : undefined}
-      aria-label="晨昏线旅行"
+      aria-label={t("晨昏线旅行")}
     >
       <div className="tour-heading">
-        <strong>晨昏线旅行</strong>
-        <button type="button" onClick={onClose}>
-          退出旅行
-        </button>
+        <strong>{t("晨昏线旅行")}</strong>
+        <button type="button" onClick={onClose}>{t("退出旅行")}</button>
       </div>
       <p>
-        {side === "sunrise" ? "追逐日出" : "追逐日落"} ·{" "}
-        {paused ? "镜头已暂停" : "沿晨昏线往返巡游"}
+        {t(side === "sunrise" ? "追逐日出" : "追逐日落")} ·{t(" ")}
+        {t(paused ? "镜头已暂停" : "沿晨昏线往返巡游")}
       </p>
       <div className="tour-controls">
         <button
           type="button"
           aria-pressed={side === "sunrise"}
           onClick={() => setSide("sunrise")}
-        >
-          日出侧
-        </button>
+        >{t("日出侧")}</button>
         <button
           type="button"
           aria-pressed={side === "sunset"}
           onClick={() => setSide("sunset")}
-        >
-          日落侧
-        </button>
+        >{t("日落侧")}</button>
         <button type="button" onClick={() => setPaused((v) => !v)}>
-          {paused ? "继续旅行" : "暂停旅行"}
+          {t(paused ? "继续旅行" : "暂停旅行")}
         </button>
-        <label>
-          速度{" "}
+        <label>{t("速度")}{t(" ")}
           <select
-            aria-label="旅行速度"
+            aria-label={t("旅行速度")}
             value={speed}
             onChange={(e) => setSpeed(Number(e.target.value))}
           >
@@ -129,18 +123,10 @@ export default function TerminatorTour({
           </select>
         </label>
       </div>
-      <p>
-        {position.latitude.toFixed(1)}° / {position.longitude.toFixed(1)}° ·
-        当地太阳时 {localSolarTime(time, position.longitude)}
-        {city ? ` · 附近：${city.name}（${Math.round(city.distance)} km）` : ""}
-      </p>
+      <p>{t("{0}° /{1}° · 当地太阳时{2}{3}", t(position.latitude.toFixed(1)), t(position.longitude.toFixed(1)), t(localSolarTime(time, position.longitude)), t(city ? ` · 附近：${city.name}（${Math.round(city.distance)} km）` : ""))}</p>
       <details>
-        <summary>时间与计算说明</summary>
-        <p>
-          场景时间 {new Date(time).toISOString().slice(0, 19).replace("T", " ")}{" "}
-          UTC。依据太阳几何位置计算，不包含大气折射和地形遮挡；太阳时按经度估算，未计均时差，不是行政时区时间。速度只改变镜头巡游速度。拖动或缩放地球会暂停旅行，Esc
-          退出。
-        </p>
+        <summary>{t("时间与计算说明")}</summary>
+        <p>{t("场景时间{0}{1}UTC。依据太阳几何位置计算，不包含大气折射和地形遮挡；太阳时按经度估算，未计均时差，不是行政时区时间。速度只改变镜头巡游速度。拖动或缩放地球会暂停旅行，Esc 退出。", t(new Date(time).toISOString().slice(0, 19).replace("T", " ")), t(" "))}</p>
       </details>
     </section>
   );

@@ -10,6 +10,7 @@ import { rocketFrame } from "./rocketFlight.ts";
 import { cameraRange, GIANT_SCALE, planCenter, planDuration, planError, siteDelay, siteDistance, SPACE_DURATION, type SpaceSite } from "./spacePlan.ts";
 import { getSpaceState, subscribeSpace, updateSpace } from "./spaceState.ts";
 import { RENDER_PROFILES } from "../performance.ts";
+import { subscribeLocale, t } from "../i18n.ts";
 import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
 import { cometMaterial, fadeSparks, RibbonCollection, sparkMaterials } from "./visualMaterials.ts";
 import { sparkWake } from "./showVisuals.ts";
@@ -46,6 +47,7 @@ export class SpaceShow {
   private scratch = new Cartesian3();
   private color = new Color();
   private removeSettings: () => void;
+  private removeLocale: () => void;
   private cameraKey = "";
   private skyBox: Viewer["scene"]["skyBox"] | undefined;
   private previousStars: boolean | undefined;
@@ -61,6 +63,11 @@ export class SpaceShow {
       }
     });
     window.addEventListener("resize", this.onResize);
+    this.removeLocale = subscribeLocale(() => {
+      if (viewer.isDestroyed()) return;
+      this.visuals.forEach(v => { v.label.text = t(v.site.label) + " · " + t(v.kind === "rocket" ? "火箭" : "巨型烟花"); });
+      viewer.scene.requestRender();
+    });
   }
 
   launch(): boolean {
@@ -83,7 +90,7 @@ export class SpaceShow {
     this.visuals = this.sites.map((site, index): Visual => {
       const ground = Cartesian3.fromDegrees(site.longitude, site.latitude, 3000);
       const base: Base = { site, ground, frame: Transforms.eastNorthUpToFixedFrame(Cartesian3.fromDegrees(site.longitude, site.latitude)),
-        delay: siteDelay(index, settings.relay), label: this.labels!.add({ position: ground, text: `${site.label} · ${site.kind === "rocket" ? "火箭" : "巨型烟花"}`,
+        delay: siteDelay(index, settings.relay), label: this.labels!.add({ position: ground, text: t(site.label) + " · " + t(site.kind === "rocket" ? "火箭" : "巨型烟花"),
           font: "13px sans-serif", fillColor: Color.fromCssColorString("#fff1d4"), showBackground: true,
           backgroundColor: Color.BLACK.withAlpha(0.6), show: false, disableDepthTestDistance: 0 }),
       };
@@ -267,5 +274,5 @@ export class SpaceShow {
     updateSpace({ phase: completed ? "complete" : "idle", elapsed: completed ? this.duration : 0 });
     if (!this.disposed) this.onRunning(false);
   }
-  dispose() { this.disposed = true; this.stop(); this.removeSettings(); window.removeEventListener("resize", this.onResize); }
+  dispose() { this.disposed = true; this.stop(); this.removeSettings(); this.removeLocale(); window.removeEventListener("resize", this.onResize); }
 }

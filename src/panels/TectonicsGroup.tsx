@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { Activity, Triangle, Waypoints } from "lucide-react";
 import { DEPTH_CLASSES, QUAKE_FEEDS, QUAKE_RANGES, quakesAt, type Earthquake, type QuakeRange } from "../earthquakeData";
 import { useTimeSelector } from "../hooks/useTimeline";
@@ -22,44 +23,44 @@ interface Props {
 export function TectonicsGroup({ layers, setLayer, options, setOption, quakes, quakeList, timeline, volcanoes, plateStatus }: Props) {
   const live = useTimeSelector(timeline, (state) => state.live);
   return (
-    <LayerGroup title="TECTONICS" subtitle="地震与板块">
-      <ToggleRow icon={<Activity {...ICON} />} title="实时地震" caption={"USGS · M" + QUAKE_FEEDS[options.quakeRange].minMagnitude + "+ · 每 5 分钟更新"} checked={layers.quakes} onChange={(v) => setLayer("quakes", v)} />
+    <LayerGroup title="TECTONICS" subtitle={t("地震与板块")}>
+      <ToggleRow icon={<Activity {...ICON} />} title={t("实时地震")} caption={t("USGS · M" + QUAKE_FEEDS[options.quakeRange].minMagnitude + "+ · 每 5 分钟更新")} checked={layers.quakes} onChange={(v) => setLayer("quakes", v)} />
       {layers.quakes && (
         <div className="layer-extra">
-          <Segmented label="地震时间范围" options={QUAKE_RANGES} value={options.quakeRange} onChange={(v) => setOption("quakeRange", v)} format={(range) => QUAKE_FEEDS[range].label} />
+          <Segmented label={t("地震时间范围")} options={QUAKE_RANGES} value={options.quakeRange} onChange={(v) => setOption("quakeRange", v)} format={(range) => QUAKE_FEEDS[range].label} />
           {!live && quakes.state === "ready" ? <QuakeReplayStatus timeline={timeline} quakes={quakeList} range={options.quakeRange} /> : <p className="layer-status" role="status">
-            {quakes.state === "loading" ? "正在读取 USGS 地震目录…" :
+            {t(quakes.state === "loading" ? "正在读取 USGS 地震目录…" :
              quakes.state === "error" ? "USGS 地震数据暂不可用，未显示地震。" :
-             quakes.state === "ready" ? (quakes.count ? quakes.count + " 次地震 · 最大 M" + quakes.largest!.magnitude.toFixed(1) + (quakes.largest!.place ? "（" + quakes.largest!.place + "）" : "") : "该时段没有符合条件的地震") : ""}
+             quakes.state === "ready" ? (quakes.count ? quakes.count + " 次地震 · 最大 M" + quakes.largest!.magnitude.toFixed(1) + (quakes.largest!.place ? "（" + quakes.largest!.place + "）" : "") : "该时段没有符合条件的地震") : "")}
           </p>}
           <div className="thematic-legend">
-            {DEPTH_CLASSES.map((item) => <span key={item.label}><i style={{ backgroundColor: item.color, borderRadius: "50%" }} />{item.label}</span>)}
+            {DEPTH_CLASSES.map((item) => <span key={item.label}><i style={{ backgroundColor: item.color, borderRadius: "50%" }} />{t(item.label)}</span>)}
           </div>
-          <p className="layer-note">圆点越大震级越高，白色描边为 24 小时内发生；点击圆点查看详情。用底部时间轴可按时间回放。</p>
+          <p className="layer-note">{t("圆点越大震级越高，白色描边为 24 小时内发生；点击圆点查看详情。用底部时间轴可按时间回放。")}</p>
         </div>
       )}
-      <ToggleRow icon={<Triangle {...ICON} />} title="火山" caption="Smithsonian GVP 全新世火山名录" checked={layers.volcanoes} onChange={(v) => setLayer("volcanoes", v)} />
+      <ToggleRow icon={<Triangle {...ICON} />} title={t("火山")} caption={t("Smithsonian GVP 全新世火山名录")} checked={layers.volcanoes} onChange={(v) => setLayer("volcanoes", v)} />
       {layers.volcanoes && volcanoes.status !== "idle" && (
         <div className="layer-extra">
           <p className="layer-status" role="status">
-            {volcanoes.status === "loading" ? "正在加载火山名录…" :
+            {t(volcanoes.status === "loading" ? "正在加载火山名录…" :
              volcanoes.status === "error" || !volcanoes.result ? "火山名录加载失败。" :
-             volcanoes.result.total + " 座火山 · 近 5 年有喷发记录 " + volcanoes.result.recent + " 座 · 名录更新于 " + volcanoes.result.retrieved}
+             volcanoes.result.total + " 座火山 · 近 5 年有喷发记录 " + volcanoes.result.recent + " 座 · 名录更新于 " + volcanoes.result.retrieved)}
           </p>
           <div className="thematic-legend">
-            <span><i className="volcano-swatch recent" />近 5 年有喷发</span>
-            <span><i className="volcano-swatch" />其他全新世火山（拉近显示）</span>
+            <span><i className="volcano-swatch recent" />{t("近 5 年有喷发")}</span>
+            <span><i className="volcano-swatch" />{t("其他全新世火山（拉近显示）")}</span>
           </div>
-          <p className="layer-note">依据 GVP 名录中的最近喷发年份，并非实时火山警报。点击三角查看详情。</p>
+          <p className="layer-note">{t("依据 GVP 名录中的最近喷发年份，并非实时火山警报。点击三角查看详情。")}</p>
         </div>
       )}
-      <ToggleRow icon={<Waypoints {...ICON} />} title="板块边界" caption="Bird (2003) PB2002 全球板块模型" checked={layers.plates} onChange={(v) => setLayer("plates", v)} />
+      <ToggleRow icon={<Waypoints {...ICON} />} title={t("板块边界")} caption={t("Bird (2003) PB2002 全球板块模型")} checked={layers.plates} onChange={(v) => setLayer("plates", v)} />
       {layers.plates && (
         <div className="layer-extra">
-          {plateStatus === "error" ? <p className="layer-status" role="status">板块边界数据加载失败。</p> : (
+          {plateStatus === "error" ? <p className="layer-status" role="status">{t("板块边界数据加载失败。")}</p> : (
             <div className="thematic-legend">
-              <span><i style={{ backgroundColor: "#ff8a5c", height: 3, borderRadius: 2 }} />俯冲带</span>
-              <span><i style={{ backgroundColor: "#ffd27a", height: 3, borderRadius: 2 }} />其他板块边界</span>
+              <span><i style={{ backgroundColor: "#ff8a5c", height: 3, borderRadius: 2 }} />{t("俯冲带")}</span>
+              <span><i style={{ backgroundColor: "#ffd27a", height: 3, borderRadius: 2 }} />{t("其他板块边界")}</span>
             </div>
           )}
         </div>
@@ -75,8 +76,8 @@ function QuakeReplayStatus({ timeline, quakes, range }: { timeline: TimeControll
   const largest = shown.reduce<Earthquake | null>((a, b) => (!a || b.magnitude > a.magnitude ? b : a), null);
   return (
     <p className="layer-status" role="status">
-      {"回放：截至所选时刻 " + shown.length + " 次地震" + (largest ? " · 最大 M" + largest.magnitude.toFixed(1) : "")}
-      {!covered && <><br />所选时刻早于「{QUAKE_FEEDS[range].label}」数据范围，更早的地震未显示。</>}
+      {t("回放：截至所选时刻 " + shown.length + " 次地震" + (largest ? " · 最大 M" + largest.magnitude.toFixed(1) : ""))}
+      {!covered && <><br />{t("所选时刻早于「")}{t(QUAKE_FEEDS[range].label)}{t("」数据范围，更早的地震未显示。")}</>}
     </p>
   );
 }

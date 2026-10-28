@@ -1,3 +1,4 @@
+import { getLocale, t } from "../i18n";
 import type { KeyboardEvent } from "react";
 import { ChevronLeft, ChevronRight, Clock, LocateFixed, Pause, Play, RotateCcw, X } from "lucide-react";
 import { useTimeSelector } from "../hooks/useTimeline";
@@ -9,12 +10,12 @@ const mmddhhmm = (time: number) => new Date(time).toISOString().slice(5, 16).rep
 
 /** Header badge: "LIVE · 05:40 UTC", or a button back to live while viewing another moment. */
 export function TimeIndicator({ timeline }: { timeline: TimeController }) {
-  const label = useTimeSelector(timeline, (s) => (s.live ? "LIVE · " + hhmm(s.time) : (s.playing ? "回放 · " : "回看 · ") + mmddhhmm(s.time)) + " UTC");
+  const label = useTimeSelector(timeline, (s) => (s.live ? "LIVE · " + hhmm(s.time) : (s.playing ? t("回放 · ") : t("回看 · ")) + mmddhhmm(s.time)) + " UTC");
   const live = label.startsWith("LIVE");
-  if (live) return <span className="online-indicator"><span /> {label}</span>;
+  if (live) return <span className="online-indicator"><span /> {t(label)}</span>;
   return (
-    <button type="button" className="online-indicator replay" onClick={() => timeline.goLive()} title="回到实时" aria-label={label + "，点击回到实时"}>
-      <span /> {label}
+    <button type="button" className="online-indicator replay" onClick={() => timeline.goLive()} title={t("回到实时")} aria-label={t(label + "，点击回到实时")}>
+      <span /> {t(label)}
     </button>
   );
 }
@@ -22,7 +23,7 @@ export function TimeIndicator({ timeline }: { timeline: TimeController }) {
 /** "REAL-TIME SUNLIGHT · 05:40 UTC" above the globe. */
 export function SceneSubtitle({ timeline, dayNight }: { timeline: TimeController; dayNight: boolean }) {
   const label = useTimeSelector(timeline, (s) => (s.live ? (dayNight ? "REAL-TIME SUNLIGHT" : "EARTH OBSERVATION") + " · " + hhmm(s.time) : (dayNight ? "SUNLIGHT AT" : "VIEWING") + " · " + mmddhhmm(s.time)) + " UTC");
-  return <span className="map-subtitle">{label}</span>;
+  return <span className="map-subtitle">{t(label)}</span>;
 }
 
 interface DockProps {
@@ -40,9 +41,9 @@ export function GlobeDock({ timeline, open, onToggle, onReset, onLocateMe, locat
     <div className={"globe-dock" + (open ? " timebar-open" : "")}>
       {open && <TimeBar timeline={timeline} onClose={onToggle} />}
       <div className="dock-row">
-        <button className="dock-button" type="button" onClick={onReset} title="返回全球视角" aria-label="返回全球视角"><RotateCcw size={14} aria-hidden="true" /><span>重置视角</span></button>
-        <button className="dock-button" type="button" onClick={onLocateMe} disabled={locating} aria-label="显示我的位置"><LocateFixed size={14} aria-hidden="true" /><span>{locating ? "定位中…" : "我的位置"}</span></button>
-        {!open && <button className="dock-button" type="button" onClick={onToggle} aria-label="打开时间轴" aria-expanded={false}><Clock size={14} aria-hidden="true" /><span>时间轴</span></button>}
+        <button className="dock-button" type="button" onClick={onReset} title={t("返回全球视角")} aria-label={t("返回全球视角")}><RotateCcw size={14} aria-hidden="true" /><span>{t("重置视角")}</span></button>
+        <button className="dock-button" type="button" onClick={onLocateMe} disabled={locating} aria-label={t("显示我的位置")}><LocateFixed size={14} aria-hidden="true" /><span>{t(locating ? "定位中…" : "我的位置")}</span></button>
+        {!open && <button className="dock-button" type="button" onClick={onToggle} aria-label={t("打开时间轴")} aria-expanded={false}><Clock size={14} aria-hidden="true" /><span>{t("时间轴")}</span></button>}
       </div>
     </div>
   );
@@ -59,30 +60,30 @@ function TimeBar({ timeline, onClose }: { timeline: TimeController; onClose: () 
     timeline.step(event.key === "ArrowRight" ? 1 : -1);
   };
   return (
-    <section className="timebar glass-panel" aria-label="时间轴">
+    <section className="timebar glass-panel" aria-label={t("时间轴")}>
       <div className="timebar-head">
-        <span className={"timebar-mode" + (state.live ? " live" : "")}>{state.live ? "实时" : state.playing ? "回放中" : "回看"}</span>
-        <span className="timebar-time">{formatTime(state.time)}</span>
-        <span className="timebar-relative">{state.live ? "" : relativeTime(state.time, now)}</span>
-        {!state.live && <button type="button" className="timebar-live" onClick={() => timeline.goLive()}>回到实时</button>}
-        <button type="button" className="timebar-close" onClick={onClose} aria-label="收起时间轴"><X size={14} aria-hidden="true" /></button>
+        <span className={"timebar-mode" + (state.live ? " live" : "")}>{t(state.live ? "实时" : state.playing ? "回放中" : "回看")}</span>
+        <span className="timebar-time">{t(formatTime(state.time))}</span>
+        <span className="timebar-relative">{t(state.live ? "" : relativeTime(state.time, now, getLocale()))}</span>
+        {!state.live && <button type="button" className="timebar-live" onClick={() => timeline.goLive()}>{t("回到实时")}</button>}
+        <button type="button" className="timebar-close" onClick={onClose} aria-label={t("收起时间轴")}><X size={14} aria-hidden="true" /></button>
       </div>
       <div className="timebar-track">
-        <button type="button" className="timebar-step" onClick={() => timeline.step(-1)} aria-label="向前一步"><ChevronLeft {...ICON} /></button>
-        <button type="button" className="timebar-play" onClick={() => (state.playing ? timeline.pause() : timeline.play())} aria-label={state.playing ? "暂停回放" : "回放"}>
+        <button type="button" className="timebar-step" onClick={() => timeline.step(-1)} aria-label={t("向前一步")}><ChevronLeft {...ICON} /></button>
+        <button type="button" className="timebar-play" onClick={() => (state.playing ? timeline.pause() : timeline.play())} aria-label={t(state.playing ? "暂停回放" : "回放")}>
           {state.playing ? <Pause {...ICON} /> : <Play {...ICON} />}
         </button>
         <div className="timebar-slider">
-          <input type="range" min={start} max={end} step={60_000} value={Math.min(end, Math.max(start, state.time))} aria-label="选择时间" aria-valuetext={formatTime(state.time)}
+          <input type="range" min={start} max={end} step={60_000} value={Math.min(end, Math.max(start, state.time))} aria-label={t("选择时间")} aria-valuetext={formatTime(state.time)}
             onChange={(event) => timeline.setTime(Number(event.target.value))} onKeyDown={onKeyDown} />
           <i className="timebar-now" style={{ left: nowPercent + "%" }} aria-hidden="true" />
-          <div className="timebar-scale" aria-hidden="true"><span>{mmddhhmm(start).slice(0, 5)}</span><span className="timebar-scale-now" style={{ left: nowPercent + "%" }}>现在</span></div>
+          <div className="timebar-scale" aria-hidden="true"><span>{t(mmddhhmm(start).slice(0, 5))}</span><span className="timebar-scale-now" style={{ left: nowPercent + "%" }}>{t("现在")}</span></div>
         </div>
-        <button type="button" className="timebar-step" onClick={() => timeline.step(1)} aria-label="向后一步"><ChevronRight {...ICON} /></button>
+        <button type="button" className="timebar-step" onClick={() => timeline.step(1)} aria-label={t("向后一步")}><ChevronRight {...ICON} /></button>
       </div>
       <div className="timebar-foot">
-        <Segmented label="时间轴范围" options={TIME_SPANS} value={state.span} onChange={(span) => timeline.setSpan(span)} format={(span) => SPAN_LABELS[span]} />
-        <span className="timebar-hint">日照、地震、卫星、云图和每日影像跟随时间轴；极光只有实时预报。</span>
+        <Segmented label={t("时间轴范围")} options={TIME_SPANS} value={state.span} onChange={(span) => timeline.setSpan(span)} format={(span) => SPAN_LABELS[span]} />
+        <span className="timebar-hint">{t("日照、地震、卫星、云图和每日影像跟随时间轴；极光只有实时预报。")}</span>
       </div>
     </section>
   );

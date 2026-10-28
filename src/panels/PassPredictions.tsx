@@ -1,3 +1,4 @@
+import { t, localeTag } from "../i18n";
 import { useEffect, useState } from "react";
 import { Crosshair, LocateFixed } from "lucide-react";
 import type { OrbitRecord } from "../satelliteOrbits";
@@ -11,8 +12,8 @@ const MAX_LISTED = 8;
 type Source = { observer: Observer; label: string };
 type State = { state: "idle" } | { state: "ready"; source: Source; passes: SatellitePass[]; at: Date };
 
-const timeFormat = new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
-const clockFormat = new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+const timeFormat = { format: (value: number | Date) => new Intl.DateTimeFormat(localeTag(), { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(value) };
+const clockFormat = { format: (value: number | Date) => new Intl.DateTimeFormat(localeTag(), { hour: "2-digit", minute: "2-digit", hour12: false }).format(value) };
 
 interface Props {
   records: readonly OrbitRecord[];
@@ -49,18 +50,17 @@ export function PassPredictions({ records, selectedPoint, onSelectPass, location
   return (
     <div className="pass-predictions">
       <div className="pass-head">
-        <span>过境预测 · 未来 {HOURS} 小时</span>
+        <span>{t("过境预测 · 未来{0}小时", HOURS)}</span>
       </div>
       <div className="pass-sources">
-        <button type="button" onClick={() => void useMyLocation()}><LocateFixed size={13} aria-hidden="true" />使用我的位置</button>
-        <button type="button" disabled={!selectedPoint} onClick={() => selectedPoint && setSource({ observer: selectedPoint, label: "所选地点" })} title={selectedPoint ? undefined : "先在地球上点选一个地点"}>
-          <Crosshair size={13} aria-hidden="true" />使用所选地点
-        </button>
+        <button type="button" onClick={() => void useMyLocation()}><LocateFixed size={13} aria-hidden="true" />{t("使用我的位置")}</button>
+        <button type="button" disabled={!selectedPoint} onClick={() => selectedPoint && setSource({ observer: selectedPoint, label: "所选地点" })} title={t(selectedPoint ? undefined : "先在地球上点选一个地点")}>
+          <Crosshair size={13} aria-hidden="true" />{t("使用所选地点")}</button>
       </div>
-      {location.status === "locating" && <p className="layer-status" role="status">正在获取位置…</p>}
-      {location.status === "error" && <p className="layer-status" role="status">{location.message}也可以在地球上点选一个地点，再用「所选地点」。</p>}
+      {location.status === "locating" && <p className="layer-status" role="status">{t("正在获取位置…")}</p>}
+      {location.status === "error" && <p className="layer-status" role="status">{t("{0}也可以在地球上点选一个地点，再用「所选地点」。", t(location.message))}</p>}
       {result.state === "ready" && <PassList result={result} onSelectPass={onSelectPass} />}
-      <p className="layer-note">按本地时间显示，最低仰角 10°。「可目视」指观测地天已黑而卫星仍被阳光照亮。位置只在浏览器内计算，不会上传。</p>
+      <p className="layer-note">{t("按本地时间显示，最低仰角 10°。「可目视」指观测地天已黑而卫星仍被阳光照亮。位置只在浏览器内计算，不会上传。")}</p>
     </div>
   );
 }
@@ -71,18 +71,18 @@ function PassList({ result, onSelectPass }: { result: Extract<State, { state: "r
   return (
     <>
       <p className="layer-status" role="status">
-        {source.label}（{place(source.observer)}）· {passes.length ? "共 " + passes.length + " 次过境" : "未来 " + HOURS + " 小时内没有仰角 10° 以上的过境"}
-        <small> · 计算于 {clockFormat.format(at)}</small>
+        {t(source.label)}（{t(place(source.observer))}）· {t(passes.length ? "共 " + passes.length + " 次过境" : "未来 " + HOURS + " 小时内没有仰角 10° 以上的过境")}
+        <small>{t("· 计算于{0}", t(clockFormat.format(at)))}</small>
       </p>
       {shown.length > 0 && (
         <ol className="pass-list">
           {shown.map((pass) => (
             <li key={pass.id + pass.rise.getTime()}>
-              <button type="button" onClick={() => onSelectPass(pass, source.observer)} aria-label={pass.title + " " + timeFormat.format(pass.rise) + " 过境，在时间轴上查看"}>
-                <span className="pass-name">{pass.title.split(" · ")[0].split("（")[0]}</span>
-                {pass.visible && <span className="pass-visible">可目视</span>}
-                <span className="pass-time">{pass.inProgress ? "正在过境" : timeFormat.format(pass.rise)} – {clockFormat.format(pass.set)}</span>
-                <span className="pass-detail">最高 {Math.round(pass.maxElevation)}° · {directionLabel(pass)}</span>
+              <button type="button" onClick={() => onSelectPass(pass, source.observer)} aria-label={t(pass.title + " " + timeFormat.format(pass.rise) + " 过境，在时间轴上查看")}>
+                <span className="pass-name">{t(pass.title.split(" · ")[0].split("（")[0])}</span>
+                {pass.visible && <span className="pass-visible">{t("可目视")}</span>}
+                <span className="pass-time">{t(pass.inProgress ? "正在过境" : timeFormat.format(pass.rise))} – {t(clockFormat.format(pass.set))}</span>
+                <span className="pass-detail">{t("最高{0}° ·{1}", Math.round(pass.maxElevation), t(directionLabel(pass)))}</span>
               </button>
             </li>
           ))}
@@ -96,5 +96,5 @@ const place = ({ latitude, longitude }: Observer) =>
   Math.abs(latitude).toFixed(1) + "°" + (latitude >= 0 ? "N" : "S") + " " + Math.abs(longitude).toFixed(1) + "°" + (longitude >= 0 ? "E" : "W");
 
 function directionLabel(pass: SatellitePass): string {
-  return "从" + compassName(pass.riseAzimuth) + "到" + compassName(pass.setAzimuth);
+  return t("从") + compassName(pass.riseAzimuth) + t("到") + compassName(pass.setAzimuth);
 }
