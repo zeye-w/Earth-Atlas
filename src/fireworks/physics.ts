@@ -4,6 +4,8 @@ export type FireworkStyle = "bloom" | "ring" | "willow";
 export const FIREWORK_STYLES = ["bloom", "ring", "willow"] as const;
 
 export interface FireworkParticle {
+  /** Index into FireworkShow.bursts (finale shells share a start time). */
+  burst: number;
   start: number;
   life: number;
   east: number;
@@ -54,18 +56,30 @@ const PALETTES: Record<FireworkStyle, readonly (readonly [number, number, number
 
 const TWINKLE_SHARE: Record<FireworkStyle, number> = { bloom: 0.35, ring: 0.25, willow: 0.5 };
 
+/**
+ * Three solo shells walk across the sky (left, right, then high centre), then
+ * a finale fires three at once, lighter each so the budget stays bounded.
+ * Everything ends before 10 s: the space show repeats the show on that cycle.
+ */
+const LAYOUT = [
+  { start: 0.8, east: -120, north: -40, height: 290, share: 1 },
+  { start: 2.2, east: 130, north: 40, height: 320, share: 1 },
+  { start: 3.6, east: 0, north: -20, height: 370, share: 1 },
+  { start: 5.0, east: -175, north: 30, height: 270, share: 2 / 3 },
+  { start: 5.0, east: 0, north: 0, height: 410, share: 2 / 3 },
+  { start: 5.0, east: 175, north: -30, height: 300, share: 2 / 3 },
+] as const;
+
 /** A small fixed particle budget across all three volleys. */
 export function createFireworkShow(style: FireworkStyle, seed = 2026): FireworkShow {
   const rand = random(seed);
   const bursts: FireworkBurst[] = [];
   const particles: FireworkParticle[] = [];
-  const count = style === "willow" ? 72 : 84;
-  for (let volley = 0; volley < 3; volley++) {
-    const start = 0.8 + volley * 1.65;
-    const east = (volley - 1) * 150;
-    const north = (volley % 2 === 0 ? -1 : 1) * 50;
-    const height = 270 + rand() * 60;
-    bursts.push({ start, east, north, height });
+  for (const shell of LAYOUT) {
+    const { start, east, north } = shell;
+    const height = shell.height + (rand() - 0.5) * 40;
+    const burst = bursts.push({ start, east, north, height }) - 1;
+    const count = Math.round((style === "willow" ? 72 : 84) * shell.share);
     const angle = rand() * Math.PI;
     for (let i = 0; i < count; i++) {
       const azimuth = 2 * Math.PI * (i + rand() * 0.3) / count;
@@ -79,7 +93,7 @@ export function createFireworkShow(style: FireworkStyle, seed = 2026): FireworkS
       const vu = style === "ring" ? Math.sin(azimuth) * Math.cos(angle) * speed : z * speed;
       const palette = PALETTES[style];
       particles.push({
-        start,
+        burst, start,
         life: style === "willow" ? 4.0 + rand() * 0.8 : 2.7 + rand() * 0.8,
         east, north, height,
         ve, vn, vu: style === "willow" ? vu + 18 : vu,

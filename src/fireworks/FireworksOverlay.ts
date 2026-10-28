@@ -80,7 +80,7 @@ export class FireworksOverlay {
     const target = Cartesian3.fromDegrees(site.longitude, site.latitude, experience === "rocket" ? 44 : 300);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.viewer.camera.flyToBoundingSphere(new BoundingSphere(target, experience === "rocket" ? 120 : 500), {
-      offset: new HeadingPitchRange(0, experience === "rocket" ? -0.025 : CesiumMath.toRadians(5.7), experience === "rocket" ? 650 : 1800),
+      offset: new HeadingPitchRange(0, experience === "rocket" ? -0.025 : CesiumMath.toRadians(5.7), experience === "rocket" ? 650 : 1300),
       duration: reducedMotion ? 0 : 1.6,
       complete: () => {
         if (this.generation !== token || this.disposed) return;

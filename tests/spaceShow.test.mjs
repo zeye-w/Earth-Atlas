@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { cameraRange, GIANT_SCALE, planCenter, planDuration, planError, siteDelay, siteDistance } from "../src/fireworks/spacePlan.ts";
+import { cameraRange, GIANT_SCALE, planCenter, planDuration, planError, siteDelay, siteDistance, SPACE_STAR_BUDGET, starStride } from "../src/fireworks/spacePlan.ts";
 import { createFireworkShow, particleAt } from "../src/fireworks/physics.ts";
 
 const beijing = { label: "北京", longitude: 116.4074, latitude: 39.9042, kind: "fireworks" };
@@ -36,7 +36,9 @@ test("framing widens for mobile, scales with regional extent and clamps zoom", (
 });
 test("giant fireworks occupy real three-dimensional distances while retaining a bounded particle budget", () => {
   const show = createFireworkShow("bloom");
-  assert.ok(show.particles.length <= 252);
+  // Each site draws every stride-th star, within the per-site budget.
+  assert.ok(Math.ceil(show.particles.length / starStride(show.particles.length, false)) <= SPACE_STAR_BUDGET);
+  assert.ok(Math.ceil(show.particles.length / starStride(show.particles.length, true)) <= SPACE_STAR_BUDGET / 2);
   assert.ok(show.bursts.every(b => b.height * GIANT_SCALE > 100_000));
   const p = show.particles[0];
   const initial = particleAt(p, p.start), later = particleAt(p, p.start + 1);

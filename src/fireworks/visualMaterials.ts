@@ -46,10 +46,10 @@ export function sparkMaterials(show: FireworkShow, style: FireworkStyle) {
   const entries = show.bursts.map((burst, i) => {
     const rgb = PALETTES[style][i % 3];
     const material = sparkRibbonMaterial(rgb);
-    return { rgb, material, start: burst.start, life: Math.max(...show.particles.filter(p => p.start === burst.start).map(p => p.life)) };
+    return { rgb, material, start: burst.start, life: Math.max(...show.particles.filter(p => p.burst === i).map(p => p.life)) };
   });
   const byParticle = new Map<FireworkParticle, typeof entries[number]>();
-  for (const p of show.particles) byParticle.set(p, entries.find(entry => entry.start === p.start)!);
+  for (const p of show.particles) byParticle.set(p, entries[p.burst]);
   return { entries, byParticle };
 }
 export function fadeSparks(entries: ReturnType<typeof sparkMaterials>["entries"], time: number) {

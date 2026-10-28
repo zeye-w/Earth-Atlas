@@ -7,15 +7,15 @@ import {
 import { getExperience } from "./experience.ts";
 import { createFireworkShow, particleAt, FIREWORK_STYLES, type FireworkParticle, type FireworkShow } from "./physics.ts";
 import { rocketFrame } from "./rocketFlight.ts";
-import { cameraRange, GIANT_SCALE, planCenter, planDuration, planError, siteDelay, siteDistance, SPACE_DURATION, type SpaceSite } from "./spacePlan.ts";
+import { cameraRange, GIANT_SCALE, starStride, planCenter, planDuration, planError, siteDelay, siteDistance, SPACE_DURATION, type SpaceSite } from "./spacePlan.ts";
 import { getSpaceState, subscribeSpace, updateSpace } from "./spaceState.ts";
 import { RENDER_PROFILES } from "../performance.ts";
 import { subscribeLocale, t } from "../i18n.ts";
-import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
+import { EFFECT_BLEND, effectTexture, siteLabelStyle } from "./visualTextures.ts";
 import { cometMaterial, fadeSparks, RibbonCollection, sparkMaterials } from "./visualMaterials.ts";
 import { sparkWake } from "./showVisuals.ts";
 
-interface Base { frame: Matrix4; site: SpaceSite; delay: number; ground: Cartesian3; label: Label }
+interface Base { frame: Matrix4; site: SpaceSite; delay: number; anchor: Cartesian3; label: Label }
 interface Fireworks extends Base {
   kind: "fireworks"; show: FireworkShow; materials: ReturnType<typeof sparkMaterials>;
   stars: { particle: FireworkParticle; head: PointPrimitive; glow: Billboard; wake: Polyline; rgb: readonly [number, number, number] }[];
@@ -49,8 +49,6 @@ export class SpaceShow {
   private removeSettings: () => void;
   private removeLocale: () => void;
   private cameraKey = "";
-  private skyBox: Viewer["scene"]["skyBox"] | undefined;
-  private previousStars: boolean | undefined;
 
   constructor(viewer: Viewer, onRunning: (running: boolean) => void) {
     this.viewer = viewer; this.onRunning = onRunning;
@@ -74,9 +72,6 @@ export class SpaceShow {
     const settings = getSpaceState(), error = planError(settings.sites);
     if (error || this.disposed || this.viewer.isDestroyed()) { if (error) updateSpace({ message: error }); return false; }
     this.stop();
-    this.skyBox = this.viewer.scene.skyBox;
-    this.previousStars = this.skyBox?.show;
-    if (this.skyBox) this.skyBox.show = false;
     const generation = ++this.generation;
     this.sites = settings.sites.map(site => ({ ...site }));
     this.duration = planDuration(this.sites.length, settings.relay);
@@ -88,20 +83,22 @@ export class SpaceShow {
     const point = () => this.points!.add({ show: false, pixelSize: 3, disableDepthTestDistance: 0 });
     const glow = (comet = false) => { const b = this.glows!.add({ show: false, position: Cartesian3.ZERO }); b.setImage(comet ? "space-comet" : "space-halo", effectTexture(comet ? "comet" : "halo")); return b; };
     this.visuals = this.sites.map((site, index): Visual => {
-      const ground = Cartesian3.fromDegrees(site.longitude, site.latitude, 3000);
-      const base: Base = { site, ground, frame: Transforms.eastNorthUpToFixedFrame(Cartesian3.fromDegrees(site.longitude, site.latitude)),
-        delay: siteDelay(index, settings.relay), label: this.labels!.add({ position: ground, text: t(site.label) + " · " + t(site.kind === "rocket" ? "火箭" : "巨型烟花"),
-          font: "13px sans-serif", fillColor: Color.fromCssColorString("#fff1d4"), showBackground: true,
-          backgroundColor: Color.BLACK.withAlpha(0.6), show: false, disableDepthTestDistance: 0 }),
+      // Fireworks captions hang just below their bursts (100-370 km up), so the
+      // name and the show read together; rockets are captioned at the pad.
+      const anchor = Cartesian3.fromDegrees(site.longitude, site.latitude, site.kind === "rocket" ? 3000 : GIANT_SCALE * 120);
+      const base: Base = { site, anchor, frame: Transforms.eastNorthUpToFixedFrame(Cartesian3.fromDegrees(site.longitude, site.latitude)),
+        delay: siteDelay(index, settings.relay), label: this.labels!.add({ position: anchor, text: t(site.label) + " · " + t(site.kind === "rocket" ? "火箭" : "巨型烟花"),
+          ...siteLabelStyle(), show: false }),
       };
       if (site.kind === "rocket") return { ...base, kind: "rocket", head: point(), flame: glow(true), trail: this.trails!.add({ positions: [], width: eco ? 6 : 10,
         material: cometMaterial(), show: false }) };
       const style = FIREWORK_STYLES[index % FIREWORK_STYLES.length];
       const show = createFireworkShow(style, 2026 + index * 97), materials = sparkMaterials(show, style);
+      const stride = starStride(show.particles.length, eco);
       const ascentMaterial = cometMaterial();
       return { ...base, kind: "fireworks", show, materials, samples: eco ? 4 : 7, flashes: show.bursts.map(() => glow()),
         launches: show.bursts.map(() => ({ head: glow(true), trail: this.trails!.add({ positions: [], width: eco ? 3 : 5, material: ascentMaterial, show: false }) })),
-        stars: show.particles.filter((_, i) => i % (eco ? 2 : 1) === 0).map(particle => {
+        stars: show.particles.filter((_, i) => i % stride === 0).map(particle => {
           const tint = materials.byParticle.get(particle)!;
           return { particle, head: point(), glow: glow(), rgb: tint.rgb,
             wake: this.trails!.add({ positions: [], width: eco ? 2.5 : 4, material: tint.material, show: false }) };
@@ -174,7 +171,8 @@ export class SpaceShow {
     this.occluder.cameraPosition = this.viewer.camera.positionWC;
     for (const v of this.visuals) {
       const t = this.elapsed - v.delay;
-      v.label.show = this.occluder.isPointVisible(v.ground);
+      v.label.show = this.occluder.isPointVisible(v.anchor);
+      if (v.label.show) this.fadeLabel(v.label, t);
       if (v.kind === "rocket") this.drawRocket(v, t);
       else this.drawFireworks(v, t);
     }
@@ -183,6 +181,14 @@ export class SpaceShow {
     if (this.elapsed >= this.duration) this.stop(true);
     else this.schedule();
   };
+
+  /** Captions introduce each site, then step back once its show begins. */
+  private fadeLabel(label: Label, t: number) {
+    const alpha = Math.round((1 - 0.6 * Math.min(1, Math.max(0, (t - 3) / 1.5))) * 20) / 20;
+    if (label.fillColor.alpha === alpha) return;
+    label.fillColor = label.fillColor.withAlpha(alpha);
+    label.outlineColor = label.outlineColor.withAlpha(0.75 * alpha);
+  }
 
   private drawFireworks(v: Fireworks, t: number) {
     const showTime = Math.max(0, t - 3);
@@ -199,8 +205,8 @@ export class SpaceShow {
         head.pixelSize = 1.8 + p.heat * 1.5;
         head.color = this.rgba(rgb[0] + (1 - rgb[0]) * 0.6, rgb[1] + (1 - rgb[1]) * 0.6, rgb[2] + (1 - rgb[2]) * 0.6, p.opacity);
         glow.show = head.show; glow.position = world;
-        glow.width = glow.height = 14 + p.heat * 15;
-        glow.color = this.rgba(...rgb, p.opacity * 0.3);
+        glow.width = glow.height = 18 + p.heat * 22;
+        glow.color = this.rgba(...rgb, p.opacity * 0.36);
         const positions = sparkWake(particle, local, v.samples, 2.1).map(sample => this.position(v, sample.east * GIANT_SCALE, sample.north * GIANT_SCALE, sample.height * GIANT_SCALE, new Cartesian3()));
         wake.show = head.show && positions.length > 1;
         if (positions.length > 1) wake.positions = positions;
@@ -211,7 +217,7 @@ export class SpaceShow {
       const world = this.position(v, burst.east * GIANT_SCALE, burst.north * GIANT_SCALE, burst.height * GIANT_SCALE);
       flash.show = active && since >= 0 && since < 0.65 && this.occluder.isPointVisible(world);
       if (flash.show) {
-        flash.position = world; flash.width = flash.height = 90 + since * 100;
+        flash.position = world; flash.width = flash.height = 130 + since * 170;
         flash.color = this.rgba(...v.materials.entries[index].rgb, (1 - since / 0.65) * 0.55);
       }
       const ascent = local - burst.start + 0.78, launch = v.launches[index];
@@ -265,12 +271,10 @@ export class SpaceShow {
     document.removeEventListener("visibilitychange", this.onVisibility);
     if (this.pendingFlight && !this.viewer.isDestroyed()) { this.pendingFlight = false; this.viewer.camera.cancelFlight(); }
     if (!this.viewer.isDestroyed()) {
-      if (this.skyBox && this.skyBox === this.viewer.scene.skyBox && this.previousStars !== undefined) this.skyBox.show = this.previousStars;
       for (const collection of [this.points, this.glows, this.labels, this.trails]) if (collection) this.viewer.scene.primitives.remove(collection);
       this.viewer.scene.requestRender();
     }
     this.points = null; this.glows = null; this.labels = null; this.trails = null; this.visuals = [];
-    this.skyBox = undefined; this.previousStars = undefined;
     updateSpace({ phase: completed ? "complete" : "idle", elapsed: completed ? this.duration : 0 });
     if (!this.disposed) this.onRunning(false);
   }
