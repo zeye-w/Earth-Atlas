@@ -4,7 +4,7 @@ export type { Locale } from "./i18n/core.ts";
 
 const STORAGE_KEY = "terrascope.language";
 function initialLocale(): Locale {
-  if (typeof window === "undefined") return "zh";
+  if (typeof window === "undefined") return "en";
   let saved = null;
   try { saved = window.localStorage.getItem(STORAGE_KEY); } catch { /* Storage may be blocked. */ }
   return resolveLocale(window.location.search, saved);
@@ -15,18 +15,14 @@ export const getLocale = () => locale;
 export const localeTag = () => locale === "en" ? "en-US" : "zh-CN";
 export const t = (value: unknown, ...values: unknown[]) => translate(value, locale, ...values);
 export function subscribeLocale(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
-export function useLocale() { return useSyncExternalStore(subscribeLocale, getLocale, () => "zh" as Locale); }
+export function useLocale() { return useSyncExternalStore(subscribeLocale, getLocale, () => "en" as Locale); }
 function updateDocument() {
   if (typeof document === "undefined") return;
   document.documentElement.lang = locale === "en" ? "en" : "zh-CN";
   document.title = locale === "en" ? "TerraScope | Digital Earth" : "TerraScope | 数字地球";
   const description = document.querySelector('meta[name="description"]');
   description?.setAttribute("content", locale === "en" ? "Explore real-time day and night, satellite orbits, weather and surface geology on an interactive 3D Earth." : "TerraScope 数字地球 — 在三维地球上探索实时昼夜、卫星轨道与全球地质年代、岩性和地表地质单元。");
-  // The initial splash belongs to index.html, outside React's root.
-  const splash = document.getElementById("splash");
-  splash?.setAttribute("aria-label", locale === "en" ? "Loading TerraScope" : "正在加载 TerraScope");
-  const caption = splash?.querySelector(".splash-caption");
-  if (caption) caption.textContent = locale === "en" ? "Loading digital Earth…" : "正在加载数字地球…";
+  // The loading screen (index.html, see src/splash.ts) is English in both languages.
 }
 export function setLocale(next: Locale) {
   if (next !== "en" && next !== "zh") return;

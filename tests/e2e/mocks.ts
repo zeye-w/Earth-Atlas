@@ -93,7 +93,15 @@ function cloudProducts() {
   return [{ id: "globalir", times: [stamp] }];
 }
 
-export async function mockNetwork(page: Page): Promise<void> {
+/**
+ * The UI defaults to English; these suites address controls by their Chinese
+ * names, so pin Chinese unless a test asks otherwise (locale: null keeps the
+ * default) or the page already chose a language.
+ */
+export async function mockNetwork(page: Page, { locale = "zh" }: { locale?: "zh" | "en" | null } = {}): Promise<void> {
+  if (locale) await page.addInitScript((value) => {
+    try { if (!localStorage.getItem("terrascope.language")) localStorage.setItem("terrascope.language", value); } catch { /* storage blocked */ }
+  }, locale);
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.hostname === "localhost" && url.pathname === "/api/flights") return json(route, flightSnapshot());
