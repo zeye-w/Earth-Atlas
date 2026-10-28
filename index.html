@@ -1,35 +1,122 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#05070b" />
-    <meta name="description" content="TerraScope 数字地球 — 在三维地球上探索实时昼夜、卫星轨道与全球地质年代、岩性和地表地质单元。" />
+    <meta name="description" content="Explore real-time day and night, satellite orbits, weather and surface geology on an interactive 3D Earth." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>TerraScope | 数字地球</title>
+    <title>TerraScope | Digital Earth</title>
     <style>
-      /* Shown before the 4 MB app bundle arrives; removed once globe tiles load. */
+      /*
+       * Loading screen, shown while the 4 MB app bundle downloads (src/splash.ts
+       * drives the stages and removes it). No images or fonts: it must not slow
+       * the load it covers. The globe is drawn where the real globe will appear
+       * in the default view (diameter = 49.1% of the longer side for a 60° field
+       * of view from 17,000 km), lit from the real sun, so the 3D Earth takes
+       * over in place.
+       */
       html, body { margin:0; height:100%; background:#05070b; }
-      #splash { position:fixed; inset:0; z-index:100; display:grid; place-items:center; background:radial-gradient(ellipse at 50% 45%, #10141c 0%, #05070b 70%); color:#f4f5f7; font-family:-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; transition:opacity .6s ease, visibility .6s; }
+      #splash { --globe:49.1vmax; --sun-angle:0deg; --sun-x:60%; --lit-w:80%; --lit-h:110%;
+        position:fixed; inset:0; z-index:100; overflow:hidden; color:#f4f5f7;
+        font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        background:
+          radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.75), transparent),
+          radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,.6), transparent),
+          radial-gradient(1.5px 1.5px at 88% 64%, rgba(255,255,255,.7), transparent),
+          radial-gradient(1px 1px at 22% 82%, rgba(255,255,255,.55), transparent),
+          radial-gradient(1px 1px at 63% 90%, rgba(255,255,255,.5), transparent),
+          radial-gradient(1px 1px at 42% 8%, rgba(255,255,255,.55), transparent),
+          radial-gradient(1px 1px at 5% 55%, rgba(255,255,255,.5), transparent),
+          radial-gradient(1px 1px at 95% 30%, rgba(255,255,255,.5), transparent),
+          radial-gradient(ellipse at 50% 50%, #0b1220 0%, #05070b 70%);
+        transition:opacity .9s ease, visibility .9s; }
       #splash.done { opacity:0; visibility:hidden; }
-      .splash-inner { display:flex; flex-direction:column; align-items:center; gap:22px; }
-      .splash-globe { position:relative; width:84px; height:84px; border-radius:50%; background:radial-gradient(circle at 34% 30%, #fff 0%, #9aa3ad 38%, #1b1f25 78%); box-shadow:0 0 60px rgba(160,190,255,.25); }
-      .splash-globe:after { content:""; position:absolute; inset:-14px -30px; border:1.5px solid rgba(255,255,255,.55); border-radius:50%; transform:rotate(-22deg); animation:splash-orbit 2.4s linear infinite; border-top-color:transparent; }
+      #splash.done .splash-panel { opacity:0; transform:translate(-50%, 8px); }
+      .splash-globe { position:absolute; left:50%; top:50%; width:var(--globe); height:var(--globe); transform:translate(-50%, -50%); border-radius:50%;
+        /* Night side close to the real globe's, so the handoff does not jump. */
+        background:radial-gradient(circle at 50% 50%, #081a2e 0%, #050f1d 70%, #030812 100%);
+        box-shadow:0 0 calc(var(--globe) * .05) calc(var(--globe) * .012) rgba(110,170,255,.35), inset 0 0 calc(var(--globe) * .04) rgba(140,200,255,.35); overflow:hidden; }
+      /* Day side: an ellipse around the sun's point, rotated towards the sun. */
+      .splash-day { position:absolute; inset:0; transform:rotate(var(--sun-angle)); opacity:0; animation:splash-in 1.2s ease .1s forwards;
+        background:radial-gradient(ellipse var(--lit-w) var(--lit-h) at var(--sun-x) 50%, #7fb6ec 0%, #3f86c9 32%, #1d5a96 58%, rgba(13,42,72,0) 100%); }
+      /* Night side: scattered city lights, masked away from the sun. */
+      /* Three sparse dot lattices with co-prime spacings, so no grid shows. */
+      .splash-lights { position:absolute; inset:0; transform:rotate(var(--sun-angle)); opacity:.28;
+        background:
+          radial-gradient(circle, rgba(255,205,120,.9) 0 .6px, transparent 1.1px) 0 0 / 47px 31px,
+          radial-gradient(circle, rgba(255,190,100,.8) 0 .7px, transparent 1.2px) 13px 17px / 71px 53px,
+          radial-gradient(circle, rgba(255,220,150,.7) 0 .5px, transparent 1px) 29px 7px / 97px 79px;
+        -webkit-mask-image:radial-gradient(ellipse var(--lit-w) var(--lit-h) at var(--sun-x) 50%, transparent 55%, #000 95%);
+        mask-image:radial-gradient(ellipse var(--lit-w) var(--lit-h) at var(--sun-x) 50%, transparent 55%, #000 95%); }
+      .splash-orbit { position:absolute; left:50%; top:50%; width:calc(var(--globe) * 1.32); height:calc(var(--globe) * .42); transform:translate(-50%, -50%) rotate(-18deg);
+        border:1px solid rgba(190,215,255,.22); border-radius:50%; }
+      /* A satellite on the orbit, where motion paths are supported (no stray dot otherwise). */
+      @supports (offset-path: ellipse(50% 50% at 50% 50%)) {
+        .splash-orbit:after { content:""; position:absolute; left:0; top:0; width:6px; height:6px; border-radius:50%; background:#fff; box-shadow:0 0 10px 2px rgba(170,210,255,.9);
+          offset-path:ellipse(50% 50% at 50% 50%); offset-anchor:center; animation:splash-orbit 7s linear infinite; }
+      }
+      .splash-panel { position:absolute; left:50%; bottom:max(6vh, 28px); transform:translateX(-50%); width:min(360px, 84vw); display:flex; flex-direction:column; align-items:center; gap:10px;
+        padding:16px 20px 14px; border-radius:16px; background:rgba(5,9,16,.62); border:1px solid rgba(255,255,255,.08); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+        transition:opacity .4s ease, transform .4s ease; }
       .splash-name { font-size:15px; letter-spacing:.32em; padding-left:.32em; }
       .splash-name b { font-weight:700; }
-      .splash-caption { font-size:11px; letter-spacing:.24em; color:rgba(244,245,247,.5); }
-      @keyframes splash-orbit { to { transform:rotate(338deg); } }
-      @media (prefers-reduced-motion: reduce) { .splash-globe:after { animation:none; } }
+      .splash-tagline { font-size:12px; color:rgba(244,245,247,.66); text-align:center; line-height:1.4; }
+      .splash-progress { position:relative; width:100%; height:3px; margin-top:4px; border-radius:2px; background:rgba(255,255,255,.1); overflow:hidden; }
+      .splash-bar { position:absolute; inset:0 auto 0 0; width:var(--progress, 0%); border-radius:2px; background:linear-gradient(90deg, #5aa2ff, #8fe3ff); transition:width .5s ease; }
+      /* While the engine downloads there is no measurable progress: a sweep, not a fake number. */
+      #splash[data-stage="engine"] .splash-bar { width:28%; animation:splash-sweep 1.6s ease-in-out infinite; }
+      .splash-caption { font-size:11px; letter-spacing:.06em; color:rgba(244,245,247,.55); font-variant-numeric:tabular-nums; }
+      @keyframes splash-orbit { from { offset-distance:0%; } to { offset-distance:100%; } }
+      @keyframes splash-sweep { from { left:-28%; } to { left:100%; } }
+      @keyframes splash-in { to { opacity:1; } }
+      /* A shared link opens elsewhere: keep a smaller globe that does not pretend to line up. */
+      #splash.shared { --globe:min(36vmin, 320px); }
+      @media (prefers-reduced-motion: reduce) {
+        .splash-orbit:after, #splash[data-stage="engine"] .splash-bar { animation:none; }
+        .splash-day { animation:none; opacity:1; }
+      }
     </style>
   </head>
   <body>
-    <div id="splash" role="status" aria-label="正在加载 TerraScope">
-      <div class="splash-inner">
-        <div class="splash-globe"></div>
+    <div id="splash" role="status" aria-label="Loading TerraScope" data-stage="engine">
+      <div class="splash-globe" aria-hidden="true"><div class="splash-day"></div><div class="splash-lights"></div></div>
+      <div class="splash-orbit" aria-hidden="true"></div>
+      <div class="splash-panel">
         <div class="splash-name">TERRA<b>SCOPE</b></div>
-        <div class="splash-caption">正在加载数字地球…</div>
+        <div class="splash-tagline">Real-time satellites, weather and geology on a 3D Earth</div>
+        <div class="splash-progress" aria-hidden="true"><div class="splash-bar"></div></div>
+        <div class="splash-caption">Loading the 3D engine…</div>
       </div>
     </div>
+    <script>
+      // Light the loading globe from the real sun, as the 3D globe will be:
+      // the default view looks straight down on 48°N 2°E with north up.
+      (function () {
+        var splash = document.getElementById("splash");
+        if (!splash) return;
+        if (/(^|[#&])scene=/.test(location.hash)) { splash.classList.add("shared"); return; }
+        var rad = Math.PI / 180, now = new Date();
+        var day = (Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - Date.UTC(now.getUTCFullYear(), 0, 0)) / 864e5;
+        var hours = now.getUTCHours() + now.getUTCMinutes() / 60;
+        var dec = 23.44 * Math.sin(2 * Math.PI * (day - 81) / 365) * rad, sunLon = -15 * (hours - 12) * rad;
+        var sun = [Math.cos(dec) * Math.cos(sunLon), Math.cos(dec) * Math.sin(sunLon), Math.sin(dec)];
+        var lat = 48 * rad, lon = 2 * rad;
+        var east = [-Math.sin(lon), Math.cos(lon), 0];
+        var north = [-Math.sin(lat) * Math.cos(lon), -Math.sin(lat) * Math.sin(lon), Math.cos(lat)];
+        var up = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
+        var dot = function (a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+        var x = dot(sun, east), y = dot(sun, north), z = dot(sun, up), side = Math.hypot(x, y);
+        // In the frame rotated towards the sun, the day side spans from the
+        // sun's point (side) to the terminator (-z) along the sun's direction.
+        var reach = Math.max(0.05, side + z);
+        var s = splash.style;
+        s.setProperty("--sun-angle", (-Math.atan2(y, x) / rad).toFixed(1) + "deg");
+        s.setProperty("--sun-x", (50 + 50 * side).toFixed(1) + "%");
+        s.setProperty("--lit-w", (100 * reach).toFixed(1) + "%");
+        s.setProperty("--lit-h", (100 * Math.max(reach, Math.sqrt(Math.max(0, 1 - z * z)) + Math.max(0, z))).toFixed(1) + "%");
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

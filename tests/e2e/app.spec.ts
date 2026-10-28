@@ -200,7 +200,8 @@ test("solar wind drives the magnetopause and says when there is no data", async 
   await expect(panel).toContainText("450 km/s");
   await expect(panel).toContainText("Bz -6.0 nT（南向）");
   // 6 cm^-3 at 450 km/s is 2.03 nPa; with Bz -6 nT the Shue standoff is ~9.2 Earth radii.
-  await expect(panel).toContainText(/磁层顶距地心 9\.\d 个地球半径/);
+  // Since the English UI, the Chinese text joins the number without spaces.
+  await expect(panel).toContainText(/磁层顶距地心\s*9\.\d\s*个地球半径/);
   await panel.getByRole("button", { name: "拉远查看磁层" }).click();
   // The mocked feed covers two hours: a day earlier there is nothing to draw.
   await page.getByRole("button", { name: "打开时间轴" }).click();
@@ -222,7 +223,7 @@ test("atmosphere shells expose the exaggeration warning", async ({ page }) => {
   await page.getByRole("checkbox", { name: "大气分层" }).check({ force: true });
   await expect(layerPanel(page).locator(".shell-legend li")).toHaveCount(5);
   await page.getByRole("radio", { name: "放大 20×" }).click();
-  await expect(layerPanel(page)).toContainText("高度已放大 20 倍");
+  await expect(layerPanel(page)).toContainText(/高度已放大\s*20\s*倍/);
 });
 
 test("geographic labels are on by default and can be turned off", async ({ page }) => {

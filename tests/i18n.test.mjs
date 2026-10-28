@@ -5,12 +5,15 @@ import { ENGLISH } from '../src/locales/en.ts';
 import { relativeTime } from '../src/timeline.ts';
 import { localSearch, searchPlaces } from '../src/placeSearch.ts';
 
-test('explicit URL language takes priority; Chinese remains the default', () => {
+test("explicit URL language takes priority; English is the default", () => {
   assert.equal(resolveLocale('?lang=en', 'zh'), 'en');
   assert.equal(resolveLocale('?lang=zh', 'en'), 'zh');
   assert.equal(resolveLocale('', 'en'), 'en');
-  assert.equal(resolveLocale('?lang=unknown', null), 'zh');
-  assert.equal(resolveLocale('', 'unknown'), 'zh');
+  // English unless the visitor chose Chinese.
+  assert.equal(resolveLocale('', null), 'en');
+  assert.equal(resolveLocale('', 'zh'), 'zh');
+  assert.equal(resolveLocale('?lang=unknown', null), 'en');
+  assert.equal(resolveLocale('', 'unknown'), 'en');
 });
 test('UI text, geographic names and interpolated values translate without changing IDs', () => {
   assert.equal(translate('搜索地点', 'en'), 'Search places');

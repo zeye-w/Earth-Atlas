@@ -17,17 +17,11 @@ import {
   buildModuleUrl,
 } from "cesium";
 import type { SceneState } from "../sceneState";
+import { finishSplash, setSplashStage, TileProgress } from "../splash";
 
 // Western Europe, near northern France; shared by first load and reset view.
 export const HOME_VIEW = Cartesian3.fromDegrees(2, 48, 17000000);
 
-// Fade out the static splash from index.html once the first globe tiles are in.
-function dismissSplash() {
-  const splash = document.getElementById("splash");
-  if (!splash || splash.classList.contains("done")) return;
-  splash.classList.add("done");
-  window.setTimeout(() => splash.remove(), 700);
-}
 
 /**
  * Creates the Cesium viewer with the base scene (sky, sunlight, base
@@ -114,12 +108,16 @@ export function useViewer(
         const [lon, lat, height, heading, pitch, roll] = initialScene.camera;
         v.camera.setView({ destination: Cartesian3.fromDegrees(lon, lat, height), orientation: { heading, pitch, roll } });
       } else v.camera.setView({ destination: HOME_VIEW });
+      // The loading screen reports tile streaming, then fades out once the
+      // first tiles are in (or after 10 s at most).
+      setSplashStage("imagery");
+      const tileProgress = new TileProgress();
       const removeSplashListener = scene.postRender.addEventListener(() => {
         if (!scene.globe.tilesLoaded) return;
         removeSplashListener();
-        dismissSplash();
+        finishSplash();
       });
-      splashTimer = window.setTimeout(dismissSplash, 10_000);
+      splashTimer = window.setTimeout(finishSplash, 10_000);
 
       // Re-blurring the glass panels every frame while the globe moves or
       // streams tiles is the main source of jank; a class swaps them to a
@@ -128,6 +126,7 @@ export function useViewer(
       v.camera.moveEnd.addEventListener(() => shellRef.current?.classList.remove("is-moving"));
       scene.globe.tileLoadProgressEvent.addEventListener((queued: number) => {
         shellRef.current?.classList.toggle("is-loading", queued > 0);
+        setSplashStage("imagery", tileProgress.update(queued));
       });
 
       // Bundled Natural Earth II keeps a recognizable globe even offline; NASA
@@ -162,7 +161,7 @@ export function useViewer(
       };
     } catch (error) {
       setGlobeError(error instanceof Error ? error.message : "3D globe initialization failed");
-      dismissSplash();
+      finishSplash();
       if (created && !created.isDestroyed()) created.destroy();
       return undefined;
     }

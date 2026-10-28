@@ -3,7 +3,8 @@ export type Locale = "zh" | "en";
 export function resolveLocale(search: string, saved: string | null): Locale {
   const requested = new URLSearchParams(search).get("lang");
   if (requested === "en" || requested === "zh") return requested;
-  return saved === "en" ? "en" : "zh";
+  // English by default; Chinese for visitors who chose it (saved by the switch).
+  return saved === "zh" ? "zh" : "en";
 }
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // Data labels and assembled status messages keep their canonical source values.
