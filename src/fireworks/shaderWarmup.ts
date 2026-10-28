@@ -4,7 +4,7 @@ import {
 } from "cesium";
 import { cylinderGeometry, exhaustPrimitive, solidPrimitive } from "./rocketParts.ts";
 import { cometMaterial, exhaustMaterial, RibbonCollection, sparkRibbonMaterial } from "./visualMaterials.ts";
-import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
+import { EFFECT_BLEND, effectTexture, siteLabelStyle } from "./visualTextures.ts";
 
 /**
  * WebGL compiles a shader program the first time something draws with it, and
@@ -70,8 +70,7 @@ export class ShowShaderWarmup {
     billboards({ alignedAxis: Cartesian3.UNIT_Z });
 
     // Site labels in the space show (glyph and background programs).
-    add(new LabelCollection()).add({ position: spot, text: "·", font: "13px sans-serif", fillColor: faint, showBackground: true,
-      backgroundColor: faint, disableDepthTestDistance: 0 });
+    add(new LabelCollection()).add({ ...siteLabelStyle(), position: spot, text: "·", fillColor: faint, outlineColor: faint });
 
     // Spark and comet ribbons, fully faded.
     const ribbons = add(new RibbonCollection());

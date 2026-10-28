@@ -1,4 +1,14 @@
-import { BlendOption } from "cesium";
+import { BlendOption, Cartesian2, Color, LabelStyle } from "cesium";
+
+/** Site captions in the space show: outlined text under the site, no dark box
+ * competing with the fireworks. shaderWarmup.ts draws a label with this style. */
+export function siteLabelStyle() {
+  return {
+    font: "600 12px sans-serif", style: LabelStyle.FILL_AND_OUTLINE,
+    fillColor: Color.fromCssColorString("#fff1d4"), outlineColor: Color.BLACK.withAlpha(0.75), outlineWidth: 3,
+    pixelOffset: new Cartesian2(0, 16), disableDepthTestDistance: 0,
+  };
+}
 
 /**
  * Blend mode for every soft-edged effect billboard (halos, smoke). With

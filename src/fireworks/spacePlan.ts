@@ -3,6 +3,11 @@ export const MAX_SPACE_SITES = 6;
 export const MAX_REGION_METRES = 4_000_000;
 export const SPACE_DURATION = 48;
 export const GIANT_SCALE = 900;
+/** Stars drawn per site (up to six sites play at once); halved at eco quality. */
+export const SPACE_STAR_BUDGET = 252;
+export function starStride(count: number, eco: boolean): number {
+  return Math.max(1, Math.ceil(count / (eco ? SPACE_STAR_BUDGET / 2 : SPACE_STAR_BUDGET)));
+}
 const radius = 6_371_000;
 const rad = Math.PI / 180;
 export function siteDistance(a: SpaceSite, b: SpaceSite): number {

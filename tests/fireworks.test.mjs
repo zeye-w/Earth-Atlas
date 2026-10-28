@@ -2,11 +2,14 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createFireworkShow, particleAt } from "../src/fireworks/physics.ts";
 
-test("all firework styles have three bounded volleys and a finite lifetime", () => {
+test("all firework styles have three solo shells, a three-shell finale and a finite lifetime", () => {
   for (const style of ["bloom", "ring", "willow"]) {
     const show = createFireworkShow(style);
-    assert.equal(show.bursts.length, 3);
-    assert.ok(show.particles.length <= 3 * 84);
+    assert.equal(show.bursts.length, 6);
+    assert.equal(new Set(show.bursts.slice(3).map((b) => b.start)).size, 1, "the finale fires together");
+    assert.ok(show.bursts.slice(0, 3).every((b, i, solo) => i === 0 || b.start > solo[i - 1].start));
+    assert.ok(show.particles.length <= 3 * 84 + 3 * 56);
+    assert.ok(show.particles.every((p) => show.bursts[p.burst].start === p.start));
     assert.ok(show.duration > 6 && show.duration < 10);
     assert.ok(show.particles.every((p) => p.life > 2 && p.life < 5));
   }
