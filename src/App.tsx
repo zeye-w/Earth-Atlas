@@ -1,6 +1,6 @@
 import { t, useLocale } from "./i18n";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Cartesian2, Cartesian3, Cartographic, Ellipsoid, Math as CesiumMath, type Entity, type Viewer } from "cesium";
+import { BoundingSphere, Cartesian2, Cartesian3, Cartographic, Ellipsoid, HeadingPitchRange, Math as CesiumMath, type Entity, type Viewer } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { Move3d, X } from "lucide-react";
 import { QUAKE_ID_PREFIX, type Earthquake } from "./earthquakeData";
@@ -288,10 +288,16 @@ function App() {
     if (isNarrow()) setControlsOpen(false);
   };
 
-  const flyToLaunch = (launch: Launch) => {
+  // Selecting a launch shows its region from above; "Fly to the pad" then
+  // looks down at the pad itself, as close as the globe's zoom limit allows.
+  const flyToLaunch = (launch: Launch, close = false) => {
     takeCamera();
     setTrackedSatelliteId(null);
-    viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(launch.longitude, launch.latitude, 1_500_000), duration: 1.6 });
+    if (!viewer) return;
+    if (!close) { viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(launch.longitude, launch.latitude, 1_500_000), duration: 1.6 }); return; }
+    viewer.camera.flyToBoundingSphere(new BoundingSphere(Cartesian3.fromDegrees(launch.longitude, launch.latitude), 500), {
+      offset: new HeadingPitchRange(0, CesiumMath.toRadians(-45), 45_000), duration: 2,
+    });
   };
   const selectLaunch = (launch: Launch) => {
     if (selectedLaunch?.id === launch.id) { setSelectedLaunch(null); return; }
@@ -483,7 +489,7 @@ function App() {
           <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
           <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)} showRunning={fireworks.running}
-            onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch} />
+            onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch, true); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch} />
           <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
             onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
             onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}

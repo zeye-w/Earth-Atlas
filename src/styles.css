@@ -186,8 +186,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* While the globe moves or streams tiles the canvas repaints repeatedly;
    re-blurring the backdrop on every repaint is the expensive part, so swap
    to a solid tint until it settles. */
-.is-moving .glass-panel, .is-moving .header-actions, .is-moving .dock-button,
-.is-loading .glass-panel, .is-loading .header-actions, .is-loading .dock-button,
+.is-busy .glass-panel, .is-busy .header-actions, .is-busy .dock-button,
 .quality-eco .glass-panel, .quality-eco .header-actions, .quality-eco .dock-button {
   -webkit-backdrop-filter:none; backdrop-filter:none;
   background-color:var(--glass-tint-solid);

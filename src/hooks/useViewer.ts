@@ -18,6 +18,10 @@ import {
 } from "cesium";
 import type { SceneState } from "../sceneState";
 import { finishSplash, setSplashStage, TileProgress } from "../splash";
+import { createGlassCalm } from "../glassCalm";
+
+/** How long the globe must be still and loaded before the glass panels blur again. */
+const CALM_MS = 800;
 
 // Western Europe, near northern France; shared by first load and reset view.
 export const HOME_VIEW = Cartesian3.fromDegrees(2, 48, 17000000);
@@ -45,6 +49,7 @@ export function useViewer(
     let created: Viewer | null = null;
     let splashTimer: number | null = null;
     let detailTimer: number | null = null;
+    let glassCalm: ReturnType<typeof createGlassCalm> | null = null;
     try {
       created = new Viewer(mountRef.current, {
         baseLayer: false,
@@ -119,13 +124,13 @@ export function useViewer(
       });
       splashTimer = window.setTimeout(finishSplash, 10_000);
 
-      // Re-blurring the glass panels every frame while the globe moves or
-      // streams tiles is the main source of jank; a class swaps them to a
-      // solid tint meanwhile.
-      v.camera.moveStart.addEventListener(() => shellRef.current?.classList.add("is-moving"));
-      v.camera.moveEnd.addEventListener(() => shellRef.current?.classList.remove("is-moving"));
+      // Glass panels turn solid while the globe moves or streams (see glassCalm.ts).
+      glassCalm = createGlassCalm((busy) => shellRef.current?.classList.toggle("is-busy", busy), CALM_MS);
+      const calm = glassCalm;
+      v.camera.moveStart.addEventListener(() => calm.moving(true));
+      v.camera.moveEnd.addEventListener(() => calm.moving(false));
       scene.globe.tileLoadProgressEvent.addEventListener((queued: number) => {
-        shellRef.current?.classList.toggle("is-loading", queued > 0);
+        calm.loading(queued > 0);
         setSplashStage("imagery", tileProgress.update(queued));
       });
 
@@ -156,6 +161,7 @@ export function useViewer(
       return () => {
         if (splashTimer !== null) window.clearTimeout(splashTimer);
         if (detailTimer !== null) window.clearTimeout(detailTimer);
+        glassCalm?.dispose();
         setViewer(null);
         if (!v.isDestroyed()) v.destroy();
       };
