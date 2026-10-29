@@ -1,0 +1,25 @@
+/* Launch calendar (LaunchesGroup). */
+.launch-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; max-height:320px; overflow-y:auto; scrollbar-width:thin; }
+.launch-list li { border-radius:9px; border:1px solid transparent; background:rgba(255,255,255,.04); }
+.launch-list li.selected { background:var(--fill-strong); border-color:rgba(255,255,255,.18); }
+.launch-entry { width:100%; display:flex; flex-direction:column; gap:2px; padding:7px 8px; border:0; border-radius:9px; background:none; color:var(--text); text-align:left; cursor:pointer; }
+.launch-entry:hover { background:var(--fill-hover); }
+.launch-when { display:flex; align-items:center; gap:8px; }
+.launch-status { font-style:normal; font-size:9px; font-weight:600; letter-spacing:.04em; }
+.launch-status:before { content:""; display:inline-block; width:6px; height:6px; margin-right:5px; border-radius:50%; background:currentColor; vertical-align:1px; }
+.launch-clock { margin-left:auto; font-size:10px; font-variant-numeric:tabular-nums; color:var(--text); white-space:nowrap; }
+.launch-mission { font-size:11px; font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
+.launch-entry small { font-size:9px; line-height:1.45; color:var(--text-3); overflow-wrap:anywhere; }
+.launch-pad { display:flex; align-items:center; gap:4px; }
+.launch-pad svg { flex:none; }
+.launch-detail { display:flex; flex-direction:column; gap:7px; padding:2px 8px 9px; }
+.launch-detail dl { display:grid; grid-template-columns:auto 1fr; gap:3px 10px; margin:0; font-size:10px; }
+.launch-detail dt { color:var(--text-3); }
+.launch-detail dd { margin:0; color:var(--text-2); overflow-wrap:anywhere; }
+.launch-description { margin:0; font-size:10px; line-height:1.55; color:var(--text-2); }
+.launch-actions { display:grid; grid-template-columns:auto 1fr; gap:6px; }
+.launch-actions button { display:flex; align-items:center; justify-content:center; gap:5px; padding:7px 9px; white-space:nowrap; border-radius:9px; border:1px solid var(--line); background:var(--fill); color:var(--text); font-size:10px; cursor:pointer; }
+.launch-actions button:hover:not(:disabled) { background:var(--fill-hover); }
+.launch-actions button.primary { background:rgba(255,255,255,.9); border-color:transparent; color:#0b0c0f; font-weight:600; }
+.launch-actions button.primary:hover:not(:disabled) { background:#fff; }
+.launch-actions button:disabled { opacity:.45; cursor:not-allowed; }

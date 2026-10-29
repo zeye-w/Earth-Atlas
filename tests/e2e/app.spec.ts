@@ -316,7 +316,7 @@ test("manual quality choice turns off automatic quality", async ({ page }) => {
   await page.goto("/");
   await waitForGlobe(page);
   await page.getByRole("button", { name: "显示设置" }).click();
-  const auto = page.locator(".settings-toggle input");
+  const auto = page.getByRole("checkbox", { name: /自动调整画质/ });
   await expect(auto).toBeChecked();
   await page.getByRole("radio", { name: "高清" }).click();
   await expect(auto).not.toBeChecked();

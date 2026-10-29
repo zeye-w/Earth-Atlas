@@ -27,6 +27,10 @@ import { useSolarWind } from "./layers/useSolarWind";
 import { useWeather } from "./layers/useWeather";
 import { WeatherGroup } from "./panels/WeatherGroup";
 import { FireworksGroup } from "./panels/FireworksGroup";
+import { LaunchesGroup } from "./panels/LaunchesGroup";
+import { useLaunches } from "./layers/useLaunches";
+import { headlineLaunch, LAUNCH_PAD_ID_PREFIX, launchPads, type Launch } from "./launchData";
+import { updateExperience } from "./fireworks/experience";
 import { useFireworks } from "./fireworks/useFireworks";
 import type { FireworkSite } from "./fireworks/FireworksOverlay";
 import type { FireworkStyle } from "./fireworks/physics";
@@ -112,6 +116,9 @@ function App() {
   const [fireworksSite, setFireworksSite] = useState<FireworkSite>({ label: "北京", latitude: 39.9042, longitude: 116.4074 });
   const [fireworksStyle, setFireworksStyle] = useState<FireworkStyle>("bloom");
   const [fireworksPicking, setFireworksPicking] = useState(false);
+  const [selectedLaunch, setSelectedLaunch] = useState<Launch | null>(null);
+  // Bumped when a pad is picked on the globe, to open the launch list.
+  const [launchReveal, setLaunchReveal] = useState<number | null>(null);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -129,7 +136,7 @@ function App() {
     geology.query(latitude, longitude);
   };
 
-  // Clicks pick, in order: volcanoes, earthquakes, satellites, aircraft, then the ground.
+  // Clicks pick, in order: launch pads, volcanoes, earthquakes, satellites, aircraft, then the ground.
   const handleClick = (viewer: Viewer, position: Cartesian2) => {
     if (fireworksPicking) {
       const ground = viewer.camera.pickEllipsoid(position, Ellipsoid.WGS84);
@@ -143,6 +150,16 @@ function App() {
     if (tourOpen) return;
     const picked = viewer.scene.pick(position);
     const pickedId: unknown = picked && typeof picked === "object" && "id" in picked ? (picked as { id?: unknown }).id : undefined;
+    if (typeof pickedId === "string" && pickedId.startsWith(LAUNCH_PAD_ID_PREFIX)) {
+      const pad = launchPads(launches.snapshot?.launches ?? []).find((p) => p.id === pickedId.slice(LAUNCH_PAD_ID_PREFIX.length));
+      if (pad) {
+        setSelectedLaunch(headlineLaunch(pad, now()));
+        setLaunchReveal((n) => (n ?? 0) + 1);
+        setControlsOpen(true);
+        if (isNarrow()) setDetailsOpen(false);
+        return;
+      }
+    }
     if (typeof pickedId === "string" && pickedId.startsWith(VOLCANO_ID_PREFIX)) {
       const volcano = volcanoes.result?.byId.get(pickedId.slice(VOLCANO_ID_PREFIX.length));
       if (volcano) {
@@ -215,6 +232,8 @@ function App() {
   const flights = useFlights(viewer, layers.flights && live);
   const internet = useInternet(viewer, { cables: layers.cables, ixps: layers.ixps, dataCenters: layers.dataCenters, rootServers: layers.rootServers, dnsFlows: layers.dnsFlows }, live);
   const weather = useWeather(viewer, layers.temperature, live);
+  const launches = useLaunches(viewer, layers.launches, layers.launches ? selectedLaunch?.padId ?? null : null);
+  useEffect(() => { if (!layers.launches) setSelectedLaunch(null); }, [layers.launches]);
 
   // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
   useEffect(() => {
@@ -253,14 +272,33 @@ function App() {
     return () => document.removeEventListener("keydown", cancel);
   }, [fireworksPicking]);
 
-  const launchFireworks = () => {
+  const launchFireworks = (site = fireworksSite) => {
     closeTour();
     setTrackedSatelliteId(null);
     setDetailsOpen(false);
     setInternetSelection(null);
     setFireworksPicking(false);
-    if (!fireworks.launch(fireworksSite, fireworksStyle)) { setToast("三维地球尚未就绪，无法开始烟花表演"); return; }
+    if (!fireworks.launch(site, fireworksStyle)) { setToast("三维地球尚未就绪，无法开始烟花表演"); return; }
     if (isNarrow()) setControlsOpen(false);
+  };
+
+  const flyToLaunch = (launch: Launch) => {
+    closeTour();
+    setTrackedSatelliteId(null);
+    viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(launch.longitude, launch.latitude, 1_500_000), duration: 1.6 });
+  };
+  const selectLaunch = (launch: Launch) => {
+    if (selectedLaunch?.id === launch.id) { setSelectedLaunch(null); return; }
+    setSelectedLaunch(launch);
+    flyToLaunch(launch);
+  };
+  // The rocket show, played at a real launch's pad.
+  const watchLaunch = (launch: Launch) => {
+    const site = { label: launch.location || launch.pad, latitude: launch.latitude, longitude: launch.longitude };
+    setFireworksSite(site);
+    fireworks.stop();
+    updateExperience({ mode: "rocket", phase: "idle", altitude: 0, speed: 0, countdown: 3 });
+    launchFireworks(site);
   };
 
   // Recording mode (?record): a scripted capture API, see src/recording.ts.
@@ -438,10 +476,12 @@ function App() {
           <FlightsGroup layers={layers} setLayer={setPanelLayer} flights={flights.state} live={live} />
           <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
+          <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)}
+            onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch} />
           <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
             onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
             onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
-            onLaunch={launchFireworks} onStop={fireworks.stop} />
+            onLaunch={() => launchFireworks()} onStop={fireworks.stop} />
         </LayerPanel>
 
         <section className="globe-panel" aria-label={t("可交互三维数字地球")}>
@@ -467,7 +507,7 @@ function App() {
           <GlobeDock timeline={timeline} open={timebarOpen} onToggle={() => setTimebarOpen((open) => !open)} onReset={resetCamera}
             onLocateMe={() => void locateMe()} locating={userLocation.state.status === "locating"} />
           {!timebarOpen && !tourOpen && <div className="globe-guide"><span className="guide-orbit"><Move3d size={14} aria-hidden="true" /></span><span>{t(TOUCH ? "拖动旋转 · 双指缩放 · 轻点地表查询地质" : "拖动旋转 · 滚轮缩放 · 点击地表查询地质")}</span></div>}
-          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>}{(layers.cables || layers.dataCenters) && <> · Cables &amp; data centres: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors (ODbL)</>}{layers.ixps && <> · IXPs: <a href="https://www.wikidata.org/" target="_blank" rel="noreferrer">Wikidata</a> (CC0)</>}{(layers.rootServers || layers.dnsFlows) && <> · DNS: <a href="https://atlas.ripe.net/" target="_blank" rel="noreferrer">RIPE Atlas</a> / <a href="https://root-servers.org/" target="_blank" rel="noreferrer">root-servers.org</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
+          <div className="globe-attribution">Earthquakes: <a href="https://earthquake.usgs.gov/" target="_blank" rel="noreferrer">USGS</a> · Plates: Bird (2003) PB2002 / Nordpil, ODC-BY · Volcanoes: <a href="https://volcano.si.edu/" target="_blank" rel="noreferrer">Smithsonian GVP</a> · Satellite orbits: <a href="https://celestrak.org/" target="_blank" rel="noreferrer">CelesTrak</a> · Aurora: <a href="https://www.swpc.noaa.gov/products/aurora-30-minute-forecast" target="_blank" rel="noreferrer">NOAA SWPC</a>{layers.flights && <> · Flights: <a href="https://adsb.lol/" target="_blank" rel="noreferrer">adsb.lol</a> (ODbL) / <a href="https://opensky-network.org/" target="_blank" rel="noreferrer">OpenSky Network</a></>}{(layers.cables || layers.dataCenters) && <> · Cables &amp; data centres: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors (ODbL)</>}{layers.launches && <> · Launches: <a href="https://thespacedevs.com/llapi" target="_blank" rel="noreferrer">The Space Devs Launch Library 2</a></>}{layers.ixps && <> · IXPs: <a href="https://www.wikidata.org/" target="_blank" rel="noreferrer">Wikidata</a> (CC0)</>}{(layers.rootServers || layers.dnsFlows) && <> · DNS: <a href="https://atlas.ripe.net/" target="_blank" rel="noreferrer">RIPE Atlas</a> / <a href="https://root-servers.org/" target="_blank" rel="noreferrer">root-servers.org</a></>} · Basemap: <a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noreferrer">NASA Blue Marble / Black Marble</a> · Natural Earth · Geology: <a href="https://macrostrat.org/" target="_blank" rel="noreferrer">Macrostrat</a> · CC BY 4.0</div>
           {globeError && <div className="globe-error" role="alert">{t("三维地球启动失败：")}{t(globeError)}<p>{t("请检查 WebGL 支持和浏览器环境。")}</p></div>}
         </section>
 
