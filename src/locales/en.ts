@@ -1350,5 +1350,6 @@ export const ENGLISH: Readonly<Record<string, string>> = {
   "发射台": "Pad",
   "飞到发射场": "Fly to the pad",
   "观看虚拟发射": "Watch a virtual launch",
+  "停止虚拟发射": "Stop the virtual launch",
   "数据来源：The Space Devs · Launch Library 2。时间按你的本地时区显示，发射常会推迟，请以发射方公告为准。虚拟发射为艺术模拟，不代表这次任务的火箭外形或轨迹。": "Source: The Space Devs · Launch Library 2. Times are in your local time zone. Launches often slip; check the provider's announcements. The virtual launch is an artistic simulation and does not show this mission's rocket or trajectory."
 };

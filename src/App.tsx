@@ -272,6 +272,12 @@ function App() {
     return () => document.removeEventListener("keydown", cancel);
   }, [fireworksPicking]);
 
+  // Moving the camera on purpose ends a show, whose follow camera would pull it back.
+  const takeCamera = () => {
+    closeTour();
+    if (fireworks.running) fireworks.stop();
+  };
+
   const launchFireworks = (site = fireworksSite) => {
     closeTour();
     setTrackedSatelliteId(null);
@@ -283,7 +289,7 @@ function App() {
   };
 
   const flyToLaunch = (launch: Launch) => {
-    closeTour();
+    takeCamera();
     setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(launch.longitude, launch.latitude, 1_500_000), duration: 1.6 });
   };
@@ -359,7 +365,7 @@ function App() {
   // A predicted pass: highlight that satellite, move the timeline to its
   // highest point and look down on the observer.
   const showPass = (pass: SatellitePass, observer: Observer) => {
-    closeTour();
+    takeCamera();
     setSelectedSatelliteId(pass.id);
     setTrackedSatelliteId(null);
     timeline.setTime(pass.peak.getTime());
@@ -369,7 +375,7 @@ function App() {
 
   // Show (asking for permission the first time) and fly to the user's position.
   const locateMe = async () => {
-    closeTour();
+    takeCamera();
     setTrackedSatelliteId(null);
     const location = userLocation.location ?? await userLocation.locate();
     if (!location) return;
@@ -378,7 +384,7 @@ function App() {
 
   // Side view of the magnetosphere: Sun to one side, Earth in the middle.
   const viewMagnetosphere = () => {
-    closeTour();
+    takeCamera();
     if (!viewer) return;
     setTrackedSatelliteId(null);
     const state = timeline.getState();
@@ -397,13 +403,13 @@ function App() {
   };
 
   const flyTo = (region: Region) => {
-    closeTour();
+    takeCamera();
     setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(region.lon, region.lat, 3500000), duration: 1.8 });
   };
 
   const resetCamera = () => {
-    closeTour();
+    takeCamera();
     setTrackedSatelliteId(null);
     viewer?.camera.flyTo({ destination: HOME_VIEW, duration: 1.6 });
   };
@@ -418,7 +424,7 @@ function App() {
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={(place) => {
         if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
         track("search");
-        closeTour();
+        takeCamera();
         setTrackedSatelliteId(null);
         viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(place.longitude, place.latitude, place.height), duration: 1.5 });
         selectLocation(place.latitude, place.longitude);
@@ -476,8 +482,8 @@ function App() {
           <FlightsGroup layers={layers} setLayer={setPanelLayer} flights={flights.state} live={live} />
           <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
-          <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)}
-            onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch} />
+          <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)} showRunning={fireworks.running}
+            onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch} />
           <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
             onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
             onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
@@ -513,7 +519,7 @@ function App() {
 
         <Inspector live={live} onCenter={() => {
           if (!geology.coordinates) return;
-          closeTour();
+          takeCamera();
           setTrackedSatelliteId(null);
           viewer?.camera.flyTo({destination:Cartesian3.fromDegrees(geology.coordinates.longitude,geology.coordinates.latitude,1500000),duration:1.2});
         }} onCopy={async () => {
