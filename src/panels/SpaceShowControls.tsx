@@ -1,10 +1,11 @@
 import { t } from "../i18n";
 import { useSyncExternalStore } from "react";
-import { MapPin, RotateCcw, Sparkles, Square } from "lucide-react";
+import { MapPin, Rocket, RotateCcw, Sparkles, Square } from "lucide-react";
 import { Segmented } from "../ui/controls";
 import { addSpaceSite, getSpaceState, subscribeSpace, updateSpace } from "../fireworks/spaceState";
 import { planDuration, planError, siteKey, type SpaceSite } from "../fireworks/spacePlan";
 import type { FireworkSite } from "../fireworks/FireworksOverlay";
+import { LAUNCH_SITES } from "../launchSites";
 
 const PRESETS: Omit<SpaceSite, "kind">[] = [
   { label: "北京", longitude: 116.4074, latitude: 39.9042 },
@@ -29,15 +30,21 @@ export function SpaceShowControls({ site, picking, running, ready, onTogglePick,
         {PRESETS.map(preset => <button key={preset.label} type="button" disabled={state.sites.some(s => siteKey(s) === siteKey(preset)) || state.sites.length >= 6}
           onClick={() => addSpaceSite({ ...preset, kind: "fireworks" })}>{t(preset.label)}</button>)}
       </div>
-      <p className="fireworks-note">{t("选择同一区域，地点间距不超过 4000 km。更换区域可先移除现有地点。")}</p>
+      <select className="space-pad-select" aria-label={t("加入发射场（火箭）")} value="" disabled={state.sites.length >= 6}
+        onChange={event => {
+          const pad = LAUNCH_SITES.find(site => site.id === event.target.value);
+          if (pad) addSpaceSite({ label: pad.label, longitude: pad.longitude, latitude: pad.latitude, kind: "rocket" });
+        }}>
+        <option value="">{t("＋ 加入发射场（火箭）")}</option>
+        {LAUNCH_SITES.map(pad => <option key={pad.id} value={pad.id} disabled={state.sites.some(s => siteKey(s) === siteKey(pad))}>{t(pad.label)} · {pad.pad}</option>)}
+      </select>
+      <p className="fireworks-note">{t("城市放烟花，火箭只从真实发射场升空。选择同一区域，地点间距不超过 4000 km；更换区域可先移除现有地点。")}</p>
       <button type="button" className={"fireworks-pick" + (picking ? " active" : "")} onClick={onTogglePick} disabled={!ready} aria-pressed={picking}><MapPin size={13} aria-hidden="true" />{t(picking ? "点击地球选点（Esc 取消）" : "在地球上选取地点")}</button>
       <button type="button" className="fireworks-pick" disabled={picking || state.sites.length >= 6} onClick={() => addSpaceSite({ ...site, kind: "fireworks" })}>{t("加入当前选点：{0}", t(site.label))}</button>
       <ul className="space-site-list">
         {state.sites.map((s, index) => <li key={siteKey(s)}>
           <span className="space-site-name">{t(s.label)}<small>{t(state.relay ? `接力 +${index * 3} 秒` : "同步开始")}</small></span>
-          <select aria-label={t("{0}表演类型", t(s.label))} value={s.kind} onChange={event => updateSpace({ sites: state.sites.map((item, i) => i === index ? { ...item, kind: event.target.value as SpaceSite["kind"] } : item) })}>
-            <option value="fireworks">{t("巨型烟花")}</option><option value="rocket">{t("火箭")}</option>
-          </select>
+          <span className="space-site-kind">{s.kind === "rocket" ? <Rocket size={12} aria-hidden="true" /> : <Sparkles size={12} aria-hidden="true" />}{t(s.kind === "rocket" ? "火箭" : "巨型烟花")}</span>
           <button type="button" className="space-remove" aria-label={t("移除{0}", t(s.label))} onClick={() => remove(siteKey(s))}>×</button>
         </li>)}
       </ul>

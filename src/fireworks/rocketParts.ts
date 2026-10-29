@@ -1,13 +1,18 @@
 import {
-  BoundingSphere, Color, ColorGeometryInstanceAttribute, ComponentDatatype, CylinderGeometry, Geometry, GeometryAttribute,
+  BoundingSphere, BoxGeometry, Cartesian3, Color, ColorGeometryInstanceAttribute, ComponentDatatype, CylinderGeometry, Geometry, GeometryAttribute,
   GeometryAttributes, GeometryInstance, GeometryPipeline, Material, MaterialAppearance, Matrix4, PerInstanceColorAppearance,
-  Primitive, PrimitiveType, type Cartesian3,
+  Primitive, PrimitiveType,
 } from "cesium";
 
 /** Rocket geometry and appearances, shared by RocketOverlay and shaderWarmup.ts:
  * the warm-up only helps if it builds exactly the same shader programs. */
 export function cylinderGeometry(length: number, topRadius: number, bottomRadius: number) {
   return new CylinderGeometry({ length, topRadius, bottomRadius, slices: 32, vertexFormat: PerInstanceColorAppearance.VERTEX_FORMAT });
+}
+
+/** A box `x` × `y` × `z` metres (east, north, up), centred on its offset. Same vertex format as the cylinders, so the same shader. */
+export function boxGeometry(x: number, y: number, z: number) {
+  return BoxGeometry.fromDimensions({ dimensions: new Cartesian3(x, y, z), vertexFormat: PerInstanceColorAppearance.VERTEX_FORMAT });
 }
 
 /** A thin triangular fin with real volume and normals, rather than a flat decal. */
@@ -26,7 +31,7 @@ export function finGeometry(angle: number) {
   }));
 }
 
-export interface SolidPart { geometry: Geometry | CylinderGeometry; offset: Cartesian3; color: Color }
+export interface SolidPart { geometry: Geometry | CylinderGeometry | BoxGeometry; offset: Cartesian3; color: Color }
 
 /** Many coloured parts in one primitive (one draw call). Parts are baked in
  * world coordinates at `frame` (local east-north-up offsets): geometry left near

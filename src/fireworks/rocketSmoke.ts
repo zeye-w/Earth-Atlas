@@ -1,4 +1,7 @@
-import { rocketFrame, ROCKET_COUNTDOWN } from "./rocketFlight.ts";
+import { IGNITION_LEAD, rocketFrame, ROCKET_COUNTDOWN } from "./rocketFlight.ts";
+
+/** Show time at which the engines light (the rocket is still held down). */
+const IGNITION = ROCKET_COUNTDOWN - IGNITION_LEAD;
 
 /**
  * Exhaust smoke for the rocket show, in the pad's east-north-up metres. Pure
@@ -30,7 +33,7 @@ export function trailPuff(index: number, count: number, elapsed: number): Puff |
   // Puffs are evenly staggered and recycled: each lives TRAIL_SECONDS.
   const age = ((elapsed - index * TRAIL_SECONDS / count) % TRAIL_SECONDS + TRAIL_SECONDS) % TRAIL_SECONDS;
   const emitted = elapsed - age;
-  if (emitted < ROCKET_COUNTDOWN || !rocketFrame(elapsed).thrust) return null;
+  if (emitted < IGNITION || !rocketFrame(elapsed).thrust) return null;
   const source = rocketFrame(emitted);
   // Gas leaves backwards along the body axis and is stopped by the air.
   const axisEast = Math.sin(source.tilt), axisUp = Math.cos(source.tilt);
@@ -59,7 +62,7 @@ export function groundPuff(index: number, count: number, elapsed: number): Puff 
   if (!Number.isFinite(elapsed) || count <= 0) return null;
   // Emit while the flame reaches the pad; denser at ignition.
   const fraction = (index + hash(index, 5) * 0.8) / count;
-  const emitted = ROCKET_COUNTDOWN + IGNITION_WINDOW * fraction * fraction;
+  const emitted = IGNITION + IGNITION_WINDOW * fraction * fraction;
   const age = elapsed - emitted;
   if (age < 0 || age >= GROUND_SECONDS) return null;
   const angle = hash(index, 6) * 2 * Math.PI;
@@ -84,5 +87,5 @@ export function groundPuff(index: number, count: number, elapsed: number): Puff 
 export const IGNITION_WINDOW = (() => {
   let t = ROCKET_COUNTDOWN;
   while (rocketFrame(t).altitude < GROUND_REACH_M && t < ROCKET_COUNTDOWN + 20) t += 0.05;
-  return t - ROCKET_COUNTDOWN;
+  return t - IGNITION;
 })();

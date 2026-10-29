@@ -97,8 +97,9 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
 // The rocket and space shows build Cesium primitives that only fail when drawn
 // (a bad geometry stops all rendering, possibly seconds into the show), so play
 // each one past ignition and pitch-over, watching for Cesium's render error.
-for (const [mode, playing] of [["虚拟火箭", /转向/], ["太空观演", /多点表演进行中/]] as const) {
-  test(`${mode} plays without stopping the renderer`, async ({ page }) => {
+// Rockets start from LAUNCHES (real launch sites); the space show from Experiences.
+for (const mode of ["rocket", "space"] as const) {
+  test(`${mode} show plays without stopping the renderer`, async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => { if (message.type() === "error" && message.text().includes("rendering")) errors.push(message.text()); });
@@ -106,14 +107,23 @@ for (const [mode, playing] of [["虚拟火箭", /转向/], ["太空观演", /多
     await page.goto("/");
     await waitForGlobe(page);
     const panel = page.locator("#earth-layer-panel");
-    const group = panel.locator("details.layer-group", { has: page.locator("summary", { hasText: "EXPERIENCES" }) });
+    const group = panel.locator("details.layer-group", { has: page.locator("summary", { hasText: mode === "rocket" ? "LAUNCHES" : "EXPERIENCES" }) });
     await group.locator(":scope > summary").click();
-    await group.getByRole("radio", { name: mode }).click();
-    await group.locator("button.fireworks-launch").click();
-    await expect(group).toContainText(playing, { timeout: 60_000 });
+    if (mode === "rocket") {
+      await group.getByRole("radio", { name: "发射场" }).click();
+      await group.getByRole("button", { name: "在文昌观看虚拟发射" }).click();
+      await expect(group.locator(".launch-show-phase")).toContainText(/转向/, { timeout: 90_000 });
+    } else {
+      await group.getByRole("radio", { name: "太空观演" }).click();
+      // Rockets in the space show come only from launch sites: no free choice of show type.
+      await expect(group.locator(".space-site-list select")).toHaveCount(0);
+      await expect(group.locator(".space-site-list")).toContainText("文昌");
+      await group.locator("button.fireworks-launch").click();
+      await expect(group).toContainText(/多点表演进行中/, { timeout: 60_000 });
+    }
     await page.waitForTimeout(5000);
     expect(errors).toEqual([]);
     await expect(page.locator(".cesium-widget-errorPanel")).toHaveCount(0, { timeout: 1000 });
-    await group.locator("button.fireworks-stop").click();
+    await group.getByRole("button", { name: mode === "rocket" ? "停止虚拟发射" : "停止太空表演" }).click();
   });
 }

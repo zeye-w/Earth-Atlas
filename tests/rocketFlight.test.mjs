@@ -1,16 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { rocketFrame, ROCKET_DURATION } from "../src/fireworks/rocketFlight.ts";
+import { IGNITION_LEAD, rocketFrame, ROCKET_DURATION } from "../src/fireworks/rocketFlight.ts";
 
-test("rocket countdown is stationary and ignition happens after three seconds", () => {
-  for (const t of [-1, 0, 1, 2.99]) {
+test("rocket counts down, lights its engines held on the pad, then lifts off at three seconds", () => {
+  for (const t of [-1, 0, 1, 1.49]) {
     const frame = rocketFrame(t);
     assert.equal(frame.phase, "countdown");
     assert.equal(frame.altitude, 0);
     assert.equal(frame.thrust, false);
   }
+  // Ignition IGNITION_LEAD seconds early: thrust on, still on the pad.
+  for (const t of [3 - IGNITION_LEAD, 2.5, 2.99]) {
+    const frame = rocketFrame(t);
+    assert.equal(frame.phase, "ignition");
+    assert.equal(frame.thrust, true);
+    assert.equal(frame.altitude, 0);
+  }
   assert.equal(rocketFrame(3).phase, "liftoff");
   assert.equal(rocketFrame(3).thrust, true);
+  assert.ok(rocketFrame(3.5).altitude > 0);
   assert.equal(rocketFrame(9).phase, "ascent");
 });
 test("the bounded illustrative trajectory rises continuously and turns smoothly", () => {

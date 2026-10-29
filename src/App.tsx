@@ -30,7 +30,9 @@ import { FireworksGroup } from "./panels/FireworksGroup";
 import { LaunchesGroup } from "./panels/LaunchesGroup";
 import { useLaunches } from "./layers/useLaunches";
 import { headlineLaunch, LAUNCH_PAD_ID_PREFIX, launchPads, type Launch } from "./launchData";
-import { updateExperience } from "./fireworks/experience";
+import { getExperience, updateExperience } from "./fireworks/experience";
+import { COUNTDOWN_SECONDS } from "./fireworks/launchSequence";
+import type { LaunchSite } from "./launchSites";
 import { useFireworks } from "./fireworks/useFireworks";
 import type { FireworkSite } from "./fireworks/FireworksOverlay";
 import type { FireworkStyle } from "./fireworks/physics";
@@ -117,6 +119,7 @@ function App() {
   const [fireworksStyle, setFireworksStyle] = useState<FireworkStyle>("bloom");
   const [fireworksPicking, setFireworksPicking] = useState(false);
   const [selectedLaunch, setSelectedLaunch] = useState<Launch | null>(null);
+  const [rocketSite, setRocketSite] = useState<FireworkSite | null>(null);
   // Bumped when a pad is picked on the globe, to open the launch list.
   const [launchReveal, setLaunchReveal] = useState<number | null>(null);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
@@ -278,7 +281,8 @@ function App() {
     if (fireworks.running) fireworks.stop();
   };
 
-  const launchFireworks = (site = fireworksSite) => {
+  // Plays the current experience (fireworks, rocket or space show) at `site`.
+  const startShow = (site: FireworkSite) => {
     closeTour();
     setTrackedSatelliteId(null);
     setDetailsOpen(false);
@@ -286,6 +290,11 @@ function App() {
     setFireworksPicking(false);
     if (!fireworks.launch(site, fireworksStyle)) { setToast("三维地球尚未就绪，无法开始烟花表演"); return; }
     if (isNarrow()) setControlsOpen(false);
+  };
+  // The Experiences panel plays fireworks and the space show; rockets start from LAUNCHES.
+  const launchFireworks = () => {
+    if (getExperience().mode === "rocket") updateExperience({ mode: "fireworks", phase: "idle" });
+    startShow(fireworksSite);
   };
 
   // Selecting a launch shows its region from above; "Fly to the pad" then
@@ -304,14 +313,15 @@ function App() {
     setSelectedLaunch(launch);
     flyToLaunch(launch);
   };
-  // The rocket show, played at a real launch's pad.
-  const watchLaunch = (launch: Launch) => {
-    const site = { label: launch.location || launch.pad, latitude: launch.latitude, longitude: launch.longitude };
-    setFireworksSite(site);
+  // The virtual launch, always at a real launch pad (the calendar's or a bundled one).
+  const launchRocket = (site: FireworkSite) => {
+    setRocketSite(site);
     fireworks.stop();
-    updateExperience({ mode: "rocket", phase: "idle", altitude: 0, speed: 0, countdown: 3 });
-    launchFireworks(site);
+    updateExperience({ mode: "rocket", phase: "idle", altitude: 0, speed: 0, countdown: COUNTDOWN_SECONDS });
+    startShow(site);
   };
+  const watchLaunch = (launch: Launch) => launchRocket({ label: launch.location || launch.pad, latitude: launch.latitude, longitude: launch.longitude });
+  const watchSite = (site: LaunchSite) => launchRocket({ label: site.label, latitude: site.latitude, longitude: site.longitude });
 
   // Recording mode (?record): a scripted capture API, see src/recording.ts.
   const telemetryOf = useRef(satellites.telemetryOf);
@@ -489,11 +499,12 @@ function App() {
           <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
           <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)} showRunning={fireworks.running}
-            onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch, true); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch} />
+            onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch, true); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch}
+            onWatchSite={watchSite} showSite={rocketSite?.label ?? ""} onReplay={() => { if (rocketSite) launchRocket(rocketSite); }} />
           <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
             onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
             onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
-            onLaunch={() => launchFireworks()} onStop={fireworks.stop} />
+            onLaunch={launchFireworks} onStop={fireworks.stop} />
         </LayerPanel>
 
         <section className="globe-panel" aria-label={t("可交互三维数字地球")}>

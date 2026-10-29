@@ -23,7 +23,7 @@ English · [简体中文](README.zh-CN.md)
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
 - **Live flights** — thousands of aircraft from volunteer ADS-B receivers (adsb.lol), drawn at their altitude and heading, updated every minute.
-- **Launch calendar** — upcoming rocket launches worldwide with live countdowns, marked at their pads; play the virtual rocket show at any of them.
+- **Launches** — upcoming rocket launches worldwide with live countdowns, marked at their pads, plus a virtual launch at any real launch site: the rocket waits on a generic launch complex, vents, swings its service arms clear, counts down from T−10 and lifts off.
 - **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, pass predictions for your location, and a tracking camera with live telemetry beside the satellite.
 - **Internet infrastructure** — submarine cables and data centres mapped in OpenStreetMap, internet exchanges from Wikidata, and **measured** DNS queries: RIPE Atlas probes reaching the root-server instance that actually answered.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
