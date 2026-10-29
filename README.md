@@ -23,6 +23,7 @@ English · [简体中文](README.zh-CN.md)
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
 - **Live flights** — thousands of aircraft from volunteer ADS-B receivers (adsb.lol), drawn at their altitude and heading, updated every minute.
+- **Launch calendar** — upcoming rocket launches worldwide with live countdowns, marked at their pads; play the virtual rocket show at any of them.
 - **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, pass predictions for your location, and a tracking camera with live telemetry beside the satellite.
 - **Internet infrastructure** — submarine cables and data centres mapped in OpenStreetMap, internet exchanges from Wikidata, and **measured** DNS queries: RIPE Atlas probes reaching the root-server instance that actually answered.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
@@ -87,6 +88,7 @@ English · [简体中文](README.zh-CN.md)
 | Kp index | NOAA SWPC — planetary K-index | every 10 min |
 | Solar wind | NOAA SWPC — real-time solar wind (RTSW) at L1 | 1-minute data, refreshed every 10 min |
 | Live flights | adsb.lol — ADS-B / MLAT from volunteer receivers (ODbL); OpenSky Network fallback, via the site's Worker | every minute (live only) |
+| Launch calendar | The Space Devs — Launch Library 2, fetched by the [Update launch calendar](.github/workflows/launch-data.yml) workflow and served at `/api/launches` | every 2 hours |
 | Earthquakes | USGS — GeoJSON summary feeds | every 5 min |
 | Volcanoes | Smithsonian GVP — *Volcanoes of the World* | bundled, refreshed by workflow |
 | Plate boundaries | Bird (2003) PB2002, GeoJSON by Hugo Ahlenius / Nordpil (ODC-BY) | bundled |
@@ -135,7 +137,7 @@ scripts/             data generators, live smoke tests, screenshot capture
 tests/               unit tests (node:test) and e2e tests (Playwright)
 ```
 
-Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights` and serves measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
+Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights`, serves the launch calendar at `/api/launches` and serves measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
 
 ## Scientific notes
 

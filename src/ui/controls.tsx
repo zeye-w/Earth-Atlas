@@ -1,5 +1,5 @@
 import { t } from "../i18n";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 export const ICON = { size: 17, strokeWidth: 1.7 } as const;
@@ -48,10 +48,12 @@ export function Segmented<T extends string | number>({ label, options, value, on
   );
 }
 
-/** Collapsible group; all start collapsed. */
-export function LayerGroup({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+/** Collapsible group; all start collapsed. A new non-null `reveal` value opens it (e.g. something picked on the globe). */
+export function LayerGroup({ title, subtitle, children, reveal }: { title: string; subtitle: string; children: ReactNode; reveal?: unknown }) {
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => { if (reveal != null && ref.current) ref.current.open = true; }, [reveal]);
   return (
-    <details className="layer-group">
+    <details className="layer-group" ref={ref}>
       <summary><span>{t(title)}<small>{t(subtitle)}</small></span><ChevronDown size={15} aria-hidden="true" /></summary>
       {children}
     </details>

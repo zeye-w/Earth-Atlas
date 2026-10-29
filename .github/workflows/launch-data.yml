@@ -1,0 +1,26 @@
+name: Update launch calendar
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 */2 * * *"
+permissions:
+  contents: write
+concurrency:
+  group: launch-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --experimental-strip-types scripts/fetch-launches.mjs launches.json
+      - name: Publish data asset without changing application branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view launch-data >/dev/null 2>&1 || gh release create launch-data --title 'Launch calendar data' --notes 'Upcoming launches from The Space Devs Launch Library 2, trimmed for /api/launches.' --latest=false
+          gh release upload launch-data launches.json --clobber

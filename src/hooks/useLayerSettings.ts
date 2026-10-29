@@ -7,7 +7,7 @@ import type { SatelliteSpeed } from "../satelliteOverlay";
 
 /** Every layer toggle: the shareable scene keys plus geographic labels and the atmosphere shells. */
 export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; trueColor: boolean; starlink: boolean; solarWind: boolean; flights: boolean; temperature: boolean; shells: boolean;
-  cables: boolean; ixps: boolean; dataCenters: boolean; rootServers: boolean; dnsFlows: boolean };
+  cables: boolean; ixps: boolean; dataCenters: boolean; rootServers: boolean; dnsFlows: boolean; launches: boolean };
 
 export interface LayerOptions {
   cloudOpacity: number;
@@ -28,7 +28,9 @@ function initialToggles(scene: SceneState | null): LayerToggles {
   };
   // Links shared before geographic labels existed keep showing none.
   return { ...(scene ? scene.layers : defaults), geoLabels: scene ? Boolean(scene.layers.geoLabels) : true, trueColor: Boolean(scene?.layers.trueColor), starlink: Boolean(scene?.layers.starlink), solarWind: Boolean(scene?.layers.solarWind), flights: Boolean(scene?.layers.flights), temperature: Boolean(scene?.layers.temperature), shells: Boolean(scene?.options.atmosphereShells),
-    cables: Boolean(scene?.layers.cables), ixps: Boolean(scene?.layers.ixps), dataCenters: Boolean(scene?.layers.dataCenters), rootServers: Boolean(scene?.layers.rootServers), dnsFlows: Boolean(scene?.layers.dnsFlows) };
+    cables: Boolean(scene?.layers.cables), ixps: Boolean(scene?.layers.ixps), dataCenters: Boolean(scene?.layers.dataCenters), rootServers: Boolean(scene?.layers.rootServers), dnsFlows: Boolean(scene?.layers.dnsFlows),
+    // The launch calendar is not part of shared scenes.
+    launches: false };
 }
 
 function initialOptions(scene: SceneState | null): LayerOptions {
