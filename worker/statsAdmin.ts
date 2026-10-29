@@ -5,25 +5,69 @@ export const ADMIN_HTML = `<!doctype html>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>TerraScope · 统计后台</title>
 <style>
-  :root { color-scheme: dark; --bg:#05070b; --card:#0e131c; --line:rgba(255,255,255,.09); --text:#eef2f8; --dim:rgba(238,242,248,.58); --a:#5aa2ff; --b:#8fe3ff; --c:#f6b26b; }
-  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
-  header { display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:18px 22px; border-bottom:1px solid var(--line); }
-  header h1 { margin:0; font-size:15px; letter-spacing:.24em; font-weight:500; } header h1 b { font-weight:700; }
+  :root {
+    color-scheme:light;
+    --bg:#f5f7fa; --card:#fff; --line:#dce3eb;
+    --text:#26364b; --dim:#627389; --a:#527fa6; --b:#4b988e; --c:#c49a59;
+    --grid:rgba(91,113,136,.16);
+  }
+  * { box-sizing:border-box; }
+  body {
+    min-height:100vh; margin:0; color:var(--text);
+    background:radial-gradient(ellipse at 10% 0%,#edf3f8 0%,transparent 43%),var(--bg);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header {
+    display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:18px max(22px,calc((100% - 1148px)/2));
+    border-bottom:1px solid var(--line); background:rgba(255,255,255,.92);
+    box-shadow:0 2px 12px rgba(38,54,75,.035);
+  }
+  header h1 { margin:0; font-size:15px; letter-spacing:.24em; font-weight:500; color:#30465c; }
+  header h1 b { font-weight:750; }
   header .sub { color:var(--dim); font-size:12px; } header .grow { flex:1; }
-  main { max-width:1180px; margin:0 auto; padding:20px 16px 48px; }
-  select, button, input { font:inherit; color:var(--text); background:#141a25; border:1px solid var(--line); border-radius:9px; padding:7px 11px; }
-  button { cursor:pointer; } button.primary { background:var(--a); border-color:var(--a); color:#03101f; font-weight:600; }
-  .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; }
-  .kpi .label { color:var(--dim); font-size:12px; } .kpi .value { font-size:26px; font-weight:600; margin-top:4px; font-variant-numeric:tabular-nums; } .kpi .note { color:var(--dim); font-size:11px; }
-  h2 { font-size:13px; font-weight:600; letter-spacing:.06em; color:var(--dim); margin:26px 0 10px; }
-  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:10px; }
-  table { width:100%; border-collapse:collapse; font-size:13px; } td, th { padding:6px 4px; border-bottom:1px solid var(--line); text-align:left; } th { color:var(--dim); font-weight:500; } td.n { text-align:right; font-variant-numeric:tabular-nums; }
-  .bar { height:6px; border-radius:3px; background:linear-gradient(90deg, var(--a), var(--b)); }
-  .legend { display:flex; gap:16px; font-size:12px; color:var(--dim); margin-bottom:6px; } .legend i { display:inline-block; width:10px; height:3px; margin-right:6px; vertical-align:middle; }
+  main { max-width:1180px; margin:0 auto; padding:26px 16px 56px; }
+  select,button,input {
+    min-height:36px; padding:7px 11px; border:1px solid #ccd7e3; border-radius:9px;
+    background:#fff; color:var(--text); font:inherit;
+    transition:border-color .16s,box-shadow .16s,background .16s;
+  }
+  button { cursor:pointer; }
+  button:hover,select:hover { border-color:#a8bacd; background:#f8fbfd; }
+  button:focus-visible,select:focus-visible,input:focus-visible { outline:2px solid var(--a); outline-offset:2px; }
+  button.primary { background:var(--a); border-color:var(--a); color:#fff; font-weight:600; }
+  button.primary:hover { background:#416e94; border-color:#416e94; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+  .card {
+    padding:16px 18px; border:1px solid var(--line); border-radius:15px;
+    background:var(--card); box-shadow:0 3px 18px rgba(43,69,92,.045);
+  }
+  .kpi .label { color:var(--dim); font-size:12px; }
+  .kpi .value { margin-top:5px; color:#253e56; font-size:27px; font-weight:650; letter-spacing:-.025em; font-variant-numeric:tabular-nums; }
+  .kpi .note { color:var(--dim); font-size:11px; }
+  h2 { margin:28px 0 11px; color:#4d6178; font-size:13px; font-weight:650; letter-spacing:.055em; }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); gap:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td,th { padding:9px 5px; border-bottom:1px solid #e9eef4; text-align:left; }
+  tr:last-child td { border-bottom:none; }
+  th { color:var(--dim); font-weight:600; }
+  td.n,th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  .bar { height:6px; border-radius:4px; background:linear-gradient(90deg,var(--a),var(--b)); }
+  .legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin-bottom:10px; color:var(--dim); font-size:12px; }
+  .legend i { display:inline-block; width:12px; height:4px; margin-right:6px; border-radius:3px; vertical-align:middle; }
   svg text { fill:var(--dim); font-size:10px; }
-  .login { max-width:380px; margin:12vh auto; } .login p { color:var(--dim); font-size:13px; } .login form { display:flex; gap:8px; } .login input { flex:1; }
-  .msg { color:#ff9c8a; font-size:13px; margin-top:10px; } .empty { color:var(--dim); font-size:13px; padding:8px 0; }
+  .login { max-width:410px; margin:11vh auto; padding:26px 27px; }
+  .login h2 { margin-top:0; color:var(--text); font-size:17px; letter-spacing:0; }
+  .login p { color:var(--dim); font-size:13px; line-height:1.8; }
+  .login form { display:flex; gap:9px; margin-top:18px; }
+  .login input { flex:1; min-width:0; }
+  .msg { margin-top:12px; color:#a54338; font-size:13px; }
+  .empty { padding:8px 0; color:var(--dim); font-size:13px; }
+  @media (max-width:540px) {
+    header { padding:15px 16px; } header .grow { flex-basis:100%; }
+    main { padding:18px 12px 40px; } .card { padding:14px; }
+    .login { margin:8vh auto; padding:22px; }
+  }
 </style>
 </head>
 <body>
@@ -58,7 +102,7 @@ export const ADMIN_HTML = `<!doctype html>
     var W = 1000, H = 220, L = 34, B = 22, step = days.length > 1 ? (W - L - 8) / (days.length - 1) : 0;
     var y = function (v) { return 8 + (H - B - 8) * (1 - v / max); };
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="每日趋势">';
-    [0, .5, 1].forEach(function (f) { var v = Math.round(max * f); svg += '<line x1="' + L + '" x2="' + W + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="rgba(255,255,255,.07)"/><text x="' + (L - 6) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + v + '</text>'; });
+    [0, .5, 1].forEach(function (f) { var v = Math.round(max * f); svg += '<line x1="' + L + '" x2="' + W + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--grid)"/><text x="' + (L - 6) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + v + '</text>'; });
     series.forEach(function (s) {
       var pts = days.map(function (day, i) { return (L + i * step).toFixed(1) + "," + y((byDay[day] || {})[s[0]] || 0).toFixed(1); }).join(" ");
       svg += '<polyline fill="none" stroke="' + s[1] + '" stroke-width="2" stroke-linejoin="round" points="' + pts + '"/>';
