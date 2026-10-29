@@ -5,6 +5,7 @@ import type { FireworkStyle } from "./physics";
 import { getExperience } from "./experience";
 import { SpaceShow } from "./SpaceShow";
 import { onShowWarmup, ShowShaderWarmup } from "./shaderWarmup";
+import { track } from "../analytics";
 
 export function useFireworks(viewer: Viewer | null) {
   const overlay = useRef<FireworksOverlay | null>(null);
@@ -37,6 +38,7 @@ export function useFireworks(viewer: Viewer | null) {
   }, [viewer]);
 
   const launch = useCallback((site: FireworkSite, style: FireworkStyle) => {
+    track("show", getExperience().mode);
     if (getExperience().mode === "space") {
       overlay.current?.stop(); overlay.current?.clearBackdrop();
       return space.current?.launch() ?? false;

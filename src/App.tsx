@@ -8,6 +8,7 @@ import { VOLCANO_ID_PREFIX, type Volcano } from "./volcanoData";
 import type { Observer, SatellitePass } from "./satellitePasses";
 import { RENDER_QUALITY_LABELS } from "./performance";
 import { readScene, sceneHash, type SceneState } from "./sceneState";
+import { track } from "./analytics";
 import { HOME_VIEW, useViewer } from "./hooks/useViewer";
 import { useRenderQuality } from "./hooks/useRenderQuality";
 import { sceneLayers, useLayerSettings } from "./hooks/useLayerSettings";
@@ -312,6 +313,7 @@ function App() {
     url.searchParams.set("lang", locale);
     try { url.hash = sceneHash(scene); } catch { setToast("当前视角无法分享，请调整视角后重试"); return; }
     setShareUrl(url.toString());
+    track("share");
     try { await navigator.clipboard.writeText(url.toString()); setToast("场景链接已复制"); }
     catch { setToast("请在分享框中手动复制链接"); }
   };
@@ -369,12 +371,15 @@ function App() {
   };
 
   useEffect(() => { if (trackedSatelliteId || livePhotoRecording) closeTour(); }, [trackedSatelliteId, livePhotoRecording, closeTour]);
-  const groupProps = { layers, setLayer, options, setOption };
+  // Layer switches in the panels count as feature use; tour and scene changes do not.
+  const setPanelLayer: typeof setLayer = (key, value) => { if (value) track("layer", key); setLayer(key, value); };
+  const groupProps = { layers, setLayer: setPanelLayer, options, setOption };
 
   return (
     <div ref={shellRef} className={"app-shell quality-" + render.quality + (fireworksPicking ? " fireworks-picking" : "") + (RECORDING ? " recording record-ui-" + recordUi : "")}>
       {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onSelect={(place) => {
         if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
+        track("search");
         closeTour();
         setTrackedSatelliteId(null);
         viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(place.longitude, place.latitude, place.height), duration: 1.5 });
@@ -403,13 +408,14 @@ function App() {
           setControlsOpen(false);
           setDetailsOpen(false);
           setTourOpen(true);
+          track("tour");
         }}
         clock={<TimeIndicator timeline={timeline} />}
         searchOpen={searchOpen}
         onToggleSearch={() => setSearchOpen((open) => !open)}
         onShare={() => void shareScene()}
         livePhotoOpen={livePhotoOpen}
-        onLivePhoto={() => {closeTour();setLivePhotoOpen(open => !open); setSearchOpen(false); setShareUrl(null);}}
+        onLivePhoto={() => {closeTour();if (!livePhotoOpen) track("live_photo");setLivePhotoOpen(open => !open); setSearchOpen(false); setShareUrl(null);}}
         controlsOpen={controlsOpen}
         onToggleControls={() => { setControlsOpen((open) => !open); if (isNarrow()) setDetailsOpen(false); }}
         detailsOpen={detailsOpen}
@@ -423,14 +429,14 @@ function App() {
       <main className="workspace">
         <LayerPanel open={controlsOpen} onClose={() => setControlsOpen(false)} onFlyTo={flyTo}>
           <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} solarWind={solarWind} onViewMagnetosphere={viewMagnetosphere} />
-          <WeatherGroup layers={layers} setLayer={setLayer} weather={weather} />
+          <WeatherGroup layers={layers} setLayer={setPanelLayer} weather={weather} />
           <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
             records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
             location={userLocation.state} onLocate={userLocation.locate} />
-          <FlightsGroup layers={layers} setLayer={setLayer} flights={flights.state} live={live} />
-          <InternetGroup layers={layers} setLayer={setLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
+          <FlightsGroup layers={layers} setLayer={setPanelLayer} flights={flights.state} live={live} />
+          <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
           <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
             onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
