@@ -128,6 +128,9 @@ test("a bundled launch site plays the virtual launch without the calendar feed",
   await layerPanel(page).getByRole("button", { name: "在酒泉观看虚拟发射" }).click();
   const show = layerPanel(page).locator(".launch-show");
   await expect(show).toContainText("酒泉");
+  // While the camera flies there, the panel says so; the countdown starts on arrival.
+  await expect(show.locator(".launch-show-phase")).toHaveText("镜头前往发射场…");
+  await expect(show.locator(".launch-show-phase")).toContainText("发射倒计时 10", { timeout: 60_000 });
   // Countdown, ignition held on the pad, then liftoff.
   await expect(show.locator(".launch-show-phase")).toContainText("主发动机点火", { timeout: 90_000 });
   await expect(show.locator(".launch-show-phase")).toContainText("起飞", { timeout: 30_000 });
