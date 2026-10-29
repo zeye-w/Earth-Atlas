@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, Sunrise, SlidersHorizontal } from "lucide-react";
 import { AUTO_QUALITY_MIN_FPS, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, type RenderQuality } from "../performance";
 import { ICON, Segmented } from "../ui/controls";
+import { analyticsOptedOut, setAnalyticsEnabled } from "../analytics";
 
 interface Props {
   tourOpen: boolean;
@@ -59,6 +60,7 @@ export function TopBar(props: Props) {
 }
 
 function SettingsMenu({ quality, onChooseQuality, autoQuality, onAutoQuality }: Props) {
+  const [statsOn, setStatsOn] = useState(() => !analyticsOptedOut());
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -104,6 +106,10 @@ function SettingsMenu({ quality, onChooseQuality, autoQuality, onAutoQuality }: 
           <label className="settings-toggle">
             <input type="checkbox" checked={autoQuality} onChange={(event) => onAutoQuality(event.target.checked)} />
             <span><strong>{t("自动调整画质")}</strong><small>{t(autoQuality ? "拖动时帧率持续低于 " + AUTO_QUALITY_MIN_FPS + " fps 会自动降低一档" : "已改为手动选择画质")}</small></span>
+          </label>
+          <label className="settings-toggle">
+            <input type="checkbox" checked={statsOn} onChange={(event) => { setAnalyticsEnabled(event.target.checked); setStatsOn(event.target.checked); }} />
+            <span><strong>{t("匿名使用统计")}</strong><small>{t(statsOn ? "只统计匿名的访问与功能使用次数，不收集个人信息" : "已关闭，不再发送任何统计")}</small></span>
           </label>
           <button type="button" className="settings-row" onClick={toggleFullscreen}>
             {fullscreen ? <Minimize {...ICON} aria-hidden="true" /> : <Maximize {...ICON} aria-hidden="true" />}

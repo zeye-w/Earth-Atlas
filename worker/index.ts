@@ -1,5 +1,6 @@
 import { weatherResponse } from "./weather.ts";
 import { dnsFlowsResponse, type DnsFlowsContext } from "./ripeAtlas.ts";
+import { adminPage, collectStats, statsSummary, type StatsEnv } from "./stats.ts";
 /**
  * Cloudflare Worker in front of the static site. Only /api/* reaches it
  * (see run_worker_first in wrangler.jsonc); everything else is served
@@ -7,13 +8,16 @@ import { dnsFlowsResponse, type DnsFlowsContext } from "./ripeAtlas.ts";
  *
  * GET /api/internet/dns-flows — measured root-server queries (worker/ripeAtlas.ts).
  *
+ * POST /api/stats/collect, GET /api/stats/summary, GET /admin — anonymous
+ * usage statistics and their dashboard (worker/stats.ts).
+ *
  * GET /api/flights — live aircraft positions from adsb.lol (OpenSky as a
  * fallback), trimmed to the fields the globe draws. One upstream request per
  * isolate every FRESH_MS, however many visitors ask.
  */
 import { ADSB_LOL_URL, FLIGHT_USER_AGENT, OPENSKY_URL, parseAdsbLol, parseOpenSky, type FlightSnapshot } from "../src/flightData.ts";
 
-interface Env {
+interface Env extends StatsEnv {
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
@@ -73,6 +77,9 @@ export default {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { Allow: "GET, HEAD" } });
       return dnsFlowsResponse(request, env.ASSETS, ctx);
     }
+    if (url.pathname === "/api/stats/collect") return collectStats(request, env, ctx);
+    if (url.pathname === "/api/stats/summary") return statsSummary(request, env);
+    if (url.pathname === "/admin" || url.pathname === "/admin/") return adminPage();
     if (url.pathname === "/api/flights") {
       if (request.method !== "GET" && request.method !== "HEAD") return new Response(null, { status: 405, headers: { Allow: "GET, HEAD" } });
       return flights();
