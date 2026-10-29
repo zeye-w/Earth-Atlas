@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { GROUND_SECONDS, groundPuff, hash, IGNITION_WINDOW, TRAIL_SECONDS, trailPuff } from "../src/fireworks/rocketSmoke.ts";
-import { ROCKET_COUNTDOWN, ROCKET_DURATION, rocketFrame } from "../src/fireworks/rocketFlight.ts";
+import { IGNITION_LEAD, ROCKET_COUNTDOWN, ROCKET_DURATION, rocketFrame } from "../src/fireworks/rocketFlight.ts";
 
 const all = (fn, count, t) => Array.from({ length: count }, (_, i) => fn(i, count, t)).filter(Boolean);
 
 test("smoke is deterministic and only exists after ignition", () => {
   for (let i = 0; i < 50; i++) { const h = hash(i, 3); assert.ok(h >= 0 && h < 1); assert.equal(h, hash(i, 3)); }
   assert.deepEqual(all(trailPuff, 140, 12.3), all(trailPuff, 140, 12.3));
-  assert.equal(all(trailPuff, 140, ROCKET_COUNTDOWN - 0.1).length, 0);
-  assert.equal(all(groundPuff, 56, ROCKET_COUNTDOWN - 0.1).length, 0);
+  // The engines light IGNITION_LEAD before liftoff; no smoke before that.
+  assert.equal(all(trailPuff, 140, ROCKET_COUNTDOWN - IGNITION_LEAD - 0.1).length, 0);
+  assert.equal(all(groundPuff, 56, ROCKET_COUNTDOWN - IGNITION_LEAD - 0.1).length, 0);
+  // Held down at ignition, the exhaust already billows around the pad.
+  assert.ok(all(groundPuff, 56, ROCKET_COUNTDOWN - 0.2).length > 0);
   assert.ok(all(trailPuff, 140, ROCKET_COUNTDOWN + 8).length > 60);
   assert.equal(all(trailPuff, 140, ROCKET_DURATION + 1).length, 0);
 });

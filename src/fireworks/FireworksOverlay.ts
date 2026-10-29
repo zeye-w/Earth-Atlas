@@ -10,6 +10,9 @@ import { EFFECT_BLEND, effectTexture } from "./visualTextures.ts";
 import { fadeSparks, RibbonCollection, sparkMaterials } from "./visualMaterials.ts";
 import { sparkWake } from "./showVisuals.ts";
 
+/** City buildings this close to a launch pad are hidden: the launch complex stands there. */
+const PAD_CLEARING_M = 320;
+
 export interface FireworkSite { longitude: number; latitude: number; label: string }
 
 const ROCKET_SPARKS = 4;
@@ -76,6 +79,11 @@ export class FireworksOverlay {
     cameraController.minimumZoomDistance = experience === "rocket" ? 40 : 100;
     this.pendingFlight = true;
     this.onRunning(true);
+    // The rocket stands on its pad before the camera gets there.
+    if (experience === "rocket") {
+      this.rocketShow = new RocketOverlay(this.viewer, () => this.stop());
+      this.rocketShow.prepare(site);
+    }
     const target = Cartesian3.fromDegrees(site.longitude, site.latitude, experience === "rocket" ? 44 : 300);
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     this.viewer.camera.flyToBoundingSphere(new BoundingSphere(target, experience === "rocket" ? 120 : 500), {
@@ -88,7 +96,7 @@ export class FireworksOverlay {
         // Load the city (buildings, detailed imagery, terrain height) only on
         // arrival: during the descent the globe is already streaming every
         // zoom level, and both together made the flight stutter.
-        void this.cityContext.show(site);
+        void this.cityContext.show(site, this.experience === "rocket" ? PAD_CLEARING_M : 0);
         this.start(site, style);
       },
       cancel: () => { if (this.generation === token) this.stop(); },
@@ -99,7 +107,7 @@ export class FireworksOverlay {
   private start(site: FireworkSite, style: FireworkStyle) {
     if (this.viewer.isDestroyed()) return;
     if (this.experience === "rocket") {
-      this.rocketShow = new RocketOverlay(this.viewer, () => this.stop());
+      this.rocketShow ??= new RocketOverlay(this.viewer, () => this.stop());
       this.rocketShow.start(site);
       return;
     }

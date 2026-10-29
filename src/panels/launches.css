@@ -23,3 +23,15 @@
 .launch-actions button.primary { background:rgba(255,255,255,.9); border-color:transparent; color:#0b0c0f; font-weight:600; }
 .launch-actions button.primary:hover:not(:disabled) { background:#fff; }
 .launch-actions button:disabled { opacity:.45; cursor:not-allowed; }
+.launch-tabs { margin-top:0; }
+.launch-sites { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:5px; }
+.launch-sites button { width:100%; display:flex; flex-direction:column; align-items:flex-start; gap:1px; padding:7px 9px; border-radius:9px; border:1px solid var(--line); background:var(--fill); color:var(--text); text-align:left; cursor:pointer; }
+.launch-sites button:hover:not(:disabled) { background:var(--fill-hover); }
+.launch-sites button:disabled { opacity:.45; cursor:not-allowed; }
+.launch-sites strong { font-size:11px; font-weight:600; }
+.launch-sites small { font-size:9px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+/* The virtual launch in progress, at the top of the group. */
+.launch-show { display:flex; flex-direction:column; gap:8px; margin:0 0 12px; padding:10px 11px 11px; border-radius:12px; border:1px solid rgba(255,190,140,.28); background:rgba(255,160,90,.07); }
+.launch-show-head { display:flex; align-items:center; gap:7px; font-size:11px; }
+.launch-show-head span { margin-left:auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-2); font-size:10px; }
+.launch-show-phase { margin:0; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }

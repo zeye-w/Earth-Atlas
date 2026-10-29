@@ -61,13 +61,16 @@ test("the launch calendar lists launches, counts down and plays a virtual launch
   await expect(detail).toContainText("E2E Pad 1");
 
   await detail.getByRole("button", { name: "观看虚拟发射" }).click();
-  await openGroup(page, "EXPERIENCES");
-  await expect(layerPanel(page).locator(".fireworks-site").first()).toContainText("E2E Cape·28.56°,-80.58°");
-  await expect(layerPanel(page).getByRole("button", { name: "停止火箭表演" })).toBeEnabled();
-  // The launch details can stop the show they started.
-  await detail.getByRole("button", { name: "停止虚拟发射" }).click();
-  await expect(layerPanel(page).getByRole("button", { name: "停止火箭表演" })).toBeDisabled();
+  // The show's status sits at the top of the group, at the launch's pad, counting down from T−10.
+  const show = layerPanel(page).locator(".launch-show");
+  await expect(show).toContainText("E2E Cape");
+  await expect(show.locator(".launch-show-phase")).toContainText(/发射倒计时 (10|9|8|7)/, { timeout: 60_000 });
+  await show.getByRole("button", { name: "停止虚拟发射" }).click();
+  await expect(show).toHaveCount(0);
   await expect(detail.getByRole("button", { name: "观看虚拟发射" })).toBeEnabled();
+  // Rockets no longer start from Experiences.
+  await openGroup(page, "EXPERIENCES");
+  await expect(layerPanel(page).getByRole("radio", { name: "虚拟火箭" })).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -79,13 +82,12 @@ test("reset view ends a virtual launch instead of being pulled back to the rocke
   await layerPanel(page).locator(".launch-entry").first().click();
   const detail = layerPanel(page).locator(".launch-detail");
   await detail.getByRole("button", { name: "观看虚拟发射" }).click();
-  await expect(detail.getByRole("button", { name: "停止虚拟发射" })).toBeVisible();
-  // Let the camera reach the pad and start following the rocket.
-  await page.waitForTimeout(6_000);
+  const show = layerPanel(page).locator(".launch-show");
+  // Wait until the camera has reached the pad and follows the rocket.
+  await expect(show.locator(".launch-show-phase")).toContainText("发射倒计时", { timeout: 60_000 });
+  await page.waitForTimeout(2_000);
   await page.getByRole("button", { name: "返回全球视角" }).click();
-  await expect(detail.getByRole("button", { name: "观看虚拟发射" })).toBeVisible();
-  await openGroup(page, "EXPERIENCES");
-  await expect(layerPanel(page).getByRole("button", { name: "停止火箭表演" })).toBeDisabled();
+  await expect(show).toHaveCount(0);
 });
 
 /** Earth-fixed position (metres) of a point on the WGS84 ellipsoid. */
@@ -113,6 +115,27 @@ test("selecting a launch shows its region and Fly to the pad then closes in on t
   await layerPanel(page).locator(".launch-detail").getByRole("button", { name: "飞到发射场" }).click();
   // ...and from about 30 km they are hundreds apart.
   await expect.poll(spread, { timeout: 20_000 }).toBeGreaterThan(300);
+});
+
+test("a bundled launch site plays the virtual launch without the calendar feed", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/api/launches", (route) => route.abort());
+  await page.goto("/");
+  await waitForGlobe(page);
+  await openGroup(page, "LAUNCHES");
+  await layerPanel(page).getByRole("radio", { name: "发射场" }).click();
+  await layerPanel(page).getByRole("button", { name: "在酒泉观看虚拟发射" }).click();
+  const show = layerPanel(page).locator(".launch-show");
+  await expect(show).toContainText("酒泉");
+  // While the camera flies there, the panel says so; the countdown starts on arrival.
+  await expect(show.locator(".launch-show-phase")).toHaveText("镜头前往发射场…");
+  await expect(show.locator(".launch-show-phase")).toContainText("发射倒计时 10", { timeout: 60_000 });
+  // Countdown, ignition held on the pad, then liftoff.
+  await expect(show.locator(".launch-show-phase")).toContainText("主发动机点火", { timeout: 90_000 });
+  await expect(show.locator(".launch-show-phase")).toContainText("起飞", { timeout: 30_000 });
+  await expect(page.locator(".cesium-widget-errorPanel")).toHaveCount(0);
+  expect(errors).toEqual([]);
 });
 
 test("an unavailable launch calendar says so instead of showing launches", async ({ page }) => {

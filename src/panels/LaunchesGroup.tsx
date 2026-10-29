@@ -1,13 +1,16 @@
 import { t, localeTag, useLocale } from "../i18n";
-import { useEffect, useRef, useState } from "react";
-import { MapPin, Rocket, Square } from "lucide-react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { MapPin, Rocket, RotateCcw, Square } from "lucide-react";
 import type { LayerToggles } from "../hooks/useLayerSettings";
 import type { LaunchState } from "../layers/useLaunches";
 import { countdown, type Launch, type LaunchStatus } from "../launchData";
 import { STATUS_COLORS } from "../launchOverlay";
 import { relativeTime } from "../timeline";
 import { now } from "../clock";
-import { ICON, LayerGroup, ToggleRow } from "../ui/controls";
+import { ICON, LayerGroup, Segmented, ToggleRow } from "../ui/controls";
+import { LAUNCH_SITES, type LaunchSite } from "../launchSites";
+import { getExperience, subscribeExperience, updateExperience, type RocketPhase } from "../fireworks/experience";
+import { requestShowWarmup } from "../fireworks/shaderWarmup";
 import "./launches.css";
 
 const STATUS_LABELS: Record<LaunchStatus, string> = {
@@ -30,6 +33,12 @@ function useTicker(): number {
   return time;
 }
 
+const PHASES: Record<RocketPhase, string> = {
+  idle: "镜头前往发射场…", countdown: "发射倒计时 {0}", ignition: "主发动机点火", liftoff: "起飞 · 垂直升空", ascent: "转向 · 持续爬升", complete: "发射表演结束",
+};
+
+type Tab = "upcoming" | "sites";
+
 interface Props {
   layers: LayerToggles;
   setLayer: (key: keyof LayerToggles, value: boolean) => void;
@@ -44,19 +53,73 @@ interface Props {
   onSelect: (launch: Launch) => void;
   onFlyTo: (launch: Launch) => void;
   onWatch: (launch: Launch) => void;
+  /** Play the virtual launch at a bundled launch site. */
+  onWatchSite: (site: LaunchSite) => void;
+  /** Where the current or last virtual launch plays. */
+  showSite: string;
+  onReplay: () => void;
 }
 
-export function LaunchesGroup({ layers, setLayer, launches, selectedId, reveal, ready, showRunning, onStopShow, onSelect, onFlyTo, onWatch }: Props) {
+export function LaunchesGroup({ layers, setLayer, launches, selectedId, reveal, ready, showRunning, onStopShow, onSelect, onFlyTo, onWatch, onWatchSite, showSite, onReplay }: Props) {
+  const [tab, setTab] = useState<Tab>("upcoming");
+  // A pad picked on the globe opens the upcoming launches.
+  useEffect(() => { if (reveal != null) setTab("upcoming"); }, [reveal]);
   return (
-    <LayerGroup title="LAUNCHES" subtitle={t("真实火箭发射日历")} reveal={reveal}>
-      <ToggleRow icon={<Rocket {...ICON} />} title={t("火箭发射日历")} caption={t("全球即将进行的真实发射 · Launch Library 2 · 每 2 小时更新")}
-        checked={layers.launches} onChange={(v) => setLayer("launches", v)} />
-      {layers.launches && <LaunchList launches={launches} selectedId={selectedId} ready={ready} showRunning={showRunning} onStopShow={onStopShow} onSelect={onSelect} onFlyTo={onFlyTo} onWatch={onWatch} />}
+    <LayerGroup title="LAUNCHES" subtitle={t("火箭发射 · 日历与虚拟发射")} reveal={reveal}>
+      <div onPointerEnter={requestShowWarmup} onFocus={requestShowWarmup}>
+        <ShowStatus running={showRunning} site={showSite} onStop={onStopShow} onReplay={onReplay} ready={ready} />
+        <ToggleRow icon={<Rocket {...ICON} />} title={t("火箭发射日历")} caption={t("全球即将进行的真实发射 · Launch Library 2 · 每 2 小时更新")}
+          checked={layers.launches} onChange={(v) => setLayer("launches", v)} />
+        <div className="layer-extra launch-tabs">
+          <Segmented label={t("发射视图")} options={["upcoming", "sites"] as const} value={tab} onChange={setTab}
+            format={(value) => value === "upcoming" ? t("即将发射") : t("发射场")} />
+        </div>
+        {tab === "upcoming" ? layers.launches
+          ? <LaunchList launches={launches} selectedId={selectedId} ready={ready} onSelect={onSelect} onFlyTo={onFlyTo} onWatch={onWatch} />
+          : <p className="layer-status">{t("打开「火箭发射日历」查看即将进行的真实发射，并在地球上标出发射场。")}</p>
+          : <SiteList ready={ready} running={showRunning} onWatch={onWatchSite} />}
+      </div>
     </LayerGroup>
   );
 }
 
-function LaunchList({ launches, selectedId, ready, showRunning, onStopShow, onSelect, onFlyTo, onWatch }: Omit<Props, "layers" | "setLayer" | "reveal">) {
+/** The virtual launch in progress: phase, simulated readings, camera and stop. */
+function ShowStatus({ running, site, onStop, onReplay, ready }: { running: boolean; site: string; onStop: () => void; onReplay: () => void; ready: boolean }) {
+  const experience = useSyncExternalStore(subscribeExperience, getExperience, getExperience);
+  if (experience.mode !== "rocket" || (!running && experience.phase !== "complete")) return null;
+  return (
+    <div className="launch-show" role="group" aria-label={t("虚拟发射")}>
+      <div className="launch-show-head"><Rocket size={14} aria-hidden="true" /><strong>{t("虚拟发射")}</strong><span>{t(site)}</span></div>
+      <p className="launch-show-phase" role="status" aria-live="polite">{t(PHASES[running ? experience.phase : "complete"], experience.countdown)}</p>
+      <div className="rocket-telemetry" aria-label={t("模拟飞行数据")} aria-live="off"><span>{t("模拟高度")}<strong>{t((experience.altitude / 1000).toFixed(1))} km</strong></span><span>{t("模拟速度")}<strong>{Math.round(experience.speed)} m/s</strong></span></div>
+      <label className="rocket-follow"><input type="checkbox" checked={experience.follow} onChange={event => updateExperience({ follow: event.target.checked })} />{t("跟随火箭镜头（关闭后可自由浏览）")}</label>
+      <div className="launch-actions">
+        <button type="button" disabled={!ready} onClick={onReplay}><RotateCcw size={12} aria-hidden="true" />{t("重新播放")}</button>
+        <button type="button" className="primary" disabled={!running} onClick={onStop}><Square size={12} aria-hidden="true" />{t("停止虚拟发射")}</button>
+      </div>
+    </div>
+  );
+}
+
+function SiteList({ ready, running, onWatch }: { ready: boolean; running: boolean; onWatch: (site: LaunchSite) => void }) {
+  return (
+    <div className="layer-extra launch-calendar">
+      <p className="layer-note">{t("选择一个发射场观看虚拟发射：火箭立在发射台上，10 秒倒计时、点火后升空，爬升至约 52 km，全程约 52 秒。火箭与发射场设施均为艺术模拟，不代表真实型号或场地布局。")}</p>
+      <ul className="launch-sites">
+        {LAUNCH_SITES.map((site) => (
+          <li key={site.id}>
+            <button type="button" disabled={!ready} onClick={() => onWatch(site)} aria-label={t("在{0}观看虚拟发射", t(site.label))}>
+              <strong>{t(site.label)}</strong><small>{site.pad}</small>
+            </button>
+          </li>
+        ))}
+      </ul>
+      {running && <p className="layer-note">{t("选择其他发射场会结束当前表演。")}</p>}
+    </div>
+  );
+}
+
+function LaunchList({ launches, selectedId, ready, onSelect, onFlyTo, onWatch }: Pick<Props, "launches" | "selectedId" | "ready" | "onSelect" | "onFlyTo" | "onWatch">) {
   const locale = useLocale();
   const at = useTicker();
   const selectedRef = useRef<HTMLLIElement>(null);
@@ -101,9 +164,7 @@ function LaunchList({ launches, selectedId, ready, showRunning, onStopShow, onSe
                     {launch.description && <p className="launch-description" lang="en">{launch.description}</p>}
                     <div className="launch-actions">
                       <button type="button" onClick={() => onFlyTo(launch)}><MapPin size={12} aria-hidden="true" />{t("飞到发射场")}</button>
-                      {showRunning
-                        ? <button type="button" className="primary" onClick={onStopShow}><Square size={12} aria-hidden="true" />{t("停止虚拟发射")}</button>
-                        : <button type="button" className="primary" disabled={!ready} onClick={() => onWatch(launch)}><Rocket size={12} aria-hidden="true" />{t("观看虚拟发射")}</button>}
+                      <button type="button" className="primary" disabled={!ready} onClick={() => onWatch(launch)}><Rocket size={12} aria-hidden="true" />{t("观看虚拟发射")}</button>
                     </div>
                   </div>
                 )}

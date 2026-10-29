@@ -36,3 +36,5 @@
 .space-camera input { flex-basis:100%; width:100%; accent-color:#cf8f81; margin:0; }
 .space-camera output { font-variant-numeric:tabular-nums; }
 .space-message { margin:0; color:#efc19b; font-size:10px; line-height:1.6; }
+.space-site-kind { display:inline-flex; align-items:center; gap:4px; flex:none; font-size:10px; color:var(--text-2); }
+.space-pad-select { width:100%; border:1px solid var(--line); border-radius:9px; padding:7px 6px; background:#1b1e24; color:var(--text); font-size:11px; }

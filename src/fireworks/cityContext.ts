@@ -1,6 +1,6 @@
 import {
-  Cartesian3, Cartographic, Cesium3DTileset, CesiumTerrainProvider, CustomShader,
-  Ellipsoid, ImageryLayer, IonImageryProvider, IonResource, Matrix3, Matrix4,
+  Cartesian3, Cartographic, Cesium3DTileset, Cesium3DTileStyle, CesiumTerrainProvider, CustomShader,
+  Ellipsoid, ImageryLayer, IonImageryProvider, IonResource, Math as CesiumMath, Matrix3, Matrix4,
   Rectangle, Simon1994PlanetaryPositions, Transforms, UniformType, VaryingType,
   sampleTerrainMostDetailed, type Viewer,
 } from "cesium";
@@ -66,6 +66,19 @@ function windowsShader(up: Cartesian3): CustomShader {
   });
 }
 
+/**
+ * Hide OSM buildings within `radius` metres of the site, using each
+ * building's own centre (the cesium#latitude/longitude feature properties).
+ */
+export function clearingStyle(site: Site, radius: number): Cesium3DTileStyle {
+  // Degrees of latitude and (scaled) longitude are about 111.32 km anywhere.
+  const scale = Math.cos(CesiumMath.toRadians(site.latitude));
+  const degrees = radius / 111_320;
+  return new Cesium3DTileStyle({
+    show: `distance(vec2(\${feature['cesium#longitude']} * ${scale.toFixed(6)}, \${feature['cesium#latitude']}), vec2(${(site.longitude * scale).toFixed(6)}, ${site.latitude.toFixed(6)})) > ${degrees.toFixed(7)}`,
+  });
+}
+
 /** Optional local backdrop. Never changes the viewer's terrain or global ion token. */
 export class CityContext {
   private viewer: Viewer;
@@ -81,7 +94,8 @@ export class CityContext {
     publish(canLoadCity(import.meta.env?.VITE_CESIUM_ION_TOKEN) ? "idle" : "disabled");
   }
 
-  async show(site: Site): Promise<void> {
+  /** `clearRadius` (metres) hides buildings around the site, e.g. where a launch complex stands. */
+  async show(site: Site, clearRadius = 0): Promise<void> {
     this.hide();
     const accessToken = import.meta.env?.VITE_CESIUM_ION_TOKEN?.trim();
     if (this.disposed || this.viewer.isDestroyed() || !canLoadCity(accessToken)) return;
@@ -127,6 +141,7 @@ export class CityContext {
       const up = Ellipsoid.WGS84.geodeticSurfaceNormalCartographic(Cartographic.fromDegrees(site.longitude, site.latitude), new Cartesian3());
       this.shader = windowsShader(up);
       tileset.customShader = this.shader;
+      if (clearRadius > 0) tileset.style = clearingStyle(site, clearRadius);
       this.tileset = this.viewer.scene.primitives.add(tileset);
       // Keep the provider's actual ion/Bing attribution, but display it in
       // Cesium's on-screen credit row rather than only the credits popup.
