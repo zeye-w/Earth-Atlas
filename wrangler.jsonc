@@ -10,5 +10,10 @@
     "not_found_handling": "404-page",
     "run_worker_first": ["/api/*", "/data/weather/latest.json", "/admin", "/admin/"]
   },
+  // Anonymous usage statistics behind /admin (worker/stats.ts). The dashboard
+  // passphrase is the STATS_TOKEN secret, set in the Cloudflare dashboard.
+  "d1_databases": [
+    { "binding": "STATS", "database_name": "earth-atlas-stats", "database_id": "c60d43c6-dd2d-4560-862b-ba300b00b61d" }
+  ],
   "observability": { "enabled": true }
 }
