@@ -1,4 +1,4 @@
-# Temporary diagnostic: removed once the hazard feeds are understood.
+# Temporary diagnostic: removed once the hazard feeds are understood (run 2).
 name: Probe hazard feeds
 on:
   push:
