@@ -1,0 +1,18 @@
+# Temporary diagnostic: removed once the hazard feeds are understood.
+name: Probe hazard feeds
+on:
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths: [".github/workflows/probe-hazards.yml", "scripts/probe-hazard-sources.mjs"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/probe-hazard-sources.mjs
