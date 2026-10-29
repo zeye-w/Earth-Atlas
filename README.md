@@ -23,6 +23,7 @@ English · [简体中文](README.zh-CN.md)
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
 - **Live flights** — thousands of aircraft from volunteer ADS-B receivers (adsb.lol), drawn at their altitude and heading, updated every minute.
+- **Natural hazards** — open natural events (wildfires, icebergs, dust, floods, volcanoes…) from NASA EONET, and tropical cyclones with their observed track coloured by intensity, forecast track, uncertainty cone and wind swaths from GDACS, replayable along the timeline. Western Pacific typhoons show their Chinese names; Chinese readers get the CMA grades, English readers Saffir–Simpson.
 - **Launches** — upcoming rocket launches worldwide with live countdowns, marked at their pads, plus a virtual launch at any real launch site: the rocket waits on a generic launch complex, vents, swings its service arms clear, counts down from T−10 and lifts off.
 - **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, pass predictions for your location, and a tracking camera with live telemetry beside the satellite.
 - **Internet infrastructure** — submarine cables and data centres mapped in OpenStreetMap, internet exchanges from Wikidata, and **measured** DNS queries: RIPE Atlas probes reaching the root-server instance that actually answered.
@@ -88,6 +89,8 @@ English · [简体中文](README.zh-CN.md)
 | Kp index | NOAA SWPC — planetary K-index | every 10 min |
 | Solar wind | NOAA SWPC — real-time solar wind (RTSW) at L1 | 1-minute data, refreshed every 10 min |
 | Live flights | adsb.lol — ADS-B / MLAT from volunteer receivers (ODbL); OpenSky Network fallback, via the site's Worker | every minute (live only) |
+| Natural events | NASA EONET — Earth Observatory Natural Event Tracker, via the site's Worker (`/api/hazards`) | every 30 minutes |
+| Tropical cyclones | GDACS (alerts, forecast tracks, cones, wind swaths) merged with EONET's JTWC/NHC tracks, via `/api/hazards` | every 30 minutes |
 | Launch calendar | The Space Devs — Launch Library 2, fetched by the [Update launch calendar](.github/workflows/launch-data.yml) workflow and served at `/api/launches` | every 2 hours |
 | Earthquakes | USGS — GeoJSON summary feeds | every 5 min |
 | Volcanoes | Smithsonian GVP — *Volcanoes of the World* | bundled, refreshed by workflow |
@@ -137,7 +140,7 @@ scripts/             data generators, live smoke tests, screenshot capture
 tests/               unit tests (node:test) and e2e tests (Playwright)
 ```
 
-Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights`, serves the launch calendar at `/api/launches` and serves measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
+Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights`, serves the launch calendar at `/api/launches`, natural hazards at `/api/hazards` and measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
 
 ## Scientific notes
 

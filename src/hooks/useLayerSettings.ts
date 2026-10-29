@@ -7,7 +7,7 @@ import type { SatelliteSpeed } from "../satelliteOverlay";
 
 /** Every layer toggle: the shareable scene keys plus geographic labels and the atmosphere shells. */
 export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; trueColor: boolean; starlink: boolean; solarWind: boolean; flights: boolean; temperature: boolean; shells: boolean;
-  cables: boolean; ixps: boolean; dataCenters: boolean; rootServers: boolean; dnsFlows: boolean; launches: boolean };
+  cables: boolean; ixps: boolean; dataCenters: boolean; rootServers: boolean; dnsFlows: boolean; launches: boolean; naturalEvents: boolean; storms: boolean };
 
 export interface LayerOptions {
   cloudOpacity: number;
@@ -30,7 +30,7 @@ function initialToggles(scene: SceneState | null): LayerToggles {
   return { ...(scene ? scene.layers : defaults), geoLabels: scene ? Boolean(scene.layers.geoLabels) : true, trueColor: Boolean(scene?.layers.trueColor), starlink: Boolean(scene?.layers.starlink), solarWind: Boolean(scene?.layers.solarWind), flights: Boolean(scene?.layers.flights), temperature: Boolean(scene?.layers.temperature), shells: Boolean(scene?.options.atmosphereShells),
     cables: Boolean(scene?.layers.cables), ixps: Boolean(scene?.layers.ixps), dataCenters: Boolean(scene?.layers.dataCenters), rootServers: Boolean(scene?.layers.rootServers), dnsFlows: Boolean(scene?.layers.dnsFlows),
     // The launch calendar is not part of shared scenes.
-    launches: false };
+    launches: false, naturalEvents: Boolean(scene?.layers.naturalEvents), storms: Boolean(scene?.layers.storms) };
 }
 
 function initialOptions(scene: SceneState | null): LayerOptions {
@@ -58,5 +58,6 @@ export function useLayerSettings(scene: SceneState | null) {
 /** The shareable subset of the layer toggles. */
 export function sceneLayers(layers: LayerToggles): SceneState["layers"] {
   return { ...Object.fromEntries(LAYER_KEYS.map((key) => [key, layers[key]])), geoLabels: layers.geoLabels, trueColor: layers.trueColor, starlink: layers.starlink, solarWind: layers.solarWind, flights: layers.flights, temperature: layers.temperature,
-    cables: layers.cables, ixps: layers.ixps, dataCenters: layers.dataCenters, rootServers: layers.rootServers, dnsFlows: layers.dnsFlows } as SceneState["layers"];
+    cables: layers.cables, ixps: layers.ixps, dataCenters: layers.dataCenters, rootServers: layers.rootServers, dnsFlows: layers.dnsFlows,
+    naturalEvents: layers.naturalEvents, storms: layers.storms } as SceneState["layers"];
 }
