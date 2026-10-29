@@ -1,0 +1,21 @@
+/* Natural hazards (HazardsGroup, HazardCard). */
+.hazard-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.hazard-chips button { display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); background:var(--fill); color:var(--text-2); font-size:10px; cursor:pointer; }
+.hazard-chips button[aria-pressed="true"] { color:var(--text); background:var(--fill-strong); border-color:rgba(255,255,255,.2); }
+.hazard-chips button[aria-pressed="false"] { opacity:.55; }
+.hazard-chips i { width:8px; height:8px; border-radius:50%; }
+.hazard-chips b { font-weight:600; font-variant-numeric:tabular-nums; }
+.hazard-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; scrollbar-width:thin; }
+.hazard-list button { width:100%; display:flex; align-items:flex-start; gap:8px; padding:6px 8px; border-radius:8px; border:1px solid transparent; background:rgba(255,255,255,.04); color:var(--text); text-align:left; cursor:pointer; }
+.hazard-list button:hover { background:var(--fill-strong); }
+.hazard-list button.selected { background:var(--fill-strong); border-color:rgba(255,255,255,.2); }
+.hazard-list i { flex:none; width:9px; height:9px; margin-top:3px; border-radius:50%; box-shadow:0 0 0 2px rgba(5,9,16,.8); }
+.hazard-list span { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.hazard-list strong { font-size:10px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+.hazard-list small { font-size:9px; color:var(--text-3); }
+.hazard-alert { margin-left:6px; padding:0 5px; border-radius:999px; font-style:normal; font-size:8.5px; font-weight:600; color:#0b0c0f; vertical-align:1px; }
+.hazard-alert.green { background:#5ee08a; }
+.hazard-alert.orange { background:#ffb347; }
+.hazard-alert.red { background:#ff6b5a; }
+.hazard-legend { flex-wrap:wrap; }
+.hazard-legend i { border-radius:50% !important; }
