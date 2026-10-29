@@ -66,7 +66,6 @@ export class FireworksOverlay {
     this.experience = experience;
     this.removeCityRestore?.();
     this.removeCityRestore = null;
-    void this.cityContext.show(site);
     // A restore still waiting from the last show keeps its original value.
     const previousMinimumZoom = this.restoreMinimumZoom();
     const token = ++this.generation;
@@ -86,6 +85,10 @@ export class FireworksOverlay {
         if (this.generation !== token || this.disposed) return;
         this.viewer.camera.lookAtTransform(Matrix4.IDENTITY);
         this.pendingFlight = false;
+        // Load the city (buildings, detailed imagery, terrain height) only on
+        // arrival: during the descent the globe is already streaming every
+        // zoom level, and both together made the flight stutter.
+        void this.cityContext.show(site);
         this.start(site, style);
       },
       cancel: () => { if (this.generation === token) this.stop(); },

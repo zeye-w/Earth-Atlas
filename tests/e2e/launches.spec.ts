@@ -88,6 +88,33 @@ test("reset view ends a virtual launch instead of being pulled back to the rocke
   await expect(layerPanel(page).getByRole("button", { name: "停止火箭表演" })).toBeDisabled();
 });
 
+/** Earth-fixed position (metres) of a point on the WGS84 ellipsoid. */
+function ecef(latitude: number, longitude: number) {
+  const a = 6_378_137, e2 = 6.69437999014e-3, lat = latitude * Math.PI / 180, lon = longitude * Math.PI / 180;
+  const n = a / Math.sqrt(1 - e2 * Math.sin(lat) ** 2);
+  return [n * Math.cos(lat) * Math.cos(lon), n * Math.cos(lat) * Math.sin(lon), n * (1 - e2) * Math.sin(lat)];
+}
+
+test("selecting a launch shows its region and Fly to the pad then closes in on the pad", async ({ page }) => {
+  // ?record exposes project() to measure the view; the UI stays as normal.
+  await page.goto("/?record" + sceneUrl(0, 20, 17_000_000, {}).slice(1));
+  await waitForGlobe(page);
+  await page.waitForFunction(() => "__terrascope" in window);
+  // On screen, how far apart are the pad and a point 0.3° (about 30 km) east of it?
+  const spread = () => page.evaluate(([pad, east]) => {
+    const [a, b] = (window as unknown as { __terrascope: { project(points: unknown[]): { x: number; y: number }[] } }).__terrascope.project([pad, east]);
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }, [ecef(CAPE.latitude, CAPE.longitude), ecef(CAPE.latitude, CAPE.longitude + 0.3)]);
+  await openGroup(page, "LAUNCHES");
+  await layerPanel(page).getByRole("checkbox", { name: "火箭发射日历" }).check({ force: true });
+  await layerPanel(page).locator(".launch-entry").first().click();
+  // From 1,500 km the two points are a few pixels apart...
+  await expect.poll(spread, { timeout: 20_000 }).toBeLessThan(40);
+  await layerPanel(page).locator(".launch-detail").getByRole("button", { name: "飞到发射场" }).click();
+  // ...and from about 30 km they are hundreds apart.
+  await expect.poll(spread, { timeout: 20_000 }).toBeGreaterThan(300);
+});
+
 test("an unavailable launch calendar says so instead of showing launches", async ({ page }) => {
   await page.route("**/api/launches", (route) => route.fulfill({ status: 502, contentType: "application/json", body: '{"error":"Launch calendar unavailable"}' }));
   await page.goto(sceneUrl(0, 20, 17_000_000, {}));
