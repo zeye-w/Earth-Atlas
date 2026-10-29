@@ -1,6 +1,6 @@
 import { t, localeTag, useLocale } from "../i18n";
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Rocket } from "lucide-react";
+import { MapPin, Rocket, Square } from "lucide-react";
 import type { LayerToggles } from "../hooks/useLayerSettings";
 import type { LaunchState } from "../layers/useLaunches";
 import { countdown, type Launch, type LaunchStatus } from "../launchData";
@@ -38,22 +38,25 @@ interface Props {
   /** Changes when a pad is picked on the globe, to open this group. */
   reveal: unknown;
   ready: boolean;
+  /** A rocket (or other) show is playing. */
+  showRunning: boolean;
+  onStopShow: () => void;
   onSelect: (launch: Launch) => void;
   onFlyTo: (launch: Launch) => void;
   onWatch: (launch: Launch) => void;
 }
 
-export function LaunchesGroup({ layers, setLayer, launches, selectedId, reveal, ready, onSelect, onFlyTo, onWatch }: Props) {
+export function LaunchesGroup({ layers, setLayer, launches, selectedId, reveal, ready, showRunning, onStopShow, onSelect, onFlyTo, onWatch }: Props) {
   return (
     <LayerGroup title="LAUNCHES" subtitle={t("真实火箭发射日历")} reveal={reveal}>
       <ToggleRow icon={<Rocket {...ICON} />} title={t("火箭发射日历")} caption={t("全球即将进行的真实发射 · Launch Library 2 · 每 2 小时更新")}
         checked={layers.launches} onChange={(v) => setLayer("launches", v)} />
-      {layers.launches && <LaunchList launches={launches} selectedId={selectedId} ready={ready} onSelect={onSelect} onFlyTo={onFlyTo} onWatch={onWatch} />}
+      {layers.launches && <LaunchList launches={launches} selectedId={selectedId} ready={ready} showRunning={showRunning} onStopShow={onStopShow} onSelect={onSelect} onFlyTo={onFlyTo} onWatch={onWatch} />}
     </LayerGroup>
   );
 }
 
-function LaunchList({ launches, selectedId, ready, onSelect, onFlyTo, onWatch }: Omit<Props, "layers" | "setLayer" | "reveal">) {
+function LaunchList({ launches, selectedId, ready, showRunning, onStopShow, onSelect, onFlyTo, onWatch }: Omit<Props, "layers" | "setLayer" | "reveal">) {
   const locale = useLocale();
   const at = useTicker();
   const selectedRef = useRef<HTMLLIElement>(null);
@@ -98,7 +101,9 @@ function LaunchList({ launches, selectedId, ready, onSelect, onFlyTo, onWatch }:
                     {launch.description && <p className="launch-description" lang="en">{launch.description}</p>}
                     <div className="launch-actions">
                       <button type="button" onClick={() => onFlyTo(launch)}><MapPin size={12} aria-hidden="true" />{t("飞到发射场")}</button>
-                      <button type="button" className="primary" disabled={!ready} onClick={() => onWatch(launch)}><Rocket size={12} aria-hidden="true" />{t("观看虚拟发射")}</button>
+                      {showRunning
+                        ? <button type="button" className="primary" onClick={onStopShow}><Square size={12} aria-hidden="true" />{t("停止虚拟发射")}</button>
+                        : <button type="button" className="primary" disabled={!ready} onClick={() => onWatch(launch)}><Rocket size={12} aria-hidden="true" />{t("观看虚拟发射")}</button>}
                     </div>
                   </div>
                 )}

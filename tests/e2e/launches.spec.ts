@@ -64,7 +64,28 @@ test("the launch calendar lists launches, counts down and plays a virtual launch
   await openGroup(page, "EXPERIENCES");
   await expect(layerPanel(page).locator(".fireworks-site").first()).toContainText("E2E Cape·28.56°,-80.58°");
   await expect(layerPanel(page).getByRole("button", { name: "停止火箭表演" })).toBeEnabled();
+  // The launch details can stop the show they started.
+  await detail.getByRole("button", { name: "停止虚拟发射" }).click();
+  await expect(layerPanel(page).getByRole("button", { name: "停止火箭表演" })).toBeDisabled();
+  await expect(detail.getByRole("button", { name: "观看虚拟发射" })).toBeEnabled();
   expect(errors).toEqual([]);
+});
+
+test("reset view ends a virtual launch instead of being pulled back to the rocket", async ({ page }) => {
+  await page.goto(sceneUrl(CAPE.longitude, CAPE.latitude, 6_000_000, {}));
+  await waitForGlobe(page);
+  await openGroup(page, "LAUNCHES");
+  await layerPanel(page).getByRole("checkbox", { name: "火箭发射日历" }).check({ force: true });
+  await layerPanel(page).locator(".launch-entry").first().click();
+  const detail = layerPanel(page).locator(".launch-detail");
+  await detail.getByRole("button", { name: "观看虚拟发射" }).click();
+  await expect(detail.getByRole("button", { name: "停止虚拟发射" })).toBeVisible();
+  // Let the camera reach the pad and start following the rocket.
+  await page.waitForTimeout(6_000);
+  await page.getByRole("button", { name: "返回全球视角" }).click();
+  await expect(detail.getByRole("button", { name: "观看虚拟发射" })).toBeVisible();
+  await openGroup(page, "EXPERIENCES");
+  await expect(layerPanel(page).getByRole("button", { name: "停止火箭表演" })).toBeDisabled();
 });
 
 test("an unavailable launch calendar says so instead of showing launches", async ({ page }) => {
