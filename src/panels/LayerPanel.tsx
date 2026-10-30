@@ -11,10 +11,10 @@ const REGIONS: Region[] = [
   { label: "伦敦", subtitle: "London · 英国", lat: 51.5074, lon: -0.1278 },
   { label: "巴黎", subtitle: "Paris · 法国", lat: 48.8566, lon: 2.3522 },
   { label: "东京", subtitle: "Tokyo · 日本", lat: 35.6762, lon: 139.6503 },
-  { label: "新德里", subtitle: "New Delhi · 印度", lat: 28.6139, lon: 77.2090 },
+  { label: "纽约", subtitle: "New York · 美国", lat: 40.7128, lon: -74.0060 },
 ];
 
-/** The left glass card: intro, the layer groups (children), capitals and sources. */
+/** The left glass card: intro, the layer groups (children), cities and sources. */
 export function LayerPanel({ open, onClose, onFlyTo, children }: { open: boolean; onClose: () => void; onFlyTo: (region: Region) => void; children: ReactNode }) {
   return (
     <aside id="earth-layer-panel" aria-label={t("地球图层")} aria-hidden={!open} inert={!open} className={"sidebar glass-panel" + (!open ? " is-collapsed" : "")}>
@@ -26,7 +26,7 @@ export function LayerPanel({ open, onClose, onFlyTo, children }: { open: boolean
 
         {children}
 
-        <LayerGroup title="CAPITALS" subtitle={t("首都快速定位")}>
+        <LayerGroup title="CITIES" subtitle={t("城市快速定位")}>
           <div className="regions">
             {REGIONS.map((region) => (
               <button key={region.label} className="region-btn" onClick={() => onFlyTo(region)}>
