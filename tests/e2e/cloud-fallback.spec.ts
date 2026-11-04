@@ -2,6 +2,16 @@ import { expect, test } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { mockNetwork, sceneUrl, waitForGlobe } from "./mocks";
 
+// A cloud source only counts as shown once every globe tile has loaded,
+// which takes 15-20 s under software GL and longer on a busy runner. The app
+// itself gives up on a source after 60 s (CloudImagery's fail timer), so waits
+// for a source change get just over that deadline rather than the 30 s default.
+// Several browsers at once (--workers > 1, or two runs side by side) can push
+// software GL past that deadline: the app then truthfully reports the source
+// as unavailable and these tests fail. playwright.config.ts runs one worker.
+const SOURCE_SWAP_MS = 75_000;
+test.describe.configure({ timeout: 240_000 });
+
 /**
  * A hermetic regression test: primary SSEC API fails, NASA returns fixture
  * PNGs. The fixture is NOT an observation; it solely verifies failover
@@ -23,7 +33,7 @@ test("NASA regional infrared fallback appears when SSEC global composite fails",
   await page.goto(sceneUrl(120, 25, 9_000_000, { clouds: true }));
   await waitForGlobe(page);
   const panel = page.locator(".cloud-controls");
-  await expect(panel).toContainText("NASA GIBS 区域红外影像", { timeout: 45_000 });
+  await expect(panel).toContainText("NASA GIBS 区域红外影像", { timeout: SOURCE_SWAP_MS });
   await expect(panel).toContainText("非全球覆盖");
   await expect(panel).toContainText("GOES-East");
   await expect(panel).toContainText("Himawari");
@@ -48,7 +58,7 @@ test("NASA probe success does not hide subsequent visible-tile failure or unbloc
   await page.waitForFunction(()=>Boolean((window as any).__terrascope));
   expect(await page.evaluate(()=>(window as any).__terrascope.idle(200))).toBe(false);
   await expect(panel).not.toContainText("当前显示 NASA GIBS");
-  release();await expect(panel).toContainText("卫星云图数据源暂不可用");
+  release();await expect(panel).toContainText("卫星云图数据源暂不可用",{timeout:SOURCE_SWAP_MS});
 });
 
 test("NASA remains visible until recovered SSEC tiles settle, then retires as a source", async ({ page }) => {
@@ -67,12 +77,12 @@ test("NASA remains visible until recovered SSEC tiles settle, then retires as a 
   await page.route("https://gibs.earthdata.nasa.gov/**",route=>route.fulfill({contentType:"image/png",body}));
   await page.goto(sceneUrl(120,25,9_000_000,{clouds:true}));await waitForGlobe(page);
   const note=page.locator(".cloud-controls [role=status]");
-  await expect(note).toContainText("当前显示 NASA GIBS");
+  await expect(note).toContainText("当前显示 NASA GIBS",{timeout:SOURCE_SWAP_MS});
   recovered=true;
   await page.evaluate(()=>document.dispatchEvent(new Event("visibilitychange")));
   await expect.poll(()=>requests).toBeGreaterThan(0);
   await expect(note).toContainText("当前显示 NASA GIBS");
   release();
-  await expect(note).toContainText("观测时间 "+new Date(observed).toISOString().slice(0,16).replace("T"," "));
+  await expect(note).toContainText("观测时间 "+new Date(observed).toISOString().slice(0,16).replace("T"," "),{timeout:SOURCE_SWAP_MS});
   await expect(note).not.toContainText("NASA GIBS");
 });

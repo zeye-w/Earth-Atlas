@@ -1,0 +1,56 @@
+name: Site health
+# Every two hours: the deployed site, its Worker endpoints and the public feeds
+# the browser uses (scripts/check-site-health.mjs). While anything fails, one
+# open issue labelled "site-health" tracks it (a comment whenever the set of
+# failing checks changes); it is closed once everything passes again.
+# CelesTrak asks for at most one download of the same data every two hours.
+on:
+  schedule:
+    - cron: "23 */2 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: site-health
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check the site, its Worker and its feeds
+        id: health
+        continue-on-error: true
+        run: node --experimental-strip-types scripts/check-site-health.mjs report.md
+      - name: Open, update or close the site-health issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.health.outcome }}
+        run: |
+          set -euo pipefail
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+          gh label create site-health --color B60205 --description "Automated production health check" >/dev/null 2>&1 || true
+          issue=$(gh issue list --label site-health --state open --json number --jq '.[0].number // empty')
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -n "$issue" ]; then
+              gh issue comment "$issue" --body-file report.md
+              gh issue close "$issue" --reason completed
+            fi
+            exit 0
+          fi
+          failing=$(paste -sd, report.md.failing)
+          { cat report.md; echo; echo "Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"; echo; echo "<!-- failing: $failing -->"; } > body.md
+          if [ -z "$issue" ]; then
+            gh issue create --title "Site health: checks failing" --label site-health --body-file body.md
+          else
+            previous=$(gh issue view "$issue" --json body --jq .body | sed -n 's/^<!-- failing: \(.*\) -->$/\1/p')
+            gh issue edit "$issue" --body-file body.md
+            # Only a change in what is failing is worth a notification.
+            if [ "$previous" != "$failing" ]; then gh issue comment "$issue" --body-file report.md; fi
+          fi
+          exit 1
