@@ -1437,5 +1437,19 @@ export const ENGLISH: Readonly<Record<string, string>> = {
   "可能影响": "May affect",
   "最近一次预报": "Latest advisory",
   "GDACS 灾害报告": "GDACS report",
-  "数据来源": "Source"
+  "数据来源": "Source",
+  "今日看点": "Today's highlights",
+  "火箭发射": "Rocket launch",
+  "地震": "Earthquake",
+  "昼夜": "Day & night",
+  "空间站": "Space station",
+  "可能影响 {0}": "may affect {0}",
+  "未知地点": "Unknown location",
+  "有海啸信息": "tsunami information issued",
+  "地磁暴 · Kp {0}": "Geomagnetic storm · Kp {0}",
+  "今晚高纬度地区很可能看到极光": "Aurora likely visible at high latitudes tonight",
+  "此刻的晨昏线": "The day–night line right now",
+  "看太阳正从哪里升起、在哪里落下": "See where the Sun is rising and setting",
+  "国际空间站此刻在哪": "Where the ISS is right now",
+  "跟随它绕地球飞行，约 90 分钟一圈": "Follow it around the Earth, one orbit about every 90 minutes"
 };

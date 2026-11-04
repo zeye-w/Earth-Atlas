@@ -96,12 +96,17 @@ function cloudProducts() {
 /**
  * The UI defaults to English; these suites address controls by their Chinese
  * names, so pin Chinese unless a test asks otherwise (locale: null keeps the
- * default) or the page already chose a language.
+ * default) or the page already chose a language. Today's highlights start
+ * folded unless a test asks for them open.
  */
-export async function mockNetwork(page: Page, { locale = "zh" }: { locale?: "zh" | "en" | null } = {}): Promise<void> {
+export async function mockNetwork(page: Page, { locale = "zh", highlights = "closed" }: { locale?: "zh" | "en" | null; highlights?: "open" | "closed" } = {}): Promise<void> {
   if (locale) await page.addInitScript((value) => {
     try { if (!localStorage.getItem("terrascope.language")) localStorage.setItem("terrascope.language", value); } catch { /* storage blocked */ }
   }, locale);
+  // Today's highlights start folded, so the card does not cover what other suites look at or click.
+  await page.addInitScript((value) => {
+    try { if (!localStorage.getItem("terrascope.highlights")) localStorage.setItem("terrascope.highlights", value); } catch { /* storage blocked */ }
+  }, highlights);
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.hostname === "localhost" && url.pathname === "/api/flights") return json(route, flightSnapshot());

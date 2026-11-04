@@ -1,0 +1,26 @@
+/* Today's highlights (HighlightsCard): below the scene title, centred over the globe. */
+.highlights.glass-panel { left:50%; top:172px; transform:translateX(-50%); width:min(340px, calc(100% - 32px)); border-radius:16px; }
+.highlights:not(.open).glass-panel { width:auto; border-radius:999px; }
+.highlights-head { display:flex; align-items:center; gap:7px; width:100%; padding:8px 13px; border:0; background:none; color:var(--text); font-size:11px; font-weight:600; letter-spacing:.06em; cursor:pointer; }
+.highlights-head span { flex:1; text-align:left; }
+.highlights-head b { min-width:18px; padding:0 6px; border-radius:999px; background:var(--fill-strong); font-size:10px; font-variant-numeric:tabular-nums; text-align:center; }
+.highlights ul { list-style:none; margin:0; padding:0 7px 8px; display:flex; flex-direction:column; gap:3px; }
+.highlights li button { width:100%; display:flex; align-items:flex-start; gap:9px; padding:7px 8px; border:0; border-radius:10px; background:none; color:var(--text); text-align:left; cursor:pointer; }
+.highlights li button:hover, .highlights li button:focus-visible { background:var(--fill-strong); }
+.highlights li i { flex:none; width:8px; height:8px; margin-top:4px; border-radius:50%; box-shadow:0 0 0 3px rgba(255,255,255,.06); }
+.highlights li span { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.highlights li small { font-size:9px; font-weight:600; letter-spacing:.08em; }
+.highlights li strong { font-size:12px; font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
+.highlights li em { font-style:normal; font-size:10px; line-height:1.4; color:var(--text-3); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+/* Tablets: with the side card open, centre in the space to its right (as the dock does). */
+@media(min-width:761px) and (max-width:1220px) {
+  .app-shell:has(.sidebar:not(.is-collapsed)) .highlights.glass-panel { left:calc(var(--sidebar-right) + (100% - var(--sidebar-right)) / 2); width:min(320px, calc(100% - var(--sidebar-right) - 32px)); }
+}
+/* Phones: just under the top bar, out of the way of the bottom sheets. */
+@media(max-width:760px) {
+  /* Phones place glass panels as bottom sheets; this one stays a small card at the top. */
+  .highlights.glass-panel { top:76px; bottom:auto; left:50%; right:auto; width:min(340px, calc(100% - 24px)); }
+  .highlights:not(.open).glass-panel { width:auto; }
+  .app-shell:has(.sidebar:not(.is-collapsed), .details-panel:not(.is-collapsed)) .highlights { display:none; }
+}
+.recording .highlights { display:none; }
