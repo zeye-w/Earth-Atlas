@@ -31,6 +31,9 @@ import { LaunchesGroup } from "./panels/LaunchesGroup";
 import { HazardsGroup } from "./panels/HazardsGroup";
 import { HazardCard, type HazardSelection } from "./panels/HazardCard";
 import { useHazards } from "./layers/useHazards";
+import { useHighlights } from "./layers/useHighlights";
+import { HighlightsCard } from "./panels/HighlightsCard";
+import type { Highlight } from "./highlights";
 import { EVENT_CATEGORIES, HAZARD_ID_PREFIX, stormAt, type EventCategory, type NaturalEvent, type Storm } from "./hazardData";
 import { useLaunches } from "./layers/useLaunches";
 import { headlineLaunch, LAUNCH_PAD_ID_PREFIX, launchPads, type Launch } from "./launchData";
@@ -257,6 +260,7 @@ function App() {
   const internet = useInternet(viewer, { cables: layers.cables, ixps: layers.ixps, dataCenters: layers.dataCenters, rootServers: layers.rootServers, dnsFlows: layers.dnsFlows }, live);
   const weather = useWeather(viewer, layers.temperature, live);
   const launches = useLaunches(viewer, layers.launches, layers.launches ? selectedLaunch?.padId ?? null : null);
+  const highlights = useHighlights(!RECORDING);
   const hazards = useHazards(viewer, { events: layers.naturalEvents, storms: layers.storms }, hazardCategories, timeline, locale,
     hazardSelection?.kind === "storm" ? hazardSelection.storm.id : null);
   // Turning a hazard layer off closes its card.
@@ -351,6 +355,69 @@ function App() {
     const at = stormAt(storm, state.live ? now() : state.time) ?? storm.track.at(-1) ?? storm.forecast[0];
     if (at) viewer?.camera.flyTo({ destination: Cartesian3.fromDegrees(at.longitude, at.latitude, 3_500_000), duration: 1.6 });
   };
+  const startTour = () => {
+    if (!viewer || livePhotoRecording) return;
+    setTrackedSatelliteId(null);
+    setLivePhotoOpen(false);
+    previousTourLayers.current = { dayNight: layers.dayNight, temperature: layers.temperature };
+    setLayer("dayNight", true);
+    setLayer("temperature", false);
+    setControlsOpen(false);
+    setDetailsOpen(false);
+    setTourOpen(true);
+    track("tour");
+  };
+
+  // Today's highlights: each one turns on its layer and shows its subject.
+  const showHighlight = (item: Highlight) => {
+    track("highlight", item.kind);
+    if (!viewer || viewer.isDestroyed()) { setToast("地球尚未就绪"); return; }
+    if (isNarrow()) setControlsOpen(false);
+    switch (item.kind) {
+      case "storm":
+        setLayer("storms", true);
+        selectStorm(item.storm);
+        break;
+      case "launch":
+        setLayer("launches", true);
+        setSelectedLaunch(item.launch);
+        setLaunchReveal((n) => (n ?? 0) + 1);
+        flyToLaunch(item.launch);
+        break;
+      case "quake":
+        takeCamera();
+        setTrackedSatelliteId(null);
+        setLayer("quakes", true);
+        setSelectedVolcano(null);
+        setSelectedQuake(item.quake);
+        openDetails();
+        viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(item.quake.longitude, item.quake.latitude, 2_500_000), duration: 1.6 });
+        break;
+      case "aurora": {
+        takeCamera();
+        setTrackedSatelliteId(null);
+        setLayer("aurora", true);
+        // Look down on the northern auroral oval over the night side.
+        const sun = subsolarPoint(new Date(now()));
+        viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(((sun.longitude + 360) % 360) - 180, 72, 9_000_000), duration: 1.8 });
+        break;
+      }
+      case "volcano":
+        setLayer("naturalEvents", true);
+        selectHazardEvent(item.event);
+        break;
+      case "terminator":
+        if (!tourOpen) startTour();
+        break;
+      case "iss":
+        takeCamera();
+        setLayer("satellites", true);
+        setSelectedSatelliteId("iss");
+        setTrackedSatelliteId("iss");
+        break;
+    }
+  };
+
   const selectLaunch = (launch: Launch) => {
     if (selectedLaunch?.id === launch.id) { setSelectedLaunch(null); return; }
     setSelectedLaunch(launch);
@@ -500,19 +567,7 @@ function App() {
       <TopBar
         tourOpen={tourOpen}
         tourDisabled={!viewer || livePhotoRecording}
-        onTour={() => {
-          if (tourOpen) { closeTour(); return; }
-          if (!viewer || livePhotoRecording) return;
-          setTrackedSatelliteId(null);
-          setLivePhotoOpen(false);
-          previousTourLayers.current={dayNight:layers.dayNight,temperature:layers.temperature};
-          setLayer("dayNight",true);
-          setLayer("temperature",false);
-          setControlsOpen(false);
-          setDetailsOpen(false);
-          setTourOpen(true);
-          track("tour");
-        }}
+        onTour={() => { if (tourOpen) closeTour(); else startTour(); }}
         clock={<TimeIndicator timeline={timeline} />}
         searchOpen={searchOpen}
         onToggleSearch={() => setSearchOpen((open) => !open)}
@@ -560,6 +615,7 @@ function App() {
             <span className="map-tag"><span className="tag-dot" /> 3D DIGITAL EARTH</span>
             <SceneSubtitle timeline={timeline} dayNight={layers.dayNight} />
           </div>
+          {!tourOpen && !fireworks.running && <HighlightsCard highlights={highlights.highlights} ready={highlights.ready} onSelect={showHighlight} />}
           {tourOpen && viewer && <Suspense fallback={null}><TerminatorTour viewer={viewer} timeline={timeline} timebarOpen={timebarOpen} onClose={closeTour} /></Suspense>}
           {toast && <div className="toast" role="status">{t(toast)}<button type="button" onClick={() => setToast(null)} aria-label={t("关闭提示")}><X size={13} aria-hidden="true" /></button></div>}
           {viewer && trackedSatellite && satellites.status === "ready" && (

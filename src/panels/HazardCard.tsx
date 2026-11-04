@@ -46,7 +46,7 @@ export function HazardCard({ selection, timeline, onClose }: { selection: Hazard
     if (fix) items.push([t("中心位置"), coordinateLabel(fix.latitude, "N", "S") + " · " + coordinateLabel(fix.longitude, "E", "W")]);
     else items.push([t("时间"), t("所选时间不在这个气旋的路径范围内")]);
     if (s.alert) items.push([t("GDACS 预警"), t(ALERTS[s.alert])]);
-    if (s.countries.length) items.push([t("可能影响"), s.countries.join("、")]);
+    if (s.countries.length) items.push([t("可能影响"), s.countries.join(locale === "zh" ? "、" : ", ")]);
     if (s.advisory) items.push([t("最近一次预报"), date(s.advisory)]);
     if (s.source) items.push([t("数据来源"), t(SOURCES[s.source] ?? s.source)]);
     if (s.report) link = [t("GDACS 灾害报告"), s.report];
