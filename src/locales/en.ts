@@ -1451,5 +1451,8 @@ export const ENGLISH: Readonly<Record<string, string>> = {
   "此刻的晨昏线": "The day–night line right now",
   "看太阳正从哪里升起、在哪里落下": "See where the Sun is rising and setting",
   "国际空间站此刻在哪": "Where the ISS is right now",
-  "跟随它绕地球飞行，约 90 分钟一圈": "Follow it around the Earth, one orbit about every 90 minutes"
+  "跟随它绕地球飞行，约 90 分钟一圈": "Follow it around the Earth, one orbit about every 90 minutes",
+  "ADS-B 位置 · OpenSky Network · 约每 15 分钟更新": "ADS-B positions · OpenSky Network · updated about every 15 minutes",
+  " 分钟前的位置报告": " minutes since position report",
+  "来源：{0}。只包含被志愿者接收站收到的航空器，海洋上空和部分国家覆盖很少，并不是全部航班。数据约每 15 分钟更新一次，之间按航速和航向推算巡航飞机的位置（最多 20 分钟）；起降中的飞机只推算 2 分钟。点击飞机查看航班号、机型、高度和速度。": "Source: {0}. Only aircraft picked up by volunteer receivers are shown; oceans and some countries are sparsely covered, so this is not every flight. Data is updated about every 15 minutes; in between, cruising aircraft are moved along their speed and heading (for up to 20 minutes), aircraft climbing or landing for 2 minutes only. Click an aircraft for its callsign, type, altitude and speed."
 };

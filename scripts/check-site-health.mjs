@@ -61,7 +61,8 @@ const CHECKS = [
   ["Worker", "/api/flights", async () => {
     const { source, time, flights } = decodeFlights(await json(SITE + "/api/flights"));
     if (flights.length < 1000) throw new Error("only " + flights.length + " aircraft");
-    return `${flights.length} aircraft from ${source}, ${fresh(time, 15 * 60_000, "snapshot")}`;
+    // Snapshots come every 15 minutes from a scheduled workflow, which GitHub can delay.
+    return `${flights.length} aircraft from ${source}, ${fresh(time, 45 * 60_000, "snapshot")}`;
   }],
   ["Worker", "/api/launches", async () => {
     const snapshot = parseLaunchSnapshot(await json(SITE + "/api/launches"));

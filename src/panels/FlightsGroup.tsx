@@ -17,7 +17,7 @@ interface Props {
 export function FlightsGroup({ layers, setLayer, flights, live }: Props) {
   return (
     <LayerGroup title="AVIATION" subtitle={t("实时航班")}>
-      <ToggleRow icon={<Plane {...ICON} />} title={t("实时航班")} caption={t("ADS-B 广播位置 · adsb.lol 志愿者接收网 · 每分钟更新")} checked={layers.flights} onChange={(v) => setLayer("flights", v)} />
+      <ToggleRow icon={<Plane {...ICON} />} title={t("实时航班")} caption={t("ADS-B 位置 · OpenSky Network · 约每 15 分钟更新")} checked={layers.flights} onChange={(v) => setLayer("flights", v)} />
       {layers.flights && (
         <div className="layer-extra">
           <p className="layer-status" role="status">
@@ -34,7 +34,7 @@ export function FlightsGroup({ layers, setLayer, flights, live }: Props) {
                 <span><i style={{ background: BAND_COLORS.low }} />{t("3,000 m 以下")}</span>
                 <span><i style={{ background: BAND_COLORS.ground }} />{t("地面")}</span>
               </div>
-              <p className="layer-note">{t("来源：{0}。只包含被志愿者接收站收到的航空器，海洋上空和部分国家覆盖很少，并不是全部航班。两次更新之间按航速和航向推算位置。点击飞机查看航班号、机型、高度和速度。", t(flights.source ? SOURCES[flights.source] : "—"))}</p>
+              <p className="layer-note">{t("来源：{0}。只包含被志愿者接收站收到的航空器，海洋上空和部分国家覆盖很少，并不是全部航班。数据约每 15 分钟更新一次，之间按航速和航向推算巡航飞机的位置（最多 20 分钟）；起降中的飞机只推算 2 分钟。点击飞机查看航班号、机型、高度和速度。", t(flights.source ? SOURCES[flights.source] : "—"))}</p>
             </>
           )}
         </div>

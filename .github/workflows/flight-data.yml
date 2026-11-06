@@ -1,0 +1,29 @@
+name: Update flight snapshot
+# Every 15 minutes: an anonymous OpenSky snapshot of all aircraft, published as
+# a release asset that the Worker serves at /api/flights (src/flightData.ts).
+# Anonymous OpenSky allows about 100 such requests a day, so not more often.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+permissions:
+  contents: write
+concurrency:
+  group: flight-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --experimental-strip-types scripts/fetch-flights.mjs flights.json
+      - name: Publish data asset without changing application branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view flight-data >/dev/null 2>&1 || gh release create flight-data --title 'Flight snapshot' --notes 'Aircraft positions from the OpenSky Network (anonymous API), trimmed for /api/flights. Replaced every 15 minutes.' --latest=false
+          gh release upload flight-data flights.json --clobber

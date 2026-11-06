@@ -22,7 +22,7 @@ English · [简体中文](README.zh-CN.md)
 
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
-- **Live flights** — thousands of aircraft from volunteer ADS-B receivers (adsb.lol), drawn at their altitude and heading, updated every minute.
+- **Flights** — thousands of aircraft from volunteer ADS-B receivers (OpenSky Network), drawn at their altitude and heading, refreshed about every 15 minutes and dead-reckoned in between.
 - **Today's highlights** — a small card picks what is worth a look right now from the live feeds (a red-alert typhoon, an imminent launch, a large earthquake, a geomagnetic storm, an erupting volcano, or the day–night line and the ISS on a quiet day); one click turns on the layer and shows it.
 - **Natural hazards** — open natural events (wildfires, icebergs, dust, floods, volcanoes…) from NASA EONET, and tropical cyclones with their observed track coloured by intensity, forecast track, uncertainty cone and wind swaths from GDACS, replayable along the timeline. Western Pacific typhoons show their Chinese names; Chinese readers get the CMA grades, English readers Saffir–Simpson.
 - **Launches** — upcoming rocket launches worldwide with live countdowns, marked at their pads, plus a virtual launch at any real launch site: the rocket waits on a generic launch complex, vents, swings its service arms clear, counts down from T−10 and lifts off.
@@ -51,7 +51,7 @@ English · [简体中文](README.zh-CN.md)
 <td colspan="2"><img src="docs/screenshots/solar-wind.jpg" alt="Solar wind and the magnetosphere"><br><b>Solar wind and the magnetosphere</b><br>Measured solar wind at the L1 point (NOAA SWPC real-time solar wind: speed, density, IMF Bz) sets the size of Earth's magnetopause through the Shue et al. (1998) model, shown with an approximate bow shock; particles stream from the Sun and flow around them. The particle paths are illustrative and sped up; the boundary sizes come from the measurements. Follows the timeline over the last ~24 hours.</td>
 </tr>
 <tr>
-<td colspan="2"><img src="docs/screenshots/flights.jpg" alt="Live flights over Europe"><br><b>Live flights</b><br>Aircraft positions broadcast over ADS-B and collected by adsb.lol's volunteer receivers (ODbL), with OpenSky as a fallback, served through the site's own Cloudflare Worker (the feeds cannot be called from a browser directly). Each aircraft is drawn at its altitude, pointing along its track and coloured by altitude; between the minute-by-minute updates it moves on at its reported speed (an estimate). Click one for callsign, type, altitude and speed. Coverage follows the receivers, so oceans and some countries are sparse; live only, as the feeds keep no history.</td>
+<td colspan="2"><img src="docs/screenshots/flights.jpg" alt="Live flights over Europe"><br><b>Flights</b><br>Aircraft positions broadcast over ADS-B and collected by the OpenSky Network's volunteer receivers. A scheduled workflow takes a snapshot about every 15 minutes (adsb.lol now needs an API key, and neither feed answers the site's Cloudflare Worker), which the Worker relays. Each aircraft is drawn at its altitude, pointing along its track and coloured by altitude; between snapshots cruising aircraft move on at their reported speed for up to 20 minutes (an estimate), aircraft climbing or landing for 2. Click one for callsign, type, altitude and speed. Coverage follows the receivers, so oceans and some countries are sparse; live only, as the feeds keep no history.</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/geology.jpg" alt="Geologic map and inspector"><br><b>Global geology</b><br>Macrostrat geologic map (raster, or experimental age / lithology vector views). Click the ground to list the mapped units, ages and rock types there.</td>
@@ -89,7 +89,7 @@ English · [简体中文](README.zh-CN.md)
 | Aurora | NOAA SWPC — OVATION aurora nowcast | every 10 min |
 | Kp index | NOAA SWPC — planetary K-index | every 10 min |
 | Solar wind | NOAA SWPC — real-time solar wind (RTSW) at L1 | 1-minute data, refreshed every 10 min |
-| Live flights | adsb.lol — ADS-B / MLAT from volunteer receivers (ODbL); OpenSky Network fallback, via the site's Worker | every minute (live only) |
+| Flights | OpenSky Network (anonymous API), snapshot published by the [Update flight snapshot](.github/workflows/flight-data.yml) workflow and served at `/api/flights` | about every 15 minutes (live only) |
 | Natural events | NASA EONET — Earth Observatory Natural Event Tracker, via the site's Worker (`/api/hazards`) | every 30 minutes |
 | Tropical cyclones | GDACS (alerts, forecast tracks, cones, wind swaths) merged with EONET's JTWC/NHC tracks, via `/api/hazards` | every 30 minutes |
 | Launch calendar | The Space Devs — Launch Library 2, fetched by the [Update launch calendar](.github/workflows/launch-data.yml) workflow and served at `/api/launches` | every 2 hours |
@@ -141,7 +141,7 @@ scripts/             data generators, live smoke tests, screenshot capture
 tests/               unit tests (node:test) and e2e tests (Playwright)
 ```
 
-Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that proxies the flight feed at `/api/flights`, serves the launch calendar at `/api/launches`, natural hazards at `/api/hazards` and measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
+Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that serves the flight snapshot at `/api/flights`, serves the launch calendar at `/api/launches`, natural hazards at `/api/hazards` and measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
 
 ## Scientific notes
 

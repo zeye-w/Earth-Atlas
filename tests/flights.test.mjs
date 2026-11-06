@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ADSB_LOL_URL, MAX_EXTRAPOLATION_S, OPENSKY_URL, altitudeBand, decodeFlights, describeFlight, extrapolate, parseAdsbLol, parseOpenSky } from "../src/flightData.ts";
+import { FLIGHT_SNAPSHOT_URL, MAX_CRUISE_EXTRAPOLATION_S, MAX_EXTRAPOLATION_S, altitudeBand, decodeFlights, describeFlight, extrapolate, parseAdsbLol, parseOpenSky } from "../src/flightData.ts";
 
 // Synthetic records in the shape of the real feeds (not real aircraft).
 const NOW_S = 1_792_561_960;
@@ -64,7 +64,11 @@ test("dead reckoning along the track, capped, airborne only", () => {
   // 25 km east along the equator.
   assert.ok(Math.abs(moved.longitude - 25_000 / 6_371_008.8 * 180 / Math.PI) < 1e-9);
   assert.ok(Math.abs(moved.latitude) < 1e-9);
-  assert.deepEqual(extrapolate(east, 1000), extrapolate(east, MAX_EXTRAPOLATION_S));
+  // Cruising aircraft carry on for up to 20 minutes between snapshots; climbing or landing ones for 2.
+  assert.deepEqual(extrapolate(east, 3000), extrapolate(east, MAX_CRUISE_EXTRAPOLATION_S));
+  assert.notDeepEqual(extrapolate(east, 1000), extrapolate(east, MAX_EXTRAPOLATION_S));
+  const landing = { ...east, altitude: 900 };
+  assert.deepEqual(extrapolate(landing, 1000), extrapolate(landing, MAX_EXTRAPOLATION_S));
   assert.deepEqual(extrapolate({ ...east, altitude: null }, 100), { latitude: 0, longitude: 0 });
   // Across the antimeridian the longitude wraps.
   assert.ok(extrapolate({ ...east, longitude: 179.9 }, 120).longitude < -179);
@@ -77,6 +81,8 @@ test("altitude bands and the click summary", () => {
   const [flight] = decodeFlights(parseAdsbLol(readsb)).flights;
   assert.equal(describeFlight(flight, flight.reportedAt + 12_400), "TST101 · A20N B-0001 · 高度 10,973 m · 地速 833 km/h · 航向 272° · 12 秒前的位置报告");
   assert.equal(describeFlight({ ...flight, callsign: "", registration: "", type: "", altitude: null, speed: null, track: null }, flight.reportedAt), "ABC123 · 地面 · 0 秒前的位置报告");
+  // Snapshot-old reports read in minutes.
+  assert.match(describeFlight(flight, flight.reportedAt + 8 * 60_000), /· 8 分钟前的位置报告$/);
 });
 
 /** A fresh copy of the Worker module (it caches in module state). */
@@ -92,47 +98,43 @@ async function withFetch(handler, run) {
 const request = (path, method = "GET") => new Request("https://earth-atlas.example" + path, { method });
 const assets = { ASSETS: { fetch: async () => new Response("static") } };
 
-test("worker: proxies adsb.lol with an identifying User-Agent and caches", async () => {
+/** A published snapshot (as scripts/fetch-flights.mjs writes it) of `n` aircraft, `ageMs` old. */
+const snapshot = (n, ageMs = 60_000) => ({ v: 1, source: "opensky", time: Date.now() - ageMs, aircraft: Array.from({ length: n }, (_, i) => ["t" + i, "", i / 100, i / 100, 9000, 200, 10, "", "", 1]) });
+
+test("worker: relays the published snapshot with an identifying User-Agent and caches", async () => {
   const worker = await loadWorker();
-  await withFetch(() => Response.json(many(300)), async (calls) => {
+  await withFetch(() => Response.json(snapshot(300)), async (calls) => {
     const first = await worker.fetch(request("/api/flights"), assets);
     assert.equal(first.status, 200);
-    assert.match(first.headers.get("cache-control"), /max-age=20/);
+    assert.match(first.headers.get("cache-control"), /max-age=60/);
     const body = await first.json();
-    assert.equal(body.source, "adsb.lol");
+    assert.equal(body.source, "opensky");
     assert.equal(body.aircraft.length, 300);
     await worker.fetch(request("/api/flights"), assets);
     assert.equal(calls.length, 1, "second request served from memory");
-    assert.equal(calls[0].url, ADSB_LOL_URL);
+    assert.equal(calls[0].url, FLIGHT_SNAPSHOT_URL);
     assert.match(new Headers(calls[0].init.headers).get("user-agent"), /^TerraScope\/.*github\.com/);
   });
 });
 
-test("worker: falls back to OpenSky, then fails without inventing data", async () => {
-  const worker = await loadWorker();
-  const states = Array.from({ length: 150 }, (_, i) => ["s" + i, "", "", NOW_S, NOW_S, i / 10, i / 10, 9000, false, 200, 5, 0, null, 9100, null, false, 0]);
-  await withFetch((url) => (url === OPENSKY_URL ? Response.json({ time: NOW_S, states }) : new Response("busy", { status: 503 })), async (calls) => {
-    const response = await worker.fetch(request("/api/flights"), assets);
-    const body = await response.json();
-    assert.equal(body.source, "opensky");
-    assert.equal(body.aircraft.length, 150);
-    assert.deepEqual(calls.map((c) => c.url), [ADSB_LOL_URL, OPENSKY_URL]);
-  });
-  const fresh = await loadWorker();
-  // A near-empty answer counts as a failure too.
-  await withFetch(() => Response.json(many(3)), async () => {
-    const response = await fresh.fetch(request("/api/flights"), assets);
-    assert.equal(response.status, 502);
-    assert.equal(response.headers.get("cache-control"), "no-store");
-    // The answer says which feeds failed and how.
-    const { detail } = await response.json();
-    assert.match(detail, /^re-api\.adsb\.lol: only 3 aircraft; opensky-network\.org: Unexpected OpenSky payload$/);
-  });
-  const keyed = await loadWorker();
-  await withFetch(() => new Response("api key required\n", { status: 401 }), async () => {
-    const { detail } = await (await keyed.fetch(request("/api/flights"), assets)).json();
-    assert.match(detail, /re-api\.adsb\.lol: HTTP 401 api key required; opensky-network\.org: HTTP 401/);
-  });
+test("worker: refuses old, thin or missing snapshots without inventing data, and says why", async () => {
+  const cases = [
+    [() => Response.json(snapshot(300, 2 * 3_600_000)), /^flight snapshot is 120 min old$/],
+    [() => Response.json(snapshot(3)), /^flight snapshot: only 3 aircraft$/],
+    [() => new Response("Not Found", { status: 404 }), /^flight snapshot: HTTP 404$/],
+    [() => Response.json({ error: "nope" }), /Unexpected flight snapshot/],
+  ];
+  for (const [answer, reason] of cases) {
+    const worker = await loadWorker();
+    await withFetch(answer, async () => {
+      const response = await worker.fetch(request("/api/flights"), assets);
+      assert.equal(response.status, 502);
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      const body = await response.json();
+      assert.equal(body.error, "Flight data unavailable");
+      assert.match(body.detail, reason);
+    });
+  }
 });
 
 test("worker: other paths go to the static assets", async () => {
