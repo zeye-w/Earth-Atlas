@@ -221,3 +221,16 @@ test('oversized upstream bodies remain rejected before JSON parsing',async()=>{
  const handler=createDnsFlowsHandler(async()=>new Response(' '.repeat(1500001)),Date.now,undefined,async()=>{});
  assert.equal((await handler(request())).status,503);
 });
+
+test('a failed refresh says which upstream failed, without the query string', async () => {
+  const { createDnsFlowsHandler } = await import('../worker/ripeAtlas.ts');
+  const network = async (url) => new URL(url).host === 'root-servers.org' ? new Response('', { status: 403 }) : new Response('[]');
+  const response = await createDnsFlowsHandler(network, () => Date.parse('2026-11-06T00:00:00Z'), undefined, async () => {})(new Request('https://x/api/internet/dns-flows'));
+  assert.equal(response.status, 503);
+  const body = await response.json();
+  assert.equal(body.error, 'Measured DNS flows temporarily unavailable');
+  assert.match(body.detail, /^Root sites unavailable: Upstream HTTP 403 from root-servers\.org\/root\/[A-M]\/json\/$/);
+  const timedOut = async () => { throw new DOMException('The operation was aborted due to timeout', 'TimeoutError'); };
+  const slow = await (await createDnsFlowsHandler(timedOut, () => 0, undefined, async () => {})(new Request('https://x/api/internet/dns-flows'))).json();
+  assert.match(slow.detail, /root-servers\.org\/root\/[A-M]\/json\/: The operation was aborted due to timeout/);
+});

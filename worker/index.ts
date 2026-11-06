@@ -34,12 +34,18 @@ const STALE_MS = 5 * 60_000;
 let cached: { body: string; fetchedAt: number } | null = null;
 let pending: Promise<string> | null = null;
 
+/** Errors name the feed's host, so a failure says which feed broke and how. */
 async function upstream(url: string, parse: (json: unknown) => FlightSnapshot): Promise<FlightSnapshot> {
-  const response = await fetch(url, { headers: { "User-Agent": FLIGHT_USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
-  if (!response.ok) throw new Error(url + " HTTP " + response.status);
-  const snapshot = parse(await response.json());
-  if (snapshot.aircraft.length < 100) throw new Error(url + " returned only " + snapshot.aircraft.length + " aircraft");
-  return snapshot;
+  const host = new URL(url).host;
+  try {
+    const response = await fetch(url, { headers: { "User-Agent": FLIGHT_USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error("HTTP " + response.status + " " + (await response.text()).trim().slice(0, 80));
+    const snapshot = parse(await response.json());
+    if (snapshot.aircraft.length < 100) throw new Error("only " + snapshot.aircraft.length + " aircraft");
+    return snapshot;
+  } catch (error) {
+    throw new Error(host + ": " + (error instanceof Error ? error.message : String(error)));
+  }
 }
 
 async function refresh(): Promise<string> {
@@ -48,7 +54,11 @@ async function refresh(): Promise<string> {
     snapshot = await upstream(ADSB_LOL_URL, parseAdsbLol);
   } catch (error) {
     console.warn("adsb.lol failed, trying OpenSky", String(error));
-    snapshot = await upstream(OPENSKY_URL, parseOpenSky);
+    try {
+      snapshot = await upstream(OPENSKY_URL, parseOpenSky);
+    } catch (fallback) {
+      throw new Error(String((error as Error).message) + "; " + String((fallback as Error).message));
+    }
   }
   const body = JSON.stringify(snapshot);
   cached = { body, fetchedAt: Date.now() };
@@ -71,7 +81,8 @@ async function flights(): Promise<Response> {
   } catch (error) {
     console.warn("Flight feeds unavailable", String(error));
     if (cached && now - cached.fetchedAt < STALE_MS) return reply(cached.body);
-    return reply(JSON.stringify({ error: "Flight data unavailable" }), 502);
+    // Which feeds failed and how (public hosts and status codes only).
+    return reply(JSON.stringify({ error: "Flight data unavailable", detail: (error instanceof Error ? error.message : String(error)).slice(0, 300) }), 502);
   }
 }
 

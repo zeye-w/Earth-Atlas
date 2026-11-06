@@ -30,12 +30,17 @@ const HOUR = 3_600_000;
 const report = process.argv[2];
 
 async function get(url, init = {}) {
-  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(30_000), headers: { "User-Agent": "TerraScope-site-health/1.0", Origin: SITE, ...init.headers } });
+  // Longer than the Worker's own worst case (two flight feeds at 15 s each), so its answer arrives.
+  const response = await fetch(url, { ...init, signal: AbortSignal.timeout(45_000), headers: { "User-Agent": "TerraScope-site-health/1.0", Origin: SITE, ...init.headers } });
   return response;
 }
 async function json(url) {
   const response = await get(url, { headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error("HTTP " + response.status);
+  if (!response.ok) {
+    // The site's own endpoints say which upstream failed in `detail`.
+    const detail = await response.json().then((body) => body?.detail, () => null);
+    throw new Error("HTTP " + response.status + (typeof detail === "string" ? " — " + detail : ""));
+  }
   return response.json();
 }
 const ago = (ms) => (ms < HOUR ? Math.round(ms / 60_000) + " min" : (ms / HOUR).toFixed(1) + " h") + " old";

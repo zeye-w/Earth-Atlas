@@ -124,6 +124,14 @@ test("worker: falls back to OpenSky, then fails without inventing data", async (
     const response = await fresh.fetch(request("/api/flights"), assets);
     assert.equal(response.status, 502);
     assert.equal(response.headers.get("cache-control"), "no-store");
+    // The answer says which feeds failed and how.
+    const { detail } = await response.json();
+    assert.match(detail, /^re-api\.adsb\.lol: only 3 aircraft; opensky-network\.org: Unexpected OpenSky payload$/);
+  });
+  const keyed = await loadWorker();
+  await withFetch(() => new Response("api key required\n", { status: 401 }), async () => {
+    const { detail } = await (await keyed.fetch(request("/api/flights"), assets)).json();
+    assert.match(detail, /re-api\.adsb\.lol: HTTP 401 api key required; opensky-network\.org: HTTP 401/);
   });
 });
 
