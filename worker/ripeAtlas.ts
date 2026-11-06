@@ -37,11 +37,14 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         const where = new URL(url).host + new URL(url).pathname;
         let r: Response;
         try {
-            r = await network(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, redirect: 'error', signal: lifetime ? AbortSignal.any([lifetime, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000) });
+            // Cloudflare Workers reject redirect: 'error'; 'manual' plus the check below refuses redirects the same way.
+            r = await network(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, redirect: 'manual', signal: lifetime ? AbortSignal.any([lifetime, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000) });
         }
         catch (error) {
             throw Error(where + ': ' + (error instanceof Error ? error.message : String(error)));
         }
+        if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400))
+            throw Error('Upstream redirect ' + r.status + ' from ' + where);
         if (!r.ok)
             throw Error('Upstream HTTP ' + r.status + ' from ' + where);
         const reader = r.body?.getReader();
