@@ -143,6 +143,8 @@ tests/               unit tests (node:test) and e2e tests (Playwright)
 
 Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that serves the flight snapshot at `/api/flights`, serves the launch calendar at `/api/launches`, natural hazards at `/api/hazards` and measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
 
+The data workflows (flight snapshot every 15 minutes, launch calendar and site health every two hours, GFS weather four times a day) are started by the Worker's cron trigger through the GitHub API (`worker/dispatch.ts`), because GitHub's own schedules often run hours late; their schedules remain as a fallback. This needs the Worker secret `GITHUB_DISPATCH_TOKEN`: a fine-grained GitHub token for this repository with only *Actions: read and write*.
+
 ## Scientific notes
 
 - Satellite positions are SGP4 **predictions** from public orbital elements, not live telemetry.

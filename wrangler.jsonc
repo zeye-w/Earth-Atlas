@@ -15,5 +15,8 @@
   "d1_databases": [
     { "binding": "STATS", "database_name": "earth-atlas-stats", "database_id": "c60d43c6-dd2d-4560-862b-ba300b00b61d" }
   ],
+  // Every 15 minutes: start the data workflows on GitHub (worker/dispatch.ts).
+  // Needs the GITHUB_DISPATCH_TOKEN secret; without it the Worker sends nothing.
+  "triggers": { "crons": ["*/15 * * * *"] },
   "observability": { "enabled": true }
 }

@@ -6,9 +6,19 @@
  *   node --experimental-strip-types scripts/fetch-flights.mjs flights.json
  */
 import { writeFileSync } from "node:fs";
-import { FLIGHT_USER_AGENT, OPENSKY_URL, parseOpenSky } from "../src/flightData.ts";
+import { FLIGHT_SNAPSHOT_URL, FLIGHT_USER_AGENT, OPENSKY_URL, decodeFlights, parseOpenSky } from "../src/flightData.ts";
 
 const out = process.argv[2] ?? "flights.json";
+/** Runs come from Cloudflare's cron and, as a fallback, GitHub's schedule: skip when a recent snapshot exists. */
+const FRESH_ENOUGH_MS = 10 * 60_000;
+
+// Anonymous OpenSky allows about 100 snapshots a day, so do not spend one on a duplicate run.
+const published = await fetch(FLIGHT_SNAPSHOT_URL, { headers: { "User-Agent": FLIGHT_USER_AGENT }, signal: AbortSignal.timeout(30_000) })
+  .then(async (r) => (r.ok ? decodeFlights(await r.json()).time : null)).catch(() => null);
+if (published !== null && Date.now() - published < FRESH_ENOUGH_MS) {
+  console.log("Published snapshot is", Math.round((Date.now() - published) / 60_000), "min old; nothing to do.");
+  process.exit(0);
+}
 const response = await fetch(OPENSKY_URL, { headers: { "User-Agent": FLIGHT_USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(60_000) });
 // Anonymous use has a daily credit allowance; the header says what is left.
 console.log("OpenSky HTTP", response.status, "credits left", response.headers.get("x-rate-limit-remaining") ?? "(not sent)");

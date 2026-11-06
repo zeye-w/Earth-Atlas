@@ -2,6 +2,8 @@ name: Update flight snapshot
 # Every 15 minutes: an anonymous OpenSky snapshot of all aircraft, published as
 # a release asset that the Worker serves at /api/flights (src/flightData.ts).
 # Anonymous OpenSky allows about 100 such requests a day, so not more often.
+# Started by the Worker's cron (worker/dispatch.ts); GitHub's own schedule is a
+# fallback, and the script skips a run when the snapshot is under 10 minutes old.
 on:
   workflow_dispatch:
   schedule:
@@ -22,6 +24,7 @@ jobs:
           node-version: "22"
       - run: node --experimental-strip-types scripts/fetch-flights.mjs flights.json
       - name: Publish data asset without changing application branches
+        if: hashFiles('flights.json') != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
