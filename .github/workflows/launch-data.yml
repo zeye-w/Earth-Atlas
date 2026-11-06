@@ -1,4 +1,5 @@
 name: Update launch calendar
+# Also started by the Worker's cron (worker/dispatch.ts), as GitHub's own schedule runs late.
 on:
   workflow_dispatch:
   schedule:

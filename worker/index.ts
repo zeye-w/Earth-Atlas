@@ -3,6 +3,7 @@ import { dnsFlowsResponse, type DnsFlowsContext } from "./ripeAtlas.ts";
 import { adminPage, collectStats, statsSummary, type StatsEnv } from "./stats.ts";
 import { launchesResponse } from "./launches.ts";
 import { hazardsResponse } from "./hazards.ts";
+import { runSchedule, type DispatchEnv } from "./dispatch.ts";
 /**
  * Cloudflare Worker in front of the static site. Only /api/* reaches it
  * (see run_worker_first in wrangler.jsonc); everything else is served
@@ -17,13 +18,16 @@ import { hazardsResponse } from "./hazards.ts";
  *
  * GET /api/hazards — natural events and tropical cyclones (worker/hazards.ts).
  *
+ * Every 15 minutes a cron trigger starts the data workflows on GitHub
+ * (worker/dispatch.ts), which GitHub's own schedules do not run on time.
+ *
  * GET /api/flights — aircraft positions: the OpenSky snapshot the
  * flight-data workflow publishes every 15 minutes (src/flightData.ts), checked
  * and relayed. One upstream request per isolate every FRESH_MS.
  */
 import { FLIGHT_SNAPSHOT_MAX_AGE_MS, FLIGHT_SNAPSHOT_URL, FLIGHT_USER_AGENT, decodeFlights } from "../src/flightData.ts";
 
-interface Env extends StatsEnv {
+interface Env extends StatsEnv, DispatchEnv {
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
@@ -90,5 +94,10 @@ export default {
       return flights();
     }
     return env.ASSETS.fetch(request);
+  },
+
+  /** Cron trigger (wrangler.jsonc): start the data workflows that are due (worker/dispatch.ts). */
+  async scheduled(controller: { scheduledTime: number }, env: Env, ctx: DnsFlowsContext): Promise<void> {
+    ctx.waitUntil(runSchedule(controller.scheduledTime, env));
   },
 };

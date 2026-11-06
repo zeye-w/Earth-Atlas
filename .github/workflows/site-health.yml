@@ -4,6 +4,7 @@ name: Site health
 # open issue labelled "site-health" tracks it (a comment whenever the set of
 # failing checks changes); it is closed once everything passes again.
 # CelesTrak asks for at most one download of the same data every two hours.
+# Also started by the Worker's cron (worker/dispatch.ts), as GitHub's own schedule runs late.
 on:
   schedule:
     - cron: "23 */2 * * *"
