@@ -33,9 +33,17 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         instances: RootInstance[];
     } | undefined;
     async function json(url: string, lifetime?: AbortSignal): Promise<unknown> {
-        const r = await network(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, redirect: 'error', signal: lifetime ? AbortSignal.any([lifetime, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000) });
+        // Errors name the upstream (host and path, no query) so a failure can be traced.
+        const where = new URL(url).host + new URL(url).pathname;
+        let r: Response;
+        try {
+            r = await network(url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, redirect: 'error', signal: lifetime ? AbortSignal.any([lifetime, AbortSignal.timeout(8000)]) : AbortSignal.timeout(8000) });
+        }
+        catch (error) {
+            throw Error(where + ': ' + (error instanceof Error ? error.message : String(error)));
+        }
         if (!r.ok)
-            throw Error('Upstream HTTP ' + r.status);
+            throw Error('Upstream HTTP ' + r.status + ' from ' + where);
         const reader = r.body?.getReader();
         if (!reader)
             throw Error('Empty upstream');
@@ -106,8 +114,8 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
         try {
             return await refresh(false);
         }
-        catch {
-            throw new RootsUnavailable('Root sites unavailable');
+        catch (error) {
+            throw new RootsUnavailable('Root sites unavailable: ' + (error instanceof Error ? error.message : String(error)));
         }
     }
     async function probes(cache: EdgeCache | undefined, origin: string) {
@@ -200,8 +208,11 @@ export function createDnsFlowsHandler(network: typeof fetch = fetch, clock = Dat
             const age = Math.max(0, Math.floor((clock() - cached!.at) / 1000));
             return new Response(request.method === 'HEAD' ? null : cached!.body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${Math.max(0, 240 - age)}`, Age: String(age) } });
         }
-        catch {
-            return new Response(request.method === 'HEAD' ? null : JSON.stringify({ error: 'Measured DNS flows temporarily unavailable' }), { status: 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+        catch (error) {
+            // Say which upstream failed (no secrets: public URLs and status codes only).
+            const detail = (error instanceof Error ? error.message : String(error)).slice(0, 300);
+            console.warn('DNS flows unavailable', detail);
+            return new Response(request.method === 'HEAD' ? null : JSON.stringify({ error: 'Measured DNS flows temporarily unavailable', detail }), { status: 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
         }
     };
 }
