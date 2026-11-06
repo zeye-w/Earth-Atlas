@@ -234,3 +234,13 @@ test('a failed refresh says which upstream failed, without the query string', as
   const slow = await (await createDnsFlowsHandler(timedOut, () => 0, undefined, async () => {})(new Request('https://x/api/internet/dns-flows'))).json();
   assert.match(slow.detail, /root-servers\.org\/root\/[A-M]\/json\/: The operation was aborted due to timeout/);
 });
+
+test('requests never use redirect "error" (Cloudflare Workers reject it) and still refuse redirects', async () => {
+  const { createDnsFlowsHandler } = await import('../worker/ripeAtlas.ts');
+  const modes = new Set();
+  const network = async (url, init) => { modes.add(init?.redirect); return new Response(null, { status: 302, headers: { Location: 'https://elsewhere.example/' } }); };
+  const response = await createDnsFlowsHandler(network, () => Date.parse('2026-11-06T00:00:00Z'), undefined, async () => {})(new Request('https://x/api/internet/dns-flows'));
+  assert.deepEqual([...modes], ['manual']);
+  assert.equal(response.status, 503);
+  assert.match((await response.json()).detail, /Upstream redirect 302 from root-servers\.org\/root\/[A-M]\/json\//);
+});
