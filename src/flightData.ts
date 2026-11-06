@@ -13,7 +13,16 @@ export const FLIGHTS_URL = "/api/flights";
 export const ADSB_LOL_URL = "https://re-api.adsb.lol/?all_with_pos";
 export const OPENSKY_URL = "https://opensky-network.org/api/states/all";
 export const FLIGHT_USER_AGENT = "TerraScope/1.0 (+https://github.com/zeye-w/Earth-Atlas)";
-export const FLIGHT_REFRESH_MS = 60_000;
+/**
+ * adsb.lol now requires an API key, and neither feed answers Cloudflare's
+ * Workers, so a scheduled workflow (.github/workflows/flight-data.yml) takes
+ * an anonymous OpenSky snapshot every 15 minutes and publishes it here; the
+ * Worker relays it at /api/flights.
+ */
+export const FLIGHT_SNAPSHOT_URL = "https://github.com/zeye-w/Earth-Atlas/releases/download/flight-data/flights.json";
+/** A snapshot older than this is not served as current traffic. */
+export const FLIGHT_SNAPSHOT_MAX_AGE_MS = 60 * 60_000;
+export const FLIGHT_REFRESH_MS = 5 * 60_000;
 /** Positions older than this at fetch time are dropped. */
 export const FLIGHT_MAX_POSITION_AGE_S = 60;
 
@@ -146,8 +155,10 @@ export async function fetchFlights(signal?: AbortSignal) {
   return decodeFlights(await response.json());
 }
 
-/** Longest dead reckoning from a report; beyond it the aircraft stays put. */
+/** Longest dead reckoning from a report below 3,000 m (climbing, approaching): beyond it the aircraft stays put. */
 export const MAX_EXTRAPOLATION_S = 120;
+/** Aircraft at 3,000 m and above mostly fly straight, so they carry on longer between snapshots. */
+export const MAX_CRUISE_EXTRAPOLATION_S = 20 * 60;
 
 /**
  * Where the aircraft would be `seconds` after its report at constant ground
@@ -156,7 +167,8 @@ export const MAX_EXTRAPOLATION_S = 120;
 export function extrapolate(flight: Pick<Flight, "latitude" | "longitude" | "speed" | "track" | "altitude">, seconds: number): { latitude: number; longitude: number } {
   const { latitude, longitude, speed, track, altitude } = flight;
   if (altitude === null || speed === null || track === null || seconds <= 0) return { latitude, longitude };
-  const distance = speed * Math.min(seconds, MAX_EXTRAPOLATION_S) / 6_371_008.8;
+  const cap = altitude >= 3_000 ? MAX_CRUISE_EXTRAPOLATION_S : MAX_EXTRAPOLATION_S;
+  const distance = speed * Math.min(seconds, cap) / 6_371_008.8;
   const lat1 = latitude * Math.PI / 180;
   const lon1 = longitude * Math.PI / 180;
   const bearing = track * Math.PI / 180;
@@ -183,6 +195,7 @@ export function describeFlight(flight: Flight, now: number): string {
   parts.push(flight.altitude === null ? "地面" : "高度 " + flight.altitude.toLocaleString("zh-CN") + " m");
   if (flight.speed !== null) parts.push("地速 " + Math.round(flight.speed * 3.6) + " km/h");
   if (flight.track !== null) parts.push("航向 " + flight.track + "°");
-  parts.push(Math.max(0, Math.round((now - flight.reportedAt) / 1000)) + " 秒前的位置报告");
+  const age = Math.max(0, Math.round((now - flight.reportedAt) / 1000));
+  parts.push(age < 120 ? age + " 秒前的位置报告" : Math.round(age / 60) + " 分钟前的位置报告");
   return parts.join(" · ");
 }

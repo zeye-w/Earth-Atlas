@@ -17,50 +17,36 @@ import { hazardsResponse } from "./hazards.ts";
  *
  * GET /api/hazards — natural events and tropical cyclones (worker/hazards.ts).
  *
- * GET /api/flights — live aircraft positions from adsb.lol (OpenSky as a
- * fallback), trimmed to the fields the globe draws. One upstream request per
- * isolate every FRESH_MS, however many visitors ask.
+ * GET /api/flights — aircraft positions: the OpenSky snapshot the
+ * flight-data workflow publishes every 15 minutes (src/flightData.ts), checked
+ * and relayed. One upstream request per isolate every FRESH_MS.
  */
-import { ADSB_LOL_URL, FLIGHT_USER_AGENT, OPENSKY_URL, parseAdsbLol, parseOpenSky, type FlightSnapshot } from "../src/flightData.ts";
+import { FLIGHT_SNAPSHOT_MAX_AGE_MS, FLIGHT_SNAPSHOT_URL, FLIGHT_USER_AGENT, decodeFlights } from "../src/flightData.ts";
 
 interface Env extends StatsEnv {
   ASSETS: { fetch(request: Request): Promise<Response> };
 }
 
-const FRESH_MS = 30_000;
+const FRESH_MS = 2 * 60_000;
 /** A failed refresh may keep serving the last snapshot this long. */
-const STALE_MS = 5 * 60_000;
+const STALE_MS = 15 * 60_000;
+const MAX_SNAPSHOT_BYTES = 5_000_000;
 
 let cached: { body: string; fetchedAt: number } | null = null;
 let pending: Promise<string> | null = null;
 
-/** Errors name the feed's host, so a failure says which feed broke and how. */
-async function upstream(url: string, parse: (json: unknown) => FlightSnapshot): Promise<FlightSnapshot> {
-  const host = new URL(url).host;
-  try {
-    const response = await fetch(url, { headers: { "User-Agent": FLIGHT_USER_AGENT, Accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
-    if (!response.ok) throw new Error("HTTP " + response.status + " " + (await response.text()).trim().slice(0, 80));
-    const snapshot = parse(await response.json());
-    if (snapshot.aircraft.length < 100) throw new Error("only " + snapshot.aircraft.length + " aircraft");
-    return snapshot;
-  } catch (error) {
-    throw new Error(host + ": " + (error instanceof Error ? error.message : String(error)));
-  }
-}
-
+/** The latest snapshot published by the flight-data workflow (see src/flightData.ts for why). */
 async function refresh(): Promise<string> {
-  let snapshot: FlightSnapshot;
-  try {
-    snapshot = await upstream(ADSB_LOL_URL, parseAdsbLol);
-  } catch (error) {
-    console.warn("adsb.lol failed, trying OpenSky", String(error));
-    try {
-      snapshot = await upstream(OPENSKY_URL, parseOpenSky);
-    } catch (fallback) {
-      throw new Error(String((error as Error).message) + "; " + String((fallback as Error).message));
-    }
-  }
-  const body = JSON.stringify(snapshot);
+  const response = await fetch(FLIGHT_SNAPSHOT_URL, { headers: { "User-Agent": FLIGHT_USER_AGENT }, signal: AbortSignal.timeout(15_000) })
+    .catch((error) => { throw new Error("flight snapshot: " + (error instanceof Error ? error.message : String(error))); });
+  if (!response.ok) throw new Error("flight snapshot: HTTP " + response.status);
+  const body = await response.text();
+  if (body.length > MAX_SNAPSHOT_BYTES) throw new Error("flight snapshot: oversized");
+  const { time, flights } = decodeFlights(JSON.parse(body));
+  if (flights.length < 100) throw new Error("flight snapshot: only " + flights.length + " aircraft");
+  const age = Date.now() - time;
+  // Old traffic is not shown as current: the workflow has stopped or its feed failed.
+  if (age > FLIGHT_SNAPSHOT_MAX_AGE_MS) throw new Error("flight snapshot is " + Math.round(age / 60_000) + " min old");
   cached = { body, fetchedAt: Date.now() };
   return body;
 }
@@ -68,7 +54,7 @@ async function refresh(): Promise<string> {
 function reply(body: string, status = 200): Response {
   return new Response(body, {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": status === 200 ? "public, max-age=20" : "no-store" },
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": status === 200 ? "public, max-age=60" : "no-store" },
   });
 }
 
