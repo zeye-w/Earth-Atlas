@@ -47,7 +47,7 @@ await page.evaluate(async (time) => {
   api.setUi("clean");
   api.setTime(time);
   // The global infrared cloud composite, not the daily true-colour mosaic: that one has no data in the polar night, which shows as hard seams.
-  api.setOptions({ cloudOpacity: 90 });
+  api.setOptions({ cloudOpacity: 50 });
   api.setLayers({ clouds: true, trueColor: false, dayNight: true, atmosphere: true, cities: false, geoLabels: false, lights: false, aurora: false, satellites: false, paths: false });
 }, time);
 
