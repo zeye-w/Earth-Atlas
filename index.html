@@ -70,6 +70,45 @@
       @keyframes splash-orbit { from { offset-distance:0%; } to { offset-distance:100%; } }
       @keyframes splash-sweep { from { left:-28%; } to { left:100%; } }
       @keyframes splash-in { to { opacity:1; } }
+      /*
+       * Intro (first visit only; the script below decides): an optional video
+       * that rises from the ground to space and ends on the same view of the
+       * globe, then a home page with an Enter button. It sits above the
+       * loading screen, which carries on underneath, so entering is instant
+       * once the engine is ready. Without the video the home page shows over
+       * the loading screen's globe.
+       */
+      #intro { position:fixed; inset:0; z-index:110; overflow:hidden; color:#f4f5f7;
+        font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+        transition:opacity .8s ease; }
+      #intro[hidden] { display:none; }
+      #intro.leaving { opacity:0; pointer-events:none; }
+      #intro-video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#05070b; transition:transform .9s ease, opacity .7s ease; }
+      #intro.no-video #intro-video { opacity:0; pointer-events:none; }
+      #intro-skip { position:absolute; right:24px; bottom:24px; padding:8px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.28); background:rgba(5,9,16,.5);
+        color:#f4f5f7; font:inherit; font-size:12px; letter-spacing:.06em; cursor:pointer; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+      #intro-skip:hover { background:rgba(5,9,16,.75); }
+      #intro.home #intro-skip { display:none; }
+      .intro-home { position:absolute; left:50%; bottom:max(6vh, 28px); transform:translateX(-50%); width:min(380px, 86vw); display:flex; flex-direction:column; align-items:center; gap:12px;
+        padding:20px 22px 18px; border-radius:18px; text-align:center; background:rgba(5,9,16,.62); border:1px solid rgba(255,255,255,.1);
+        -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); opacity:0; visibility:hidden; transition:opacity .8s ease .15s, visibility 0s linear .95s; }
+      #intro.home .intro-home { opacity:1; visibility:visible; transition:opacity .8s ease .15s; }
+      .intro-name { margin:0; font-size:20px; font-weight:400; letter-spacing:.32em; padding-left:.32em; }
+      .intro-name b { font-weight:700; }
+      .intro-tagline { margin:0; font-size:13px; line-height:1.55; color:rgba(244,245,247,.74); }
+      .intro-actions { display:flex; align-items:center; gap:14px; margin-top:4px; }
+      #intro-enter { padding:10px 26px; border-radius:999px; border:0; background:#f4f5f7; color:#0b0c0f; font:inherit; font-size:14px; font-weight:600; letter-spacing:.04em; cursor:pointer; }
+      #intro-enter:hover { background:#fff; }
+      #intro-lang { padding:6px 4px; border:0; background:none; color:rgba(244,245,247,.7); font:inherit; font-size:12px; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+      /* Wide screens: the globe fills the middle, so the home page stands to its left. */
+      @media (min-width:1100px) and (min-aspect-ratio:3/2) {
+        .intro-home { left:max(4.5vw, 32px); bottom:auto; top:50%; transform:translateY(-50%); width:min(300px, 21vw); align-items:flex-start; text-align:left; padding:0;
+          background:none; border:0; -webkit-backdrop-filter:none; backdrop-filter:none; gap:16px; }
+        .intro-name { font-size:25px; }
+        .intro-tagline { font-size:15px; }
+      }
+      /* While the intro is up, the loading panel stays out of its way. */
+      #splash.with-intro .splash-panel { opacity:0; }
       /* A shared link opens elsewhere: keep a smaller globe that does not pretend to line up. */
       #splash.shared { --globe:min(36vmin, 320px); }
       @media (prefers-reduced-motion: reduce) {
@@ -89,6 +128,99 @@
         <div class="splash-caption">Loading the 3D engine…</div>
       </div>
     </div>
+    <div id="intro" hidden>
+      <video id="intro-video" muted playsinline preload="auto" aria-hidden="true"></video>
+      <button id="intro-skip" type="button">Skip</button>
+      <div class="intro-home">
+        <h1 class="intro-name">TERRA<b>SCOPE</b></h1>
+        <p class="intro-tagline" id="intro-tagline"></p>
+        <div class="intro-actions"><button id="intro-enter" type="button">Enter</button><button id="intro-lang" type="button"></button></div>
+      </div>
+    </div>
+    <script>
+      // Intro: shown on a first visit (or with ?intro=1), never for shared
+      // scenes or recording. A video on wide screens that allow motion and
+      // data, then the home page; src/splash.ts holds the loading screen
+      // until Enter. window.__terrascopeIntro tells the app what happened.
+      (function () {
+        var state = window.__terrascopeIntro = { active: false, entered: true, events: [] };
+        var intro = document.getElementById("intro"), splash = document.getElementById("splash");
+        if (!intro || !splash) return;
+        var query = new URLSearchParams(location.search), store = null;
+        try { store = window.localStorage; } catch (e) { /* storage blocked */ }
+        var get = function (key) { try { return store ? store.getItem(key) : null; } catch (e) { return null; } };
+        var set = function (key, value) { try { if (store) store.setItem(key, value); } catch (e) { /* storage blocked */ } };
+        var forced = query.get("intro") === "1";
+        if (query.has("record") || /(^|[#&])scene=/.test(location.hash) || (get("terrascope.intro") === "seen" && !forced)) return;
+
+        var note = function (name) { state.events.push(name); window.dispatchEvent(new CustomEvent("terrascope:intro", { detail: name })); };
+        var video = document.getElementById("intro-video"), skip = document.getElementById("intro-skip");
+        var enter = document.getElementById("intro-enter"), langButton = document.getElementById("intro-lang");
+        var TEXT = {
+          en: { tagline: "Real-time satellites, weather, natural hazards and geology on a living 3D Earth.", enter: "Enter", skip: "Skip", other: "中文" },
+          zh: { tagline: "在一颗实时运转的三维地球上，看卫星、天气、自然灾害与地质。", enter: "进入", skip: "跳过", other: "English" },
+        };
+        var lang = query.get("lang");
+        if (lang !== "en" && lang !== "zh") lang = get("terrascope.language") === "zh" ? "zh" : "en";
+        var paint = function () {
+          document.getElementById("intro-tagline").textContent = TEXT[lang].tagline;
+          enter.textContent = TEXT[lang].enter; skip.textContent = TEXT[lang].skip; langButton.textContent = TEXT[lang].other;
+          intro.lang = lang === "zh" ? "zh-CN" : "en";
+        };
+        paint();
+        langButton.onclick = function () {
+          lang = lang === "zh" ? "en" : "zh";
+          set("terrascope.language", lang);
+          try { var url = new URL(location.href); url.searchParams.set("lang", lang); history.replaceState(history.state, "", url); } catch (e) { /* embedded browsers */ }
+          paint();
+          // The app follows if it has loaded; otherwise it reads the saved choice when it does.
+          window.dispatchEvent(new CustomEvent("terrascope:locale", { detail: lang }));
+        };
+
+        state.active = true; state.entered = false;
+        intro.hidden = false;
+        splash.classList.add("with-intro");
+        var home = false;
+        var showHome = function (keepVideo) {
+          if (home) return;
+          home = true;
+          if (!keepVideo) { intro.classList.add("no-video"); try { video.pause(); } catch (e) { /* not started */ } }
+          intro.classList.add("home");
+          enter.focus({ preventScroll: true });
+        };
+        enter.onclick = function () {
+          if (state.entered) return;
+          state.entered = true;
+          set("terrascope.intro", "seen");
+          note("enter");
+          if (forced) try { var url = new URL(location.href); url.searchParams.delete("intro"); history.replaceState(history.state, "", url); } catch (e) { /* embedded browsers */ }
+          // The video's last frame shows the globe at 49.1% of its width; shrink
+          // it to the live globe's size (49.1% of the longer side) while fading.
+          var w = innerWidth, h = innerHeight;
+          video.style.transform = "scale(" + (Math.max(w, h) / Math.max(w, h * 16 / 9)).toFixed(4) + ")";
+          intro.classList.add("leaving");
+          splash.classList.remove("with-intro");
+          window.dispatchEvent(new Event("terrascope:enter"));
+          setTimeout(function () { intro.remove(); }, 950);
+        };
+
+        var motion = !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+        var saver = navigator.connection && navigator.connection.saveData;
+        if (innerWidth < 760 || innerHeight < 500 || !motion || saver) { note("home"); showHome(false); return; }
+        note("video");
+        video.poster = "/intro/poster.jpg";
+        video.src = "/intro/intro.mp4";
+        // No video (missing, blocked autoplay, slow start): straight to the home page.
+        var started = false, watchdog = setTimeout(function () { if (!started) showHome(false); }, 5000);
+        video.onplaying = function () { started = true; clearTimeout(watchdog); };
+        video.onerror = function () { clearTimeout(watchdog); showHome(false); };
+        video.onended = function () { note("watched"); showHome(true); };
+        var playing = video.play();
+        if (playing && playing.catch) playing.catch(function () { clearTimeout(watchdog); showHome(false); });
+        skip.onclick = function () { clearTimeout(watchdog); note("skip"); showHome(false); };
+        document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !home) skip.onclick(); });
+      })();
+    </script>
     <script>
       // Light the loading globe from the real sun, as the 3D globe will be:
       // the default view looks straight down on 48°N 2°E with north up.

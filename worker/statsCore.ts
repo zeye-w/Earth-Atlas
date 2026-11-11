@@ -9,7 +9,7 @@
  * address, user agent, URL or coordinates are kept.
  */
 
-export const EVENT_NAMES = ["view", "ping", "layer", "show", "share", "tour", "live_photo", "search", "highlight"] as const;
+export const EVENT_NAMES = ["view", "ping", "layer", "show", "share", "tour", "live_photo", "search", "highlight", "intro"] as const;
 export type EventName = (typeof EVENT_NAMES)[number];
 export const DEVICES = ["phone", "tablet", "desktop"] as const;
 

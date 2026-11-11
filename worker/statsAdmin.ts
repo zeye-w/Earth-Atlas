@@ -80,7 +80,7 @@ export const ADMIN_HTML = `<!doctype html>
   var app = document.getElementById("app"), daysSelect = document.getElementById("days");
   var KEY = "terrascope.stats.token";
   var token = sessionStorage.getItem(KEY) || "";
-  var FEATURE = { layer: "图层", show: "互动体验", share: "分享", tour: "旅行导览", live_photo: "实况图", search: "搜索", highlight: "今日看点" };
+  var FEATURE = { layer: "图层", show: "互动体验", share: "分享", tour: "旅行导览", live_photo: "实况图", search: "搜索", highlight: "今日看点", intro: "开场" };
   var DIM = { lang: "界面语言", device: "设备", country: "国家/地区", referrer: "来源网站" };
   var VALUE = { en: "英文", zh: "中文", phone: "手机", tablet: "平板", desktop: "电脑" };
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }

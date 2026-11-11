@@ -46,11 +46,28 @@ export function setSplashStage(stage: SplashStage, fraction = 0) {
   if (caption && caption.textContent !== text) caption.textContent = text;
 }
 
-/** Fade the loading screen out over the globe it was drawn to match. */
+/** What the intro script in index.html reports: on screen, and whether the visitor has entered. */
+interface IntroState { active: boolean; entered: boolean; events: string[] }
+export const introState = (): IntroState | undefined =>
+  typeof window === "undefined" ? undefined : (window as unknown as { __terrascopeIntro?: IntroState }).__terrascopeIntro;
+let waitingForEnter = false;
+
+/**
+ * Fade the loading screen out over the globe it was drawn to match. While the
+ * intro's home page is up, it waits underneath until the visitor enters.
+ */
 export function finishSplash() {
   if (typeof document === "undefined") return;
   const splash = document.getElementById("splash");
   if (!splash || splash.classList.contains("done")) return;
+  const intro = introState();
+  if (intro?.active && !intro.entered) {
+    if (!waitingForEnter) {
+      waitingForEnter = true;
+      window.addEventListener("terrascope:enter", () => finishSplash(), { once: true });
+    }
+    return;
+  }
   splash.style.setProperty("--progress", "100%");
   splash.classList.add("done");
   window.setTimeout(() => splash.remove(), 950);
