@@ -1,6 +1,6 @@
 /**
  * Render the last shot of the intro video from the app's own globe: straight
- * up from low orbit, through the day's real cloud cover, to the default view
+ * up from low orbit, over real cloud cover, to the default view
  * the app opens on (17,000 km above 48°N 2°E, north up), so the video hands
  * over to the live globe in place. Run by .github/workflows/intro-video.yml
  * against a local build in recording mode; needs network access for imagery.
@@ -38,7 +38,7 @@ page.setDefaultTimeout(300_000);
 page.on("pageerror", (error) => console.log("JS", error.message));
 await page.goto(site.replace(/\/?$/, "/") + "?record&lang=en");
 await page.waitForFunction(() => "__terrascope" in window);
-// Two days ago at 11:00 UTC: that day's mosaic is complete and Europe is in full daylight.
+// Two days ago at 11:00 UTC: inside the cloud archive, with Europe in full daylight.
 const day = new Date(Date.now() - 2 * 86_400_000);
 const time = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 11);
 await page.evaluate(async (time) => {
@@ -46,7 +46,9 @@ await page.evaluate(async (time) => {
   await api.ready();
   api.setUi("clean");
   api.setTime(time);
-  api.setLayers({ trueColor: true, dayNight: true, atmosphere: true, clouds: false, cities: false, geoLabels: false, lights: false, aurora: false, satellites: false, paths: false });
+  // The global infrared cloud composite, not the daily true-colour mosaic: that one has no data in the polar night, which shows as hard seams.
+  api.setOptions({ cloudOpacity: 90 });
+  api.setLayers({ clouds: true, trueColor: false, dayNight: true, atmosphere: true, cities: false, geoLabels: false, lights: false, aurora: false, satellites: false, paths: false });
 }, time);
 
 const frames = SECONDS * FPS;
