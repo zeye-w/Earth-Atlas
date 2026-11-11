@@ -33,7 +33,7 @@ const browser = await chromium.launch({
   headless: true, executablePath: process.env.PW_CHROMIUM_PATH || undefined,
   args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"],
 });
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
 page.setDefaultTimeout(300_000);
 page.on("pageerror", (error) => console.log("JS", error.message));
 await page.goto(site.replace(/\/?$/, "/") + "?record&lang=en");
