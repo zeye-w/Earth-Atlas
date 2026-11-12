@@ -38,7 +38,7 @@ page.setDefaultTimeout(300_000);
 page.on("pageerror", (error) => console.log("JS", error.message));
 await page.goto(site.replace(/\/?$/, "/") + "?record&lang=en");
 await page.waitForFunction(() => "__terrascope" in window);
-// Two days ago at 11:00 UTC: inside the cloud archive, with Europe in full daylight.
+// Two days ago at 11:00 UTC: Europe in full daylight.
 const day = new Date(Date.now() - 2 * 86_400_000);
 const time = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 11);
 await page.evaluate(async (time) => {
@@ -46,9 +46,10 @@ await page.evaluate(async (time) => {
   await api.ready();
   api.setUi("clean");
   api.setTime(time);
-  // The global infrared cloud composite, not the daily true-colour mosaic: that one has no data in the polar night, which shows as hard seams.
-  api.setOptions({ cloudOpacity: 50 });
-  api.setLayers({ clouds: true, trueColor: false, dayNight: true, atmosphere: true, cities: false, geoLabels: false, lights: false, aurora: false, satellites: false, paths: false });
+  // No cloud layer: the daily true-colour mosaic has seams in the polar night, and the infrared
+  // composite greys the land and shows a hard edge over northern Europe. The base imagery keeps
+  // land and sea in their own colours, which is what the ascent is for.
+  api.setLayers({ clouds: false, trueColor: false, dayNight: true, atmosphere: true, cities: false, geoLabels: false, lights: false, aurora: false, satellites: false, paths: false });
 }, time);
 
 const frames = SECONDS * FPS;
