@@ -29,6 +29,11 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: ffmpeg, before the long render so a failed install costs nothing
+        run: |
+          command -v ffmpeg >/dev/null && exit 0
+          for attempt in 1 2 3; do sudo apt-get update -q && sudo apt-get install -y --no-install-recommends ffmpeg && break; sleep 20; done
+          ffmpeg -version | head -1
       - name: Render the ascent from the local build
         run: |
           npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
@@ -43,7 +48,6 @@ jobs:
           ls -l out/clips
       - name: Assemble
         run: |
-          sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null
           video/intro/assemble.sh out/frames out/clips out/video
           ls -l out/video
       - uses: actions/upload-artifact@v4
