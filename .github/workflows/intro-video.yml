@@ -1,0 +1,62 @@
+name: Intro video
+# Builds the intro video (video/intro/): renders the ascent to space from the
+# app's own globe, joins it to the ground-level clips in the "intro-source"
+# release when they exist (clip1.mp4, clip2.mp4, clip3.mp4), and publishes
+# intro.mp4, poster.jpg, end.jpg and a contact sheet to the "intro-build"
+# release for review. The reviewed files are then committed to public/intro/.
+on:
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths:
+      - "video/intro/**"
+      - ".github/workflows/intro-video.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: intro-video
+  cancel-in-progress: true
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: ffmpeg, before the long render so a failed install costs nothing
+        run: |
+          command -v ffmpeg >/dev/null && exit 0
+          for attempt in 1 2 3; do sudo apt-get update -q && sudo apt-get install -y --no-install-recommends ffmpeg && break; sleep 20; done
+          ffmpeg -version | head -1
+      - name: Render the ascent from the local build
+        run: |
+          npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
+          node video/intro/render-ascent.mjs http://127.0.0.1:4173 out/frames
+      - name: Ground-level clips, if supplied
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p out/clips
+          gh release download intro-source --dir out/clips --pattern 'clip*.mp4' || echo "No intro-source release yet: ascent only."
+          ls -l out/clips
+      - name: Assemble
+        run: |
+          video/intro/assemble.sh out/frames out/clips out/video
+          ls -l out/video
+      - uses: actions/upload-artifact@v4
+        with:
+          name: intro-video
+          path: out/video
+      - name: Publish for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view intro-build >/dev/null 2>&1 || gh release create intro-build --title 'Intro video (build output)' --notes 'Output of the Intro video workflow, for review before it is committed to public/intro/.' --latest=false
+          gh release upload intro-build out/video/intro.mp4 out/video/poster.jpg out/video/end.jpg out/video/sheet.jpg --clobber

@@ -1,6 +1,6 @@
 import { setLocale, t, useLocale } from "../i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, Sunrise, SlidersHorizontal } from "lucide-react";
+import { Clapperboard, Crosshair, Film, Layers, Maximize, Minimize, Orbit, Search, Share2, Sunrise, SlidersHorizontal } from "lucide-react";
 import { AUTO_QUALITY_MIN_FPS, RENDER_QUALITY_LABELS, RENDER_QUALITY_ORDER, type RenderQuality } from "../performance";
 import { ICON, Segmented } from "../ui/controls";
 import { analyticsOptedOut, setAnalyticsEnabled } from "../analytics";
@@ -88,6 +88,13 @@ function SettingsMenu({ quality, onChooseQuality, autoQuality, onAutoQuality }: 
     };
   }, [open]);
 
+  // The intro lives in index.html and runs before the app: reload with ?intro=1.
+  const replayIntro = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("intro", "1");
+    url.hash = "";
+    window.location.assign(url);
+  };
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     else void document.documentElement.requestFullscreen?.().catch(() => {});
@@ -111,6 +118,10 @@ function SettingsMenu({ quality, onChooseQuality, autoQuality, onAutoQuality }: 
             <input type="checkbox" checked={statsOn} onChange={(event) => { setAnalyticsEnabled(event.target.checked); setStatsOn(event.target.checked); }} />
             <span><strong>{t("匿名使用统计")}</strong><small>{t(statsOn ? "只统计匿名的访问与功能使用次数，不收集个人信息" : "已关闭，不再发送任何统计")}</small></span>
           </label>
+          <button type="button" className="settings-row" onClick={replayIntro}>
+            <Clapperboard {...ICON} aria-hidden="true" />
+            <span>{t("重看开场")}</span>
+          </button>
           <button type="button" className="settings-row" onClick={toggleFullscreen}>
             {fullscreen ? <Minimize {...ICON} aria-hidden="true" /> : <Maximize {...ICON} aria-hidden="true" />}
             <span>{t(fullscreen ? "退出全屏" : "全屏浏览")}</span>

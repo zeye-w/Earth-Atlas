@@ -99,7 +99,11 @@ function cloudProducts() {
  * default) or the page already chose a language. Today's highlights start
  * folded unless a test asks for them open.
  */
-export async function mockNetwork(page: Page, { locale = "zh", highlights = "closed" }: { locale?: "zh" | "en" | null; highlights?: "open" | "closed" } = {}): Promise<void> {
+export async function mockNetwork(page: Page, { locale = "zh", highlights = "closed", intro = false }: { locale?: "zh" | "en" | null; highlights?: "open" | "closed"; intro?: boolean } = {}): Promise<void> {
+  // The first-visit intro (index.html) would stand in front of every test: mark it seen unless a test is about it.
+  if (!intro) await page.addInitScript(() => {
+    try { localStorage.setItem("terrascope.intro", "seen"); } catch { /* storage blocked */ }
+  });
   if (locale) await page.addInitScript((value) => {
     try { if (!localStorage.getItem("terrascope.language")) localStorage.setItem("terrascope.language", value); } catch { /* storage blocked */ }
   }, locale);

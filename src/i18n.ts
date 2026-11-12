@@ -36,3 +36,5 @@ export function setLocale(next: Locale) {
   updateDocument(); listeners.forEach(listener => listener());
 }
 updateDocument();
+// The intro's language switch (index.html) runs before or beside the app.
+if (typeof window !== "undefined") window.addEventListener("terrascope:locale", (event) => setLocale((event as CustomEvent<Locale>).detail));
