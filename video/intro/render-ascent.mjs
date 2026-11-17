@@ -1,6 +1,6 @@
 /**
- * Render the last shot of the intro video from the app's own globe: straight
- * up from low orbit, over real cloud cover, to the default view
+ * Render the intro video from the app's own globe: straight up from low
+ * orbit over the Mediterranean coast to the default view
  * the app opens on (17,000 km above 48°N 2°E, north up), so the video hands
  * over to the live globe in place. Run by .github/workflows/intro-video.yml
  * against a local build in recording mode; needs network access for imagery.
@@ -15,7 +15,8 @@ const out = process.argv[3] ?? "video/intro/out/frames";
 mkdirSync(out, { recursive: true });
 
 export const FPS = 30;
-const SECONDS = 4, HOLD_FRAMES = 20;
+// Short on purpose: the intro is a greeting, not a wait.
+const SECONDS = 2.5, HOLD_FRAMES = 8;
 /** From over the Mediterranean coast to the app's home view. */
 const START = { longitude: 5.4, latitude: 43.3, height: 250_000, heading: 24 };
 const END = { longitude: 2, latitude: 48, height: 17_000_000, heading: 0 };
