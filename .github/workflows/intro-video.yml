@@ -1,7 +1,6 @@
 name: Intro video
 # Builds the intro video (video/intro/): renders the ascent to space from the
-# app's own globe, joins it to the ground-level clips in the "intro-source"
-# release when they exist (clip1.mp4, clip2.mp4, clip3.mp4), and publishes
+# app's own globe, encodes it, and publishes
 # intro.mp4, poster.jpg, end.jpg and a contact sheet to the "intro-build"
 # release for review. The reviewed files are then committed to public/intro/.
 on:
@@ -39,16 +38,9 @@ jobs:
           npx vite preview --host 127.0.0.1 --port 4173 --strictPort > /tmp/preview.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 2; done
           node video/intro/render-ascent.mjs http://127.0.0.1:4173 out/frames
-      - name: Ground-level clips, if supplied
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          mkdir -p out/clips
-          gh release download intro-source --dir out/clips --pattern 'clip*.mp4' || echo "No intro-source release yet: ascent only."
-          ls -l out/clips
       - name: Assemble
         run: |
-          video/intro/assemble.sh out/frames out/clips out/video
+          video/intro/assemble.sh out/frames out/video
           ls -l out/video
       - uses: actions/upload-artifact@v4
         with:
