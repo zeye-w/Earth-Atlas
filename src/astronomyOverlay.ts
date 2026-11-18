@@ -1,7 +1,7 @@
 import {
-  ArcType, Cartesian2, Cartesian3, Color, ColorMaterialProperty, ConstantPositionProperty, ConstantProperty, Entity, HorizontalOrigin,
-  ImageryLayer, LabelStyle, Moon, PolygonHierarchy, PolylineDashMaterialProperty, Rectangle, SingleTileImageryProvider,
-  VerticalOrigin, type Viewer,
+  ArcType, Cartesian2, Cartesian3, Color, ColorMaterialProperty, ConstantPositionProperty, ConstantProperty, EllipsoidSurfaceAppearance, Entity,
+  GeometryInstance, HorizontalOrigin, LabelStyle, Material, Math as CesiumMath, Moon, PolygonHierarchy, PolylineDashMaterialProperty, Primitive,
+  Rectangle, RectangleGeometry, VerticalOrigin, type Viewer,
 } from "cesium";
 import { moonState, PHASE_LABELS } from "./astronomy/moon.ts";
 import { obscurationGrid, shadowAt, solarEclipseTrack, sublunarPoint, type Eclipse, type EclipseTrack, type GeoPoint, type SolarEclipse } from "./astronomy/eclipses.ts";
@@ -18,7 +18,8 @@ import { t } from "./i18n";
 
 const RAD = Math.PI / 180;
 const DEG = 180 / Math.PI;
-const HEIGHT = 3_000;
+/** Lines and markers sit above the translucent maps (12 km). */
+const HEIGHT = 20_000;
 
 /** The point `distance` degrees away along `bearing` (great circle). */
 function destination(from: GeoPoint, bearing: number, distance: number): GeoPoint {
@@ -58,14 +59,17 @@ export function moonIcon(phaseAngle: number, size = 48): HTMLCanvasElement {
   return canvas;
 }
 
-/** One translucent image over the whole globe, replaced without a blink when it changes. */
+/**
+ * One translucent image over the whole globe. A primitive with a flat
+ * appearance rather than an imagery layer: imagery is darkened on the night
+ * side by the globe's lighting, and meteor showers are seen at night.
+ */
 class GridImagery {
-  private layer: ImageryLayer | null = null;
-  private pending = 0;
+  private primitive: Primitive | null = null;
+  private material: Material | null = null;
   constructor(private viewer: Viewer) {}
 
   async show(width: number, height: number, pixel: (index: number) => [number, number, number, number] | null): Promise<void> {
-    const ticket = ++this.pending;
     const canvas = document.createElement("canvas");
     canvas.width = width; canvas.height = height;
     const g = canvas.getContext("2d")!;
@@ -75,19 +79,32 @@ class GridImagery {
       if (rgba) image.data.set(rgba, i * 4);
     }
     g.putImageData(image, 0, 0);
-    const provider = await SingleTileImageryProvider.fromUrl(canvas.toDataURL(), { rectangle: Rectangle.MAX_VALUE });
-    if (ticket !== this.pending || this.viewer.isDestroyed()) return;
-    const next = this.viewer.imageryLayers.addImageryProvider(provider);
-    const old = this.layer;
-    this.layer = next;
-    if (old) this.viewer.imageryLayers.remove(old, true);
-    this.viewer.scene.requestRender();
+    if (this.viewer.isDestroyed()) return;
+    if (!this.primitive) {
+      this.material = Material.fromType("Image", { image: canvas, color: Color.WHITE });
+      this.primitive = this.viewer.scene.primitives.add(new Primitive({
+        geometryInstances: new GeometryInstance({
+          // Just above the ground, so it is not hidden in the globe's surface.
+          geometry: new RectangleGeometry({ rectangle: Rectangle.fromDegrees(-180, -89.9, 180, 89.9), height: 12_000, granularity: CesiumMath.toRadians(2), vertexFormat: EllipsoidSurfaceAppearance.VERTEX_FORMAT }),
+        }),
+        appearance: new EllipsoidSurfaceAppearance({ material: this.material, flat: true, translucent: true, aboveGround: true }),
+        asynchronous: false,
+      }));
+    } else {
+      this.material!.uniforms.image = canvas;
+      this.primitive.show = true;
+    }
+    // The scene renders on demand; the texture is uploaded during a frame and
+    // shown on a later one, so ask for a few more.
+    const scene = this.viewer.scene;
+    scene.requestRender();
+    for (const ms of [50, 200, 600]) window.setTimeout(() => { if (!this.viewer.isDestroyed()) scene.requestRender(); }, ms);
   }
 
   clear(): void {
-    this.pending++;
-    if (this.layer && !this.viewer.isDestroyed()) this.viewer.imageryLayers.remove(this.layer, true);
-    this.layer = null;
+    if (this.primitive && !this.viewer.isDestroyed()) this.viewer.scene.primitives.remove(this.primitive);
+    this.primitive = null;
+    this.material = null;
   }
 }
 
@@ -131,10 +148,9 @@ export class AstronomyOverlay {
       this.moonMarker = this.viewer.entities.add({
         id: "astronomy:moon",
         position,
-        billboard: { image: moonIcon(moon.phaseAngle), width: 30, height: 30, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        billboard: { image: moonIcon(moon.phaseAngle), width: 30, height: 30 },
         label: { text, font: "12px Inter, system-ui, sans-serif", fillColor: Color.fromCssColorString("#f2efe4"), outlineColor: Color.BLACK, outlineWidth: 3,
-          style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, 24), verticalOrigin: VerticalOrigin.TOP, horizontalOrigin: HorizontalOrigin.CENTER,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY },
+          style: LabelStyle.FILL_AND_OUTLINE, pixelOffset: new Cartesian2(0, 24), verticalOrigin: VerticalOrigin.TOP, horizontalOrigin: HorizontalOrigin.CENTER },
       });
       this.moonCircle = this.viewer.entities.add({
         id: "astronomy:moon-horizon",
@@ -252,10 +268,10 @@ export class AstronomyOverlay {
     const key = shower.code + ":" + Math.floor(time / 600_000);
     if (key === this.meteorKey) return;
     this.meteorKey = key;
-    const grid = visibilityGrid(shower, time, 180, 90);
+    const grid = visibilityGrid(shower, time, 360, 180);
     void this.meteorGrid.show(grid.width, grid.height, (i) => {
       const v = grid.values[i];
-      return v > 0 ? [70, 230, 200, Math.round(30 + 120 * v)] : null;
+      return v > 0 ? [70, 230, 200, Math.round(110 * Math.sqrt(v))] : null;
     });
   }
 

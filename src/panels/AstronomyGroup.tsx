@@ -8,7 +8,7 @@ import type { LocationState, UserLocation } from "../hooks/useUserLocation";
 import { useTimeSelector } from "../hooks/useTimeline";
 import type { TimeController } from "../timeline";
 import { compassName } from "../compass";
-import { coordinateLabel, ICON, LayerGroup, ToggleRow } from "../ui/controls";
+import { ICON, LayerGroup, ToggleRow } from "../ui/controls";
 import { now } from "../clock";
 import "./astronomy.css";
 
@@ -26,6 +26,9 @@ const QUARTERS = ["新月", "上弦月", "满月", "下弦月"] as const;
 const PLANET_NAMES = { Mercury: "水星", Venus: "金星", Mars: "火星", Jupiter: "木星", Saturn: "土星" } as const;
 
 const DAY = 86_400_000;
+/** "25.5°N 33.2°E": a tenth of a degree is plenty for where an eclipse is seen. */
+export const place = (latitude: number, longitude: number) =>
+  Math.abs(latitude).toFixed(1) + "°" + (latitude >= 0 ? "N" : "S") + " " + Math.abs(longitude).toFixed(1) + "°" + (longitude >= 0 ? "E" : "W");
 /** How far ahead the eclipse list reaches. */
 const ECLIPSE_YEARS = 3;
 
@@ -65,7 +68,7 @@ export function AstronomyGroup(props: Props) {
       {layers.eclipses && <div className="layer-extra astro-section">{module ? <EclipseList module={module} selected={props.selectedEclipse} onSelect={props.onSelectEclipse} /> : <p className="layer-status">{loading}</p>}</div>}
       <ToggleRow icon={<Sparkle {...ICON} />} title={t("流星雨")} caption={t("十大流星雨日历 · 此刻哪里能看到")}
         checked={layers.meteors} onChange={(v) => setLayer("meteors", v)} />
-      {layers.meteors && <div className="layer-extra astro-section">{module ? <ShowerList module={module} selected={props.shower} onSelect={props.onSelectShower} /> : <p className="layer-status">{loading}</p>}</div>}
+      {layers.meteors && <div className="layer-extra astro-section">{module ? <ShowerList module={module} selected={props.shower} onSelect={props.onSelectShower} timeline={props.timeline} /> : <p className="layer-status">{loading}</p>}</div>}
       <TonightSection {...props} />
     </LayerGroup>
   );
@@ -105,7 +108,7 @@ function EclipseList({ module, selected, onSelect }: { module: AstronomyModule; 
               <i style={{ background: eclipseColor(e) }} />
               <span><strong>{t(eclipseLabel(e))} · {dayFormat(e.peak)}</strong>
                 <small>{e.type === "solar"
-                  ? e.latitude !== null ? t("食甚 {0}", coordinateLabel(e.latitude, "N", "S") + " " + coordinateLabel(e.longitude!, "E", "W")) : t("只有偏食，在高纬度地区")
+                  ? e.latitude !== null ? t("食甚 {0}", place(e.latitude, e.longitude!)) : t("只有偏食，在高纬度地区")
                   : t("全程约 {0} 小时 · 月亮在地平线上的地方都能看到", (e.semiDuration.penumbral * 2 / 60).toFixed(1))}</small></span>
             </button>
           </li>
@@ -116,12 +119,30 @@ function EclipseList({ module, selected, onSelect }: { module: AstronomyModule; 
   );
 }
 
-function ShowerList({ module, selected, onSelect }: { module: AstronomyModule; selected: string | null; onSelect: (s: MeteorShower) => void }) {
+function ShowerList({ module, selected, onSelect, timeline }: { module: AstronomyModule; selected: string | null; onSelect: (s: MeteorShower) => void; timeline: TimeController }) {
   const today = Math.floor(now() / DAY) * DAY;
   const outlook: ShowerOutlook[] = useMemo(() => module.showerOutlook(today), [module, today]);
-  const locale = useLocale();
+  // Same moment and ten-minute steps as the map on the globe.
+  const step = useTimeSelector(timeline, (state) => Math.floor((state.live ? now() : state.time) / 600_000));
+  const shown = module.METEOR_SHOWERS.find((s) => s.code === selected) ?? null;
+  // Share of the Earth's surface (cells weighted by area) where the radiant is up in a dark sky.
+  const coverage = useMemo(() => {
+    if (!shown) return null;
+    const grid = module.visibilityGrid(shown, step * 600_000, 90, 45);
+    let seen = 0, all = 0;
+    for (let y = 0; y < grid.height; y++) {
+      const weight = Math.cos(((90 - (y + 0.5) * 4) * Math.PI) / 180);
+      for (let x = 0; x < grid.width; x++) { all += weight; if (grid.values[y * grid.width + x] > 0) seen += weight; }
+    }
+    return seen / all;
+  }, [module, shown, step]);
   return (
     <>
+      {shown && coverage !== null && (
+        <p className="layer-status" role="status">{coverage > 0.005
+          ? t("{0}：此刻约 {1}% 的地球表面天已全黑、辐射点在地平线以上（地球上的青色区域）", t(shown.name), Math.round(coverage * 100))
+          : t("{0}：此刻地球上没有天黑而且辐射点已升起的地方，稍后再看", t(shown.name))}</p>
+      )}
       <ul className="astro-list">
         {outlook.map(({ shower, peak, active, moonAtPeak }) => (
           <li key={shower.code}>
@@ -129,7 +150,7 @@ function ShowerList({ module, selected, onSelect }: { module: AstronomyModule; s
               <i style={{ background: active ? "#46e6c8" : "rgba(70,230,200,.35)" }} />
               <span>
                 <strong>{t(shower.name)}{active && <em className="astro-badge live">{t("活跃中")}</em>}</strong>
-                <small>{t("极大 {0}", dayTime(peak))} · {t("每小时约 {0} 颗", shower.zhr)} · {t(moonAtPeak > 0.6 ? "月光较强" : moonAtPeak > 0.3 ? "有些月光" : "月光干扰小")}{locale === "en" ? "" : ""}</small>
+                <small>{t("极大 {0}", dayTime(peak))} · {t("每小时约 {0} 颗", shower.zhr)} · {t(moonAtPeak > 0.6 ? "月光较强" : moonAtPeak > 0.3 ? "有些月光" : "月光干扰小")}</small>
               </span>
             </button>
           </li>
@@ -175,12 +196,12 @@ function TonightSection({ module, selectedPoint, location, onLocate, onWantModul
 
 function TonightResult({ module, result }: { module: AstronomyModule; result: { source: Source; at: number; tonight: Tonight } }) {
   const { source, tonight: sky } = result;
-  const place = coordinateLabel(source.latitude, "N", "S") + " " + coordinateLabel(source.longitude, "E", "W");
+  const where = place(source.latitude, source.longitude);
   const moonUp = sky.moon.rise !== null || sky.moon.set !== null;
   const eclipse = sky.eclipse;
   return (
     <div className="tonight-result" role="status">
-      <p className="layer-status">{t(source.label)}（{place}）</p>
+      <p className="layer-status">{t(source.label)}（{where}）</p>
       <dl>
         <div><dt>{t("天黑")}</dt><dd>{sky.dark ? t("{0} – 次日 {1}（太阳在地平线下 12° 以下）", clock(sky.dark.from), clock(sky.dark.to)) : sky.night ? t("今晚天不会全黑（{0} – {1} 为暮光）", clock(sky.night.from), clock(sky.night.to)) : t("极昼：今晚太阳不落")}</dd></div>
         <div><dt>{t("月亮")}</dt><dd>{t(module.PHASE_LABELS[sky.moon.phase])} · {t("亮面 {0}%", Math.round(sky.moon.illuminated * 100))}{moonUp && " · "}{sky.moon.rise !== null && t("{0} 升起", clock(sky.moon.rise))}{sky.moon.rise !== null && sky.moon.set !== null && t("，")}{sky.moon.set !== null && t("{0} 落下", clock(sky.moon.set))}</dd></div>

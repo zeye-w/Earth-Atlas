@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, X } from "lucide-react";
 import type { AstronomyModule } from "../layers/useAstronomy";
 import type { EclipseView } from "../astronomy/index";
-import { coordinateLabel } from "../ui/controls";
-import { dayFormat, eclipseLabel } from "./AstronomyGroup";
+import { dayFormat, eclipseLabel, place } from "./AstronomyGroup";
 import "./internet.css";
 
 const MINUTE = 60_000;
@@ -59,7 +58,7 @@ export function EclipseCard({ module, view, onTime, point, onClose }: Props) {
   const items: [string, string][] = [];
   items.push([t("食甚"), localTime(eclipse.peak) + "（" + utc(eclipse.peak) + "）"]);
   if (solar) {
-    if (solar.latitude !== null && solar.longitude !== null) items.push([t("食甚地点"), coordinateLabel(solar.latitude, "N", "S") + " · " + coordinateLabel(solar.longitude, "E", "W")]);
+    if (solar.latitude !== null && solar.longitude !== null) items.push([t("食甚地点"), place(solar.latitude, solar.longitude)]);
     if (track && track.center.length > 1) {
       // Path width where the shadow is at greatest eclipse.
       const i = Math.round(((eclipse.peak - track.centralStart!) / (track.centralEnd! - track.centralStart!)) * (track.center.length - 1));

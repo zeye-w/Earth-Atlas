@@ -1547,5 +1547,7 @@ export const ENGLISH: Readonly<Record<string, string>> = {
   "日月食": "Eclipse",
   "{0}，{1}{2}": "{0}, {1}{2}",
   "；": "; ",
-  "，": ", "
+  "，": ", ",
+  "{0}：此刻约 {1}% 的地球表面天已全黑、辐射点在地平线以上（地球上的青色区域）": "{0}: right now about {1}% of the Earth's surface is fully dark with the radiant above the horizon (the teal area on the globe)",
+  "{0}：此刻地球上没有天黑而且辐射点已升起的地方，稍后再看": "{0}: right now nowhere on Earth is dark with the radiant risen; check back later"
 };

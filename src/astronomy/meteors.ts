@@ -95,9 +95,9 @@ export const DARK_SUN_ALTITUDE = -12;
 export interface VisibilityGrid { width: number; height: number; values: Float32Array }
 
 /**
- * Where the shower can be seen now: sin(radiant altitude) where the sky is
- * dark, else 0 — proportional to the meteors an observer would count.
- * Row 0 at 90°N, column 0 at 180°W.
+ * Where the shower can be seen now: sin(radiant altitude), faded in through
+ * twilight (Sun from −6° to −12°) — roughly proportional to the meteors an
+ * observer would count. Row 0 at 90°N, column 0 at 180°W.
  */
 export function visibilityGrid(shower: MeteorShower, time: number, width = 180, height = 90): VisibilityGrid {
   const sidereal = SiderealTime(MakeTime(new Date(time))) * 15;
@@ -109,9 +109,10 @@ export function visibilityGrid(shower: MeteorShower, time: number, width = 180, 
       const longitude = -180 + (x + 0.5) * (360 / width);
       // The Sun's altitude from the subsolar point (its declination and the longitude difference).
       const sunAlt = altitude(0, sun.latitude, latitude, longitude - sun.longitude, 0);
-      if (sunAlt > DARK_SUN_ALTITUDE) continue;
+      if (sunAlt > -6) continue;
       const radiant = altitude(shower.ra, shower.dec, latitude, longitude, sidereal);
-      if (radiant > 0) values[y * width + x] = Math.sin(radiant * RAD);
+      const darkness = Math.min(1, (-6 - sunAlt) / (-6 - DARK_SUN_ALTITUDE));
+      if (radiant > 0) values[y * width + x] = Math.sin(radiant * RAD) * darkness;
     }
   }
   return { width, height, values };

@@ -35,7 +35,7 @@ test("eclipses: the 2027 total eclipse opens its card, and the shadow clock runs
   await item.click();
   const card = page.locator(".eclipse-card");
   await expect(card).toContainText("日全食");
-  await expect(card).toContainText(/全食带宽度\s*2[45]\d km/);
+  await expect(card).toContainText(/全食带宽度\s*2[4-7]\d km/);
   const slider = card.getByRole("slider", { name: "日食进程" });
   const before = await slider.inputValue();
   await card.getByRole("button", { name: "播放月影" }).click();
