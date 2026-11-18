@@ -79,6 +79,9 @@ export function useViewer(
       scene.globe.show = true;
       scene.globe.translucency.enabled = false;
       scene.globe.depthTestAgainstTerrain = false;
+      // Fetch the tiles next to the visible ones as well, so turning the globe
+      // does not open blank or blurry edges (ancestors are preloaded by default).
+      scene.globe.preloadSiblings = true;
       scene.fog.enabled = false;
       if (scene.sun) scene.sun.show = false;
       if (scene.moon) scene.moon.show = false;

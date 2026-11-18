@@ -9,6 +9,13 @@ import { THEMATIC_MAX_ZOOM } from "../src/mapThematic.ts";
 
 test("default desktop quality is balanced and uses part of a high-DPI screen", () => {
   assert.equal(initialRenderQuality(1920, false, 8), "balanced");
+  // A high-density screen on a capable computer starts at full resolution.
+  assert.equal(initialRenderQuality(1920, false, 8, 2), "high");
+  assert.equal(initialRenderQuality(1920, false, 8, 2, 16), "high");
+  assert.equal(initialRenderQuality(1920, false, 8, 2, 4), "balanced");
+  assert.equal(initialRenderQuality(1920, false, 4, 2), "balanced");
+  assert.equal(initialRenderQuality(1920, false, 8, 1), "balanced");
+  assert.equal(initialRenderQuality(1920, true, 8, 2), "eco");
   assert.equal(initialRenderQuality(1920, false, 4), "balanced");
   assert.equal(renderSettings("balanced", 2).resolutionScale, 1.25);
   assert.equal(renderSettings("high", 2).resolutionScale, 2);
@@ -61,4 +68,17 @@ test("interaction budget reduces high-DPI pixels and restores full selected qual
   assert.equal(renderSettings("balanced",2,true).resolutionScale,1);
   assert.equal(renderSettings("high",2,true).resolutionScale,1.25);
   assert.equal(renderSettings("high",1,true).resolutionScale,1);
+});
+
+test("a still globe asks for finer tiles and every profile keeps a tile cache", () => {
+  for (const quality of ["balanced", "high"]) {
+    const rest = renderSettings(quality, 2), settled = renderSettings(quality, 2, false, true);
+    assert.ok(settled.maximumScreenSpaceError < rest.maximumScreenSpaceError, quality);
+    assert.equal(settled.resolutionScale, rest.resolutionScale);
+    // Moving overrides settled.
+    assert.ok(renderSettings(quality, 2, true, true).maximumScreenSpaceError > rest.maximumScreenSpaceError);
+  }
+  assert.equal(renderSettings("eco", 2, false, true).maximumScreenSpaceError, renderSettings("eco", 2).maximumScreenSpaceError);
+  assert.ok(renderSettings("balanced", 1).tileCacheSize >= 1000);
+  assert.ok(renderSettings("eco", 1).tileCacheSize > 100);
 });

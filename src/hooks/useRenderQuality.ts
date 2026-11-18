@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import type { Viewer } from "cesium";
 import { AUTO_QUALITY_MIN_FPS, FrameRateMonitor, initialRenderQuality, lowerRenderQuality, renderSettings, type RenderQuality } from "../performance";
 
-function applyRenderQuality(viewer: Viewer, quality: RenderQuality, moving = false) {
-  const settings = renderSettings(quality, window.devicePixelRatio, moving);
+function applyRenderQuality(viewer: Viewer, quality: RenderQuality, moving = false, settled = false) {
+  const settings = renderSettings(quality, window.devicePixelRatio, moving, settled);
   viewer.resolutionScale = settings.resolutionScale;
   viewer.targetFrameRate = settings.targetFrameRate;
   viewer.scene.globe.maximumScreenSpaceError = settings.maximumScreenSpaceError;
+  viewer.scene.globe.tileCacheSize = settings.tileCacheSize;
   viewer.scene.postProcessStages.fxaa.enabled = settings.fxaa;
   viewer.scene.requestRender();
 }
@@ -23,7 +24,8 @@ function applyRenderQuality(viewer: Viewer, quality: RenderQuality, moving = fal
  * for the rest of the session) without changing the render settings.
  */
 export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (quality: RenderQuality, fps: number) => void, suspendAuto = false, holdQuality = false) {
-  const [quality, setQuality] = useState<RenderQuality>(() => typeof window === "undefined" ? "balanced" : initialRenderQuality(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches, navigator.hardwareConcurrency));
+  const [quality, setQuality] = useState<RenderQuality>(() => typeof window === "undefined" ? "balanced" : initialRenderQuality(window.innerWidth, window.matchMedia("(prefers-reduced-motion: reduce)").matches, navigator.hardwareConcurrency,
+    window.devicePixelRatio, (navigator as Navigator & { deviceMemory?: number }).deviceMemory));
   const [autoQuality, setAutoQuality] = useState(true);
   const qualityRef = useRef(quality);
   const autoRef = useRef(autoQuality);
@@ -40,18 +42,23 @@ export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (qualit
   useEffect(() => {
     if (!viewer) return;
     let moving = false;
-    let settleTimer = 0;
+    // Still for a while: ask for finer tiles (not during capture, which keeps one budget).
+    let settled = false;
+    let settleTimer = 0, detailTimer = 0;
     let resizeFrame = 0;
     const apply = () => {
-      if (!viewer.isDestroyed()) applyRenderQuality(viewer, quality, moving && autoQuality && !suspendAuto);
+      if (!viewer.isDestroyed()) applyRenderQuality(viewer, quality, moving && autoQuality && !suspendAuto, settled && !suspendAuto);
     };
     apply();
+    // The first view loads at the normal budget (it holds the loading screen); the finer tiles follow.
+    detailTimer = window.setTimeout(() => { settled = true; apply(); }, 2_500);
     const removeStart = viewer.camera.moveStart.addEventListener(() => {
-      window.clearTimeout(settleTimer); moving = true; apply();
+      window.clearTimeout(settleTimer); window.clearTimeout(detailTimer); moving = true; settled = false; apply();
     });
     const removeEnd = viewer.camera.moveEnd.addEventListener(() => {
-      window.clearTimeout(settleTimer);
+      window.clearTimeout(settleTimer); window.clearTimeout(detailTimer);
       settleTimer = window.setTimeout(() => { moving = false; apply(); }, 180);
+      detailTimer = window.setTimeout(() => { settled = true; apply(); }, 900);
     });
     const onResize = () => {
       if (resizeFrame) return;
@@ -59,7 +66,7 @@ export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (qualit
     };
     window.addEventListener("resize", onResize);
     return () => {
-      removeStart(); removeEnd(); window.clearTimeout(settleTimer);
+      removeStart(); removeEnd(); window.clearTimeout(settleTimer); window.clearTimeout(detailTimer);
       cancelAnimationFrame(resizeFrame); window.removeEventListener("resize", onResize);
     };
   }, [viewer, quality, autoQuality, suspendAuto]);
