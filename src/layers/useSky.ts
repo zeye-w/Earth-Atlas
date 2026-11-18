@@ -18,13 +18,14 @@ export function skyFaces(variant: "sky" | "lines", size: 1024 | 2048): Record<ke
   return Object.fromEntries(Object.entries(SIDES).map(([side, face]) => [side, `/sky/${variant}-${size}-${face}.jpg`])) as Record<keyof typeof SIDES, string>;
 }
 
-function preload(urls: readonly string[]): Promise<void> {
-  return Promise.all(urls.map((url) => new Promise<void>((resolve, reject) => {
+/** Loads the six faces; Cesium's sky box takes the images themselves, so each face is fetched once. */
+function preload(faces: Record<keyof typeof SIDES, string>): Promise<Record<keyof typeof SIDES, HTMLImageElement>> {
+  return Promise.all(Object.entries(faces).map(([side, url]) => new Promise<[string, HTMLImageElement]>((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve();
+    image.onload = () => resolve([side, image]);
     image.onerror = () => reject(new Error("sky face " + url));
     image.src = url;
-  }))).then(() => undefined);
+  }))).then((entries) => Object.fromEntries(entries) as Record<keyof typeof SIDES, HTMLImageElement>);
 }
 
 let defaultSky: SkyBox | null = null;
@@ -42,10 +43,10 @@ export function useSky(viewer: Viewer | null, layers: { realSky: boolean; conste
       return;
     }
     const faces = skyFaces(layers.constellations ? "lines" : "sky", size);
-    const swap = () => preload(Object.values(faces)).then(() => {
+    const swap = () => preload(faces).then((images) => {
       if (cancelled || viewer.isDestroyed()) return;
       const previous = scene.skyBox;
-      scene.skyBox = new SkyBox({ sources: faces });
+      scene.skyBox = new SkyBox({ sources: images });
       // Cesium's own sky box is kept for when the real sky is turned off.
       if (previous && previous !== defaultSky && !previous.isDestroyed()) previous.destroy();
       scene.requestRender();
