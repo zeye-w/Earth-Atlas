@@ -18,6 +18,7 @@ import {
 } from "cesium";
 import type { SceneState } from "../sceneState";
 import { finishSplash, setSplashStage, TileProgress } from "../splash";
+import { createPolarCapLayers } from "../polarCaps";
 import { createGlassCalm } from "../glassCalm";
 
 /** How long the globe must be still and loaded before the glass panels blur again. */
@@ -149,6 +150,8 @@ export function useViewer(
           maximumLevel: 8,
           credit: new Credit('<a href="https://earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer">Blue Marble imagery: NASA EOSDIS GIBS</a>'),
         })), 1);
+        // The poles, beyond the Mercator tiles' edge (src/polarCaps.ts).
+        for (const cap of createPolarCapLayers()) v.imageryLayers.add(cap, 2);
         scene.requestRender();
       }, 1500);
 
