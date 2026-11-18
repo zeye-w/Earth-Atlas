@@ -34,6 +34,8 @@ import { useHazards } from "./layers/useHazards";
 import { useHighlights } from "./layers/useHighlights";
 import { HighlightsCard } from "./panels/HighlightsCard";
 import { AstronomyGroup } from "./panels/AstronomyGroup";
+import { SkyGroup } from "./panels/SkyGroup";
+import { useSky } from "./layers/useSky";
 import { EclipseCard } from "./panels/EclipseCard";
 import { loadAstronomy, useAstronomy, useAstronomyModule } from "./layers/useAstronomy";
 import type { Eclipse, EclipseView, MeteorShower } from "./astronomy/index";
@@ -143,11 +145,12 @@ function App() {
   const [showerCode, setShowerCode] = useState<string | null>(null);
   const [astronomyWanted, setAstronomyWanted] = useState(false);
   const [astronomyReveal, setAstronomyReveal] = useState<number | null>(null);
+  const [skyReveal, setSkyReveal] = useState<number | null>(null);
   // The layer panel's category tab (remembered); revealing a group switches to its tab.
   const [panelTab, setPanelTab] = useState<LayerTab>(savedTab);
   const choosePanelTab = (tab: LayerTab) => { setPanelTab(tab); saveTab(tab); };
   useEffect(() => { if (hazardReveal !== null) setPanelTab("earth"); }, [hazardReveal]);
-  useEffect(() => { if (launchReveal !== null || astronomyReveal !== null) setPanelTab("space"); }, [launchReveal, astronomyReveal]);
+  useEffect(() => { if (launchReveal !== null || astronomyReveal !== null || skyReveal !== null) setPanelTab("space"); }, [launchReveal, astronomyReveal, skyReveal]);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -256,6 +259,7 @@ function App() {
   const render = useRenderQuality(viewer, (quality, fps) =>
     setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording, fireworks.running);
   useEarthView(viewer, layers, timeline);
+  useSky(viewer, layers, render.quality);
   const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
   const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity, timeline);
   // The aurora forecast only exists for "now": hidden while viewing another moment.
@@ -443,6 +447,11 @@ function App() {
       case "eclipse":
         setAstronomyReveal((n) => (n ?? 0) + 1);
         void selectEclipse(item.eclipse);
+        break;
+      case "flare":
+        setLayer("sun", true);
+        setSkyReveal((n) => (n ?? 0) + 1);
+        if (!controlsOpen) setControlsOpen(true);
         break;
       case "meteor":
         setLayer("meteors", true);
@@ -652,6 +661,7 @@ function App() {
             onSelectEvent={selectHazardEvent} onSelectStorm={selectStorm} />
           </TabPane>
           <TabPane tab="space" current={panelTab}>
+          <SkyGroup layers={layers} setLayer={setPanelLayer} reveal={skyReveal} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
             records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}

@@ -133,6 +133,16 @@ export async function mockNetwork(page: Page, { locale = "zh", highlights = "clo
       return json(route, [{ time_tag: new Date().toISOString().slice(0, 19), kp_index: 2, estimated_kp: 2.33 }]);
     }
     if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("noaa-planetary-k-index")) return json(route, kpHistory());
+    // Synthetic GOES X-ray data: an M2.4 flare two hours ago, C1 background now.
+    if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("xray-flares")) {
+      const iso = (ms: number) => new Date(ms).toISOString().slice(0, 17) + "00Z";
+      const t = Date.now() - 2 * 3_600_000;
+      return json(route, [{ time_tag: iso(t - 600_000), begin_time: iso(t - 600_000), max_time: iso(t), max_class: "M2.4", max_xrlong: 2.4e-5, end_time: iso(t + 900_000), satellite: 18 }]);
+    }
+    if (url.hostname === "services.swpc.noaa.gov" && url.pathname.includes("xrays-6-hour")) {
+      return json(route, [{ time_tag: new Date(Date.now() - 60_000).toISOString().slice(0, 17) + "00Z", flux: 1.1e-6, energy: "0.1-0.8nm", satellite: 18 }]);
+    }
+    if (url.hostname === "sdo.gsfc.nasa.gov") return png(route, OCEAN_PNG);
     if (url.hostname === "celestrak.org" && url.searchParams.get("FORMAT") === "csv") return route.fulfill({ status: 200, contentType: "text/plain", headers: { "access-control-allow-origin": "*" }, body: constellationCsv() });
     if (url.hostname === "celestrak.org") return json(route, celestrak(url));
     if (url.hostname === "realearth.ssec.wisc.edu" && url.pathname.includes("products")) return json(route, cloudProducts());

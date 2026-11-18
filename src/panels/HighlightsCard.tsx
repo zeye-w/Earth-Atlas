@@ -15,11 +15,11 @@ import "./highlights.css";
 const STORAGE_KEY = "terrascope.highlights";
 const KIND_LABELS: Record<Highlight["kind"], string> = {
   storm: "热带气旋", launch: "火箭发射", quake: "地震", aurora: "极光", volcano: "火山", terminator: "昼夜", iss: "空间站",
-  eclipse: "日月食", meteor: "流星雨",
+  eclipse: "日月食", meteor: "流星雨", flare: "太阳耀斑",
 };
 const KIND_COLORS: Record<Highlight["kind"], string> = {
   storm: "#d65cff", launch: "#ffb347", quake: "#ff6b5a", aurora: "#5ee08a", volcano: "#e5483b", terminator: "#ffd166", iss: "#8fe3ff",
-  eclipse: "#ffcf5a", meteor: "#46e6c8",
+  eclipse: "#ffcf5a", meteor: "#46e6c8", flare: "#ff9f43",
 };
 
 /** First visit: open on wide screens, closed on phones; afterwards whatever the visitor chose. */
@@ -69,6 +69,8 @@ function useWords(item: Highlight, at: number): { headline: string; detail: stri
       return { headline: t(eclipseLabel(item.eclipse)), detail: dayFormat(item.eclipse.peak) + " · " + relativeTime(item.eclipse.peak, at, locale) };
     case "meteor":
       return { headline: t(item.outlook.shower.name) + " " + t("极大"), detail: relativeTime(item.outlook.peak, at, locale) + " · " + t("每小时约 {0} 颗", item.outlook.shower.zhr) };
+    case "flare":
+      return { headline: t("{0} 级太阳耀斑", item.flare.peakClass), detail: relativeTime(item.flare.peak, at, locale) + " · " + t("1–3 天后可能出现地磁暴和极光") };
   }
 }
 

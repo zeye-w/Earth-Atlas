@@ -84,21 +84,37 @@ def cesium_face(face, n=256):
     return cv2.resize(img, (n, n), interpolation=cv2.INTER_AREA).astype(np.float32)
 
 lum = tonemap(starmap, exposure).max(-1).astype(np.float32)
+
+# Each face may also need one of the 8 rotations/mirrors to match Cesium's own
+# faces; find, for each right ascension direction, the best one per face.
+def dihedral(img, k):
+    out = np.rot90(img, k % 4)
+    return np.fliplr(out) if k >= 4 else out
+
+def corr(a, b):
+    a, b = a - a.mean(), b - b.mean()
+    return float((a * b).sum() / np.sqrt((a * a).sum() * (b * b).sum() + 1e-9))
+
+def blur(img):
+    # Stars are points: compare smoothed maps so a one-pixel offset still matches.
+    return cv2.GaussianBlur(img, (0, 0), 2.0)
+
+refs = {face: blur(cesium_face(face)) for face in FACES}
 best = None
 for ra_sign in (1, -1):
     for ra_offset in (0, 90, 180, 270):
-        score = 0.0
+        per_face = {}
         for face in FACES:
-            mine = sample(lum, face_dirs(face, 256), ra_sign, ra_offset)
-            ref = cesium_face(face)
-            a, b = mine - mine.mean(), ref - ref.mean()
-            score += float((a * b).sum() / np.sqrt((a * a).sum() * (b * b).sum() + 1e-9))
-        score /= len(FACES)
-        print(f"ra_sign {ra_sign:+d} offset {ra_offset:3d}: correlation with Cesium's sky box {score:.3f}")
-        if best is None or score > best[0]: best = (score, ra_sign, ra_offset)
+            mine = blur(sample(lum, face_dirs(face, 256), ra_sign, ra_offset))
+            scores = [corr(dihedral(mine, k), refs[face]) for k in range(8)]
+            k = int(np.argmax(scores))
+            per_face[face] = (k, scores[k])
+        score = float(np.mean([v[1] for v in per_face.values()]))
+        print(f"ra_sign {ra_sign:+d} offset {ra_offset:3d}: mean {score:.3f}  " + " ".join(f"{f}:k{k}={v:.2f}" for f, (k, v) in per_face.items()))
+        if best is None or score > best[0]: best = (score, ra_sign, ra_offset, {f: k for f, (k, _) in per_face.items()})
 print("chosen", best)
-if best[0] < 0.3: raise SystemExit("no orientation matches Cesium's sky box well; check the face convention")
-_, ra_sign, ra_offset = best
+if best[0] < 0.5: raise SystemExit("no orientation matches Cesium's sky box well; check the face convention")
+_, ra_sign, ra_offset, face_fix = best
 
 display = tonemap(starmap, exposure)
 gold = np.array([90, 190, 245], np.float32) / 255  # BGR, a soft gold
@@ -106,7 +122,7 @@ with_lines = display * (1 - 0.55 * figures[..., None]) + gold * (0.55 * figures[
 
 for name, image in (("sky", display), ("lines", with_lines)):
     for face in FACES:
-        big = sample(image.astype(np.float32), face_dirs(face, 2048), ra_sign, ra_offset)
+        big = np.ascontiguousarray(dihedral(sample(image.astype(np.float32), face_dirs(face, 2048), ra_sign, ra_offset), face_fix[face]))
         big8 = np.clip(big * 255 + 0.5, 0, 255).astype(np.uint8)
         cv2.imwrite(os.path.join(out, f"{name}-2048-{face}.jpg"), big8, [cv2.IMWRITE_JPEG_QUALITY, 88, cv2.IMWRITE_JPEG_PROGRESSIVE, 1])
         small = cv2.resize(big8, (1024, 1024), interpolation=cv2.INTER_AREA)
