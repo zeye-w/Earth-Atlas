@@ -18,16 +18,19 @@ export function useTimeSelector<T>(controller: TimeController, select: (state: T
   return useSyncExternalStore(controller.subscribe, () => select(controller.getState()));
 }
 
-/** Cesium's clock (and so the SunLight) follows the timeline. */
-export function useSceneClock(viewer: Viewer | null, controller: TimeController) {
+/**
+ * Cesium's clock (and so the SunLight) follows the timeline, or `override`
+ * while set (an eclipse being viewed, far outside the timeline's range).
+ */
+export function useSceneClock(viewer: Viewer | null, controller: TimeController, override: number | null = null) {
   useEffect(() => {
     if (!viewer) return;
     const apply = (state: TimeState) => {
       if (viewer.isDestroyed()) return;
-      viewer.clock.currentTime = JulianDate.fromDate(new Date(state.time));
+      viewer.clock.currentTime = JulianDate.fromDate(new Date(override ?? state.time));
       viewer.scene.requestRender();
     };
     apply(controller.getState());
     return controller.subscribe(apply);
-  }, [viewer, controller]);
+  }, [viewer, controller, override]);
 }

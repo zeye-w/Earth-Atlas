@@ -8,14 +8,17 @@ import { intensityScale } from "../layers/useHazards";
 import { stormDisplayName } from "../typhoonNames";
 import { relativeTime } from "../timeline";
 import { now } from "../clock";
+import { dayFormat, eclipseLabel } from "./AstronomyGroup";
 import "./highlights.css";
 
 const STORAGE_KEY = "terrascope.highlights";
 const KIND_LABELS: Record<Highlight["kind"], string> = {
   storm: "热带气旋", launch: "火箭发射", quake: "地震", aurora: "极光", volcano: "火山", terminator: "昼夜", iss: "空间站",
+  eclipse: "日月食", meteor: "流星雨",
 };
 const KIND_COLORS: Record<Highlight["kind"], string> = {
   storm: "#d65cff", launch: "#ffb347", quake: "#ff6b5a", aurora: "#5ee08a", volcano: "#e5483b", terminator: "#ffd166", iss: "#8fe3ff",
+  eclipse: "#ffcf5a", meteor: "#46e6c8",
 };
 
 /** First visit: open on wide screens, closed on phones; afterwards whatever the visitor chose. */
@@ -61,6 +64,10 @@ function useWords(item: Highlight, at: number): { headline: string; detail: stri
       return { headline: t("此刻的晨昏线"), detail: t("看太阳正从哪里升起、在哪里落下") };
     case "iss":
       return { headline: t("国际空间站此刻在哪"), detail: t("跟随它绕地球飞行，约 90 分钟一圈") };
+    case "eclipse":
+      return { headline: t(eclipseLabel(item.eclipse)), detail: dayFormat(item.eclipse.peak) + " · " + relativeTime(item.eclipse.peak, at, locale) };
+    case "meteor":
+      return { headline: t(item.outlook.shower.name) + " " + t("极大"), detail: relativeTime(item.outlook.peak, at, locale) + " · " + t("每小时约 {0} 颗", item.outlook.shower.zhr) };
   }
 }
 

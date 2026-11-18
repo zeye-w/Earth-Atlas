@@ -1,5 +1,5 @@
 import { t, useLocale } from "./i18n";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BoundingSphere, Cartesian2, Cartesian3, Cartographic, Ellipsoid, HeadingPitchRange, Math as CesiumMath, type Entity, type Viewer } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { Move3d, X } from "lucide-react";
@@ -33,6 +33,10 @@ import { HazardCard, type HazardSelection } from "./panels/HazardCard";
 import { useHazards } from "./layers/useHazards";
 import { useHighlights } from "./layers/useHighlights";
 import { HighlightsCard } from "./panels/HighlightsCard";
+import { AstronomyGroup } from "./panels/AstronomyGroup";
+import { EclipseCard } from "./panels/EclipseCard";
+import { loadAstronomy, useAstronomy, useAstronomyModule } from "./layers/useAstronomy";
+import type { Eclipse, EclipseView, MeteorShower } from "./astronomy/index";
 import type { Highlight } from "./highlights";
 import { EVENT_CATEGORIES, HAZARD_ID_PREFIX, stormAt, type EventCategory, type NaturalEvent, type Storm } from "./hazardData";
 import { useLaunches } from "./layers/useLaunches";
@@ -133,6 +137,11 @@ function App() {
   const [hazardReveal, setHazardReveal] = useState<number | null>(null);
   // Bumped when a pad is picked on the globe, to open the launch list.
   const [launchReveal, setLaunchReveal] = useState<number | null>(null);
+  // An eclipse being viewed, at its own clock; the meteor shower on the map; whether "tonight" asked for the astronomy code.
+  const [eclipseView, setEclipseView] = useState<EclipseView | null>(null);
+  const [showerCode, setShowerCode] = useState<string | null>(null);
+  const [astronomyWanted, setAstronomyWanted] = useState(false);
+  const [astronomyReveal, setAstronomyReveal] = useState<number | null>(null);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -237,7 +246,7 @@ function App() {
   const { viewer, globeError } = useViewer(mountRef, shellRef, initialScene, handleClick);
   const fireworks = useFireworks(viewer);
   useEffect(() => { if (viewer && !viewer.isDestroyed()) viewer.scene.requestRender(); }, [viewer, locale]);
-  useSceneClock(viewer, timeline);
+  useSceneClock(viewer, timeline, eclipseView?.time ?? null);
   const render = useRenderQuality(viewer, (quality, fps) =>
     setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording, fireworks.running);
   useEarthView(viewer, layers, timeline);
@@ -268,6 +277,16 @@ function App() {
     setHazardSelection((current) => (current?.kind === "event" && !layers.naturalEvents) || (current?.kind === "storm" && !layers.storms) ? null : current);
   }, [layers.naturalEvents, layers.storms]);
   useEffect(() => { if (!layers.launches) setSelectedLaunch(null); }, [layers.launches]);
+  const astronomy = useAstronomyModule(layers.moon || layers.eclipses || layers.meteors || astronomyWanted);
+  // The shower on the meteor map: the one picked, else the next to peak.
+  const shower: MeteorShower | null = useMemo(() => {
+    if (!astronomy.module || !layers.meteors) return null;
+    const { METEOR_SHOWERS, showerOutlook } = astronomy.module;
+    return METEOR_SHOWERS.find((s) => s.code === showerCode) ?? showerOutlook(now())[0]?.shower ?? null;
+  }, [astronomy.module, layers.meteors, showerCode]);
+  useAstronomy(viewer, astronomy.module, { moon: layers.moon, meteors: layers.meteors }, shower, layers.eclipses ? eclipseView : null, timeline);
+  // Turning eclipses off closes the eclipse (and gives the globe back to the timeline).
+  useEffect(() => { if (!layers.eclipses) setEclipseView(null); }, [layers.eclipses]);
 
   // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
   useEffect(() => {
@@ -415,7 +434,37 @@ function App() {
         setSelectedSatelliteId("iss");
         setTrackedSatelliteId("iss");
         break;
+      case "eclipse":
+        setAstronomyReveal((n) => (n ?? 0) + 1);
+        void selectEclipse(item.eclipse);
+        break;
+      case "meteor":
+        setLayer("meteors", true);
+        setShowerCode(item.outlook.shower.code);
+        setAstronomyReveal((n) => (n ?? 0) + 1);
+        break;
     }
+  };
+
+  // An eclipse: switch the globe to its greatest moment and look at where it is seen.
+  const selectEclipse = async (eclipse: Eclipse) => {
+    if (!viewer || viewer.isDestroyed()) return;
+    track("eclipse", eclipse.type + ":" + eclipse.kind);
+    setLayer("eclipses", true);
+    setEclipseView({ eclipse, time: eclipse.peak });
+    takeCamera();
+    setTrackedSatelliteId(null);
+    if (isNarrow()) setControlsOpen(false);
+    const module = astronomy.module ?? await loadAstronomy();
+    let target: { latitude: number; longitude: number };
+    if (eclipse.type === "solar" && eclipse.latitude !== null && eclipse.longitude !== null) target = { latitude: eclipse.latitude, longitude: eclipse.longitude };
+    else if (eclipse.type === "solar") {
+      // A partial-only eclipse: where most of the Sun is covered at the greatest moment.
+      const grid = module.obscurationGrid(eclipse.peak, 90, 45);
+      const best = grid.values.indexOf(grid.max);
+      target = { latitude: 90 - (Math.floor(best / 90) + 0.5) * 4, longitude: -180 + ((best % 90) + 0.5) * 4 };
+    } else target = module.sublunarPoint(eclipse.peak);
+    viewer.camera.flyTo({ destination: Cartesian3.fromDegrees(target.longitude, target.latitude, eclipse.type === "solar" ? 9_000_000 : 20_000_000), duration: 1.8 });
   };
 
   const selectLaunch = (launch: Launch) => {
@@ -607,6 +656,11 @@ function App() {
             onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
             onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
             onLaunch={launchFireworks} onStop={fireworks.stop} />
+          <AstronomyGroup layers={layers} setLayer={setPanelLayer} module={astronomy.module} failed={astronomy.failed} timeline={timeline}
+            selectedEclipse={eclipseView?.eclipse.id ?? null} onSelectEclipse={(eclipse) => void selectEclipse(eclipse)}
+            shower={shower?.code ?? null} onSelectShower={(s) => setShowerCode(s.code)}
+            selectedPoint={geology.coordinates} location={userLocation.state} onLocate={userLocation.locate}
+            onWantModule={() => setAstronomyWanted(true)} reveal={astronomyReveal} />
         </LayerPanel>
 
         <section className="globe-panel" aria-label={t("可交互三维数字地球")}>
@@ -625,6 +679,10 @@ function App() {
           )}
           {internetSelection && !formulasOpen && <InternetCard selection={internetSelection} onClose={() => setInternetSelection(null)} />}
           {hazardSelection && !internetSelection && !formulasOpen && <HazardCard selection={hazardSelection} timeline={timeline} onClose={() => setHazardSelection(null)} />}
+          {eclipseView && astronomy.module && !hazardSelection && !internetSelection && !formulasOpen && (
+            <EclipseCard module={astronomy.module} view={eclipseView} point={geology.coordinates}
+              onTime={(time) => setEclipseView((current) => (current ? { ...current, time } : current))} onClose={() => setEclipseView(null)} />
+          )}
           {formulasOpen && trackedSatellite && satellites.status === "ready" && (
             <Suspense fallback={null}>
               <FormulaPanel title={t(trackedSatellite.title)} derivation={satellites.tracking.derivation} observer={userLocation.location} live={live}

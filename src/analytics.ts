@@ -10,7 +10,7 @@
  */
 import { getLocale } from "./i18n.ts";
 
-export type FeatureEvent = "layer" | "show" | "share" | "tour" | "live_photo" | "search" | "highlight" | "intro";
+export type FeatureEvent = "layer" | "show" | "share" | "tour" | "live_photo" | "search" | "highlight" | "intro" | "eclipse";
 type EventName = "view" | "ping" | FeatureEvent;
 
 const ENDPOINT = "/api/stats/collect";
