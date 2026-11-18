@@ -62,7 +62,8 @@ import { useSatellites } from "./layers/useSatellites";
 import { useGeologyMap } from "./layers/useGeologyMap";
 import { useGeologyQuery } from "./layers/useGeologyQuery";
 import { TopBar } from "./panels/TopBar";
-import { LayerPanel, type Region } from "./panels/LayerPanel";
+import { TabPane, LayerPanel, type Region } from "./panels/LayerPanel";
+import { savedTab, saveTab, type LayerTab } from "./panels/layerTabs";
 import { EarthViewGroup } from "./panels/EarthViewGroup";
 import { TectonicsGroup } from "./panels/TectonicsGroup";
 import { SatellitesGroup } from "./panels/SatellitesGroup";
@@ -142,6 +143,11 @@ function App() {
   const [showerCode, setShowerCode] = useState<string | null>(null);
   const [astronomyWanted, setAstronomyWanted] = useState(false);
   const [astronomyReveal, setAstronomyReveal] = useState<number | null>(null);
+  // The layer panel's category tab (remembered); revealing a group switches to its tab.
+  const [panelTab, setPanelTab] = useState<LayerTab>(savedTab);
+  const choosePanelTab = (tab: LayerTab) => { setPanelTab(tab); saveTab(tab); };
+  useEffect(() => { if (hazardReveal !== null) setPanelTab("earth"); }, [hazardReveal]);
+  useEffect(() => { if (launchReveal !== null || astronomyReveal !== null) setPanelTab("space"); }, [launchReveal, astronomyReveal]);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -634,33 +640,41 @@ function App() {
       />
 
       <main className="workspace">
-        <LayerPanel open={controlsOpen} onClose={() => setControlsOpen(false)} onFlyTo={flyTo}>
+        <LayerPanel open={controlsOpen} onClose={() => setControlsOpen(false)} onFlyTo={flyTo} tab={panelTab} onTab={choosePanelTab} layers={layers} setLayer={setPanelLayer}>
+          <TabPane tab="earth" current={panelTab}>
           <EarthViewGroup {...groupProps} clouds={clouds} aurora={aurora.status} geomagnetic={aurora.geomagnetic} live={live} trueColor={trueColor} solarWind={solarWind} onViewMagnetosphere={viewMagnetosphere} />
           <WeatherGroup layers={layers} setLayer={setPanelLayer} weather={weather} />
           <TectonicsGroup {...groupProps} quakes={quakes.status} quakeList={quakes.list} timeline={timeline} volcanoes={volcanoes} plateStatus={plateStatus} />
-          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
-            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
-            trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
-            location={userLocation.state} onLocate={userLocation.locate} />
-          <FlightsGroup layers={layers} setLayer={setPanelLayer} flights={flights.state} live={live} />
-          <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           <GeologyGroup {...groupProps} vectorState={vectorState} />
           <HazardsGroup layers={layers} setLayer={setPanelLayer} hazards={hazards} timeline={timeline} categories={hazardCategories}
             onToggleCategory={(category) => setHazardCategories((current) => { const next = new Set(current); if (!next.delete(category)) next.add(category); return next; })}
             reveal={hazardReveal} selectedId={hazardSelection ? hazardSelection.kind + ":" + (hazardSelection.kind === "event" ? hazardSelection.event.id : hazardSelection.storm.id) : null}
             onSelectEvent={selectHazardEvent} onSelectStorm={selectStorm} />
+          </TabPane>
+          <TabPane tab="space" current={panelTab}>
+          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
+            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
+            trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
+            location={userLocation.state} onLocate={userLocation.locate} />
           <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)} showRunning={fireworks.running}
             onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch, true); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch}
             onWatchSite={watchSite} showSite={rocketSite?.label ?? ""} onReplay={() => { if (rocketSite) launchRocket(rocketSite); }} />
-          <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
-            onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
-            onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
-            onLaunch={launchFireworks} onStop={fireworks.stop} />
           <AstronomyGroup layers={layers} setLayer={setPanelLayer} module={astronomy.module} failed={astronomy.failed} timeline={timeline}
             selectedEclipse={eclipseView?.eclipse.id ?? null} onSelectEclipse={(eclipse) => void selectEclipse(eclipse)}
             shower={shower?.code ?? null} onSelectShower={(s) => setShowerCode(s.code)}
             selectedPoint={geology.coordinates} location={userLocation.state} onLocate={userLocation.locate}
             onWantModule={() => setAstronomyWanted(true)} reveal={astronomyReveal} />
+          </TabPane>
+          <TabPane tab="human" current={panelTab}>
+          <FlightsGroup layers={layers} setLayer={setPanelLayer} flights={flights.state} live={live} />
+          <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
+          </TabPane>
+          <TabPane tab="play" current={panelTab}>
+          <FireworksGroup site={fireworksSite} style={fireworksStyle} picking={fireworksPicking} running={fireworks.running} ready={Boolean(viewer)}
+            onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
+            onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
+            onLaunch={launchFireworks} onStop={fireworks.stop} />
+          </TabPane>
         </LayerPanel>
 
         <section className="globe-panel" aria-label={t("可交互三维数字地球")}>

@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mockNetwork, sceneUrl, waitForGlobe } from "./mocks";
+import { mockNetwork, sceneUrl, waitForGlobe, showLayerGroup } from "./mocks";
 
 const layerPanel = (page: Page) => page.locator("#earth-layer-panel");
 async function openGroup(page: Page, name: string) {
+  await showLayerGroup(page, name);
   const details = layerPanel(page).locator("details", { has: page.locator("summary", { hasText: name }) });
   if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator(":scope > summary").click();
 }

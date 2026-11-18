@@ -1,5 +1,5 @@
 import {test,expect} from "@playwright/test";
-import {mockNetwork,sceneUrl,waitForGlobe} from "./mocks";
+import {mockNetwork,sceneUrl,waitForGlobe, showLayerGroup } from "./mocks";
 // Orbital positions are synthetic test fixtures; model files are the shipped assets.
 for(const target of [{id:"iss",title:"ISS · 国际空间站"},{id:"hubble",title:"Hubble · 哈勃望远镜"},{id:"terra",title:"Terra · 对地观测"},{id:"tiangong",title:"天宫空间站（天和核心舱）"}]) {
  test(target.id+" tracking opens its model immediately and orbit view releases it",async({page})=>{
@@ -7,7 +7,8 @@ for(const target of [{id:"iss",title:"ISS · 国际空间站"},{id:"hubble",titl
   await mockNetwork(page);let requests=0;
   page.on("request",request=>{if(request.url().includes("/models/satellites/"))requests++;});
   await page.goto(sceneUrl(0,0,17_000_000,{satellites:true}));await waitForGlobe(page);
-  const group=page.locator("#earth-layer-panel details",{has:page.locator("summary",{hasText:"SATELLITES"})});
+  await showLayerGroup(page,"SATELLITES");
+ const group=page.locator("#earth-layer-panel details",{has:page.locator("summary",{hasText:"SATELLITES"})});
   if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))await group.locator("summary").click();
   expect(requests).toBe(0);
   await page.getByRole("button",{name:"跟踪 "+target.title,exact:true}).click();
@@ -26,6 +27,7 @@ test("failed model keeps the marker and can retry without restarting satellite t
  await mockNetwork(page);let fail=true;
  await page.route("**/models/satellites/iss.glb",route=>fail?route.abort():route.fallback());
  await page.goto(sceneUrl(0,0,17_000_000,{satellites:true}));await waitForGlobe(page);
+ await showLayerGroup(page,"SATELLITES");
  const group=page.locator("#earth-layer-panel details",{has:page.locator("summary",{hasText:"SATELLITES"})});
  if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))await group.locator("summary").click();
  await page.getByRole("button",{name:"跟踪 ISS · 国际空间站",exact:true}).click();

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { inflateSync } from "node:zlib";
 import { mkdir, writeFile } from "node:fs/promises";
-import { mockNetwork, sceneUrl, waitForGlobe } from "./mocks";
+import { mockNetwork, sceneUrl, waitForGlobe, showLayerGroup } from "./mocks";
 
 // Decode Chromium's 8-bit RGB/RGBA PNG screenshots with Node only (no new dependency).
 // Count warm/pink spark pixels in the central view, excluding the panels and toolbar.
@@ -44,6 +44,7 @@ test("fireworks can be launched and stopped without changing scientific layers",
   await page.goto("/");
   await waitForGlobe(page);
   const panel = page.locator("#earth-layer-panel");
+  await showLayerGroup(page, "EXPERIENCES");
   const group = panel.locator("details.layer-group", { has: page.locator("summary", { hasText: "EXPERIENCES" }) });
   await group.locator(":scope > summary").click();
   await expect(group).toContainText("烟花表演");
@@ -54,6 +55,7 @@ test("fireworks can be launched and stopped without changing scientific layers",
   await expect(group.getByRole("button", { name: "重新播放" })).toBeVisible();
   await group.getByRole("button", { name: "停止烟花表演" }).click();
   await expect(group.getByRole("button", { name: "开始烟花表演" })).toBeVisible();
+  await showLayerGroup(page, "TECTONICS");
   const tectonics = panel.locator("details.layer-group", { has: page.locator("summary", { hasText: "TECTONICS" }) });
   await tectonics.locator(":scope > summary").click();
   await expect(panel.getByRole("checkbox", { name: "实时地震" })).not.toBeChecked();
@@ -69,6 +71,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
     await waitForGlobe(page);
     const panel = page.locator("#earth-layer-panel");
     if (!(await panel.isVisible())) await page.getByRole("button", { name: "图层", exact: true }).click();
+    await showLayerGroup(page, "EXPERIENCES");
     const group = panel.locator("details.layer-group", { has: page.locator("summary", { hasText: "EXPERIENCES" }) });
     await group.locator(":scope > summary").click();
     await group.getByRole("button", { name: "开始烟花表演" }).click();
@@ -107,6 +110,7 @@ for (const mode of ["rocket", "space"] as const) {
     await page.goto("/");
     await waitForGlobe(page);
     const panel = page.locator("#earth-layer-panel");
+    await showLayerGroup(page, mode === "rocket" ? "LAUNCHES" : "EXPERIENCES");
     const group = panel.locator("details.layer-group", { has: page.locator("summary", { hasText: mode === "rocket" ? "LAUNCHES" : "EXPERIENCES" }) });
     await group.locator(":scope > summary").click();
     if (mode === "rocket") {
