@@ -10,12 +10,23 @@ export interface RenderProfile {
   maxPixelRatio: number;
   targetFrameRate: number;
   maximumScreenSpaceError: number;
+  /**
+   * Imagery/terrain tiles kept after they leave the view (Cesium's default is
+   * 100), so turning back to a region shows it at once instead of fetching
+   * and decoding it again.
+   */
+  tileCacheSize: number;
 }
 export const RENDER_PROFILES: Readonly<Record<RenderQuality, Readonly<RenderProfile>>> = {
-  eco: { maxPixelRatio: 1, targetFrameRate: 30, maximumScreenSpaceError: 3 },
-  balanced: { maxPixelRatio: 1.25, targetFrameRate: 45, maximumScreenSpaceError: 2 },
-  high: { maxPixelRatio: 2, targetFrameRate: 60, maximumScreenSpaceError: 1.5 },
+  eco: { maxPixelRatio: 1, targetFrameRate: 30, maximumScreenSpaceError: 3, tileCacheSize: 300 },
+  balanced: { maxPixelRatio: 1.25, targetFrameRate: 45, maximumScreenSpaceError: 2, tileCacheSize: 1000 },
+  high: { maxPixelRatio: 2, targetFrameRate: 60, maximumScreenSpaceError: 1.5, tileCacheSize: 1500 },
 };
+/**
+ * Once the globe has been still for a moment, finer tiles are requested
+ * (screen-space error × this), since nothing competes for the frame budget.
+ */
+export const SETTLED_DETAIL = 0.7;
 /** Below this pixel ratio FXAA is worth its slight texture softening. */
 export const FXAA_MAX_PIXEL_RATIO = 1.25;
 
@@ -24,8 +35,10 @@ export interface RenderSettings {
   targetFrameRate: number;
   maximumScreenSpaceError: number;
   fxaa: boolean;
+  tileCacheSize: number;
 }
-export function renderSettings(quality: RenderQuality, devicePixelRatio: number, moving = false): RenderSettings {
+/** `settled`: the camera has been still for a while (not just stopped). */
+export function renderSettings(quality: RenderQuality, devicePixelRatio: number, moving = false, settled = false): RenderSettings {
   const profile = RENDER_PROFILES[quality];
   const dpr = Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1;
   // Reduce fill-rate only during interaction; restore the selected profile at rest.
@@ -34,8 +47,9 @@ export function renderSettings(quality: RenderQuality, devicePixelRatio: number,
   return {
     resolutionScale,
     targetFrameRate: profile.targetFrameRate,
-    maximumScreenSpaceError: profile.maximumScreenSpaceError * (moving ? 1.5 : 1),
+    maximumScreenSpaceError: profile.maximumScreenSpaceError * (moving ? 1.5 : settled && quality !== "eco" ? SETTLED_DETAIL : 1),
     fxaa: resolutionScale < FXAA_MAX_PIXEL_RATIO,
+    tileCacheSize: profile.tileCacheSize,
   };
 }
 export const RENDER_QUALITY_LABELS: Readonly<Record<RenderQuality, string>> = {
@@ -45,10 +59,16 @@ export const RENDER_QUALITY_LABELS: Readonly<Record<RenderQuality, string>> = {
 };
 export const RENDER_QUALITY_ORDER: readonly RenderQuality[] = ["eco", "balanced", "high"];
 
-export function initialRenderQuality(viewportWidth: number, reducedMotion: boolean, hardwareConcurrency?: number): RenderQuality {
-  return reducedMotion || viewportWidth < 900 || (hardwareConcurrency !== undefined && hardwareConcurrency <= 2)
-    ? "eco"
-    : "balanced";
+/**
+ * The starting quality. A high-density screen on a capable computer (8+
+ * cores, 8+ GB where the browser says) starts at "high", drawing at the
+ * screen's own resolution; the automatic downgrade still steps it down if
+ * the frame rate cannot keep up.
+ */
+export function initialRenderQuality(viewportWidth: number, reducedMotion: boolean, hardwareConcurrency?: number, devicePixelRatio = 1, deviceMemoryGb?: number): RenderQuality {
+  if (reducedMotion || viewportWidth < 900 || (hardwareConcurrency !== undefined && hardwareConcurrency <= 2)) return "eco";
+  const capable = hardwareConcurrency !== undefined && hardwareConcurrency >= 8 && (deviceMemoryGb === undefined || deviceMemoryGb >= 8);
+  return capable && devicePixelRatio >= 1.5 ? "high" : "balanced";
 }
 export function nextRenderQuality(current: RenderQuality): RenderQuality {
   const index = RENDER_QUALITY_ORDER.indexOf(current);

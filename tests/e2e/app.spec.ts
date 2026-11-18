@@ -390,6 +390,8 @@ test("clouds retain displayed observation when replacement tiles fail", async ({
 test("high-DPI interaction lowers pixel budget then restores clarity", async ({ browser }) => {
   const context=await browser.newContext({viewport:{width:1440,height:860},deviceScaleFactor:2});
   const p=await context.newPage(); await mockNetwork(p);
+  // A 4-core machine starts at "balanced" (a capable one would start at "high").
+  await p.addInitScript(()=>Object.defineProperty(navigator,"hardwareConcurrency",{get:()=>4}));
   try {
     await p.goto("http://localhost:4173/"); await waitForGlobe(p);
     const canvas=p.locator(".cesium-widget canvas");
@@ -402,9 +404,22 @@ test("high-DPI interaction lowers pixel budget then restores clarity", async ({ 
   } finally {await context.close();}
 });
 
+test("a capable computer with a high-density screen starts in high quality", async ({ browser }) => {
+  const context=await browser.newContext({viewport:{width:1440,height:860},deviceScaleFactor:2});
+  const p=await context.newPage(); await mockNetwork(p);
+  await p.addInitScript(()=>Object.defineProperty(navigator,"hardwareConcurrency",{get:()=>12}));
+  try {
+    await p.goto("http://localhost:4173/"); await waitForGlobe(p);
+    // The screen's own resolution: 1440 CSS px × 2.
+    await expect.poll(()=>p.locator(".cesium-widget canvas").evaluate(el=>(el as HTMLCanvasElement).width)).toBe(2880);
+  } finally {await context.close();}
+});
+
 test("recording keeps its pixel budget during camera motion", async ({ browser }) => {
   const context=await browser.newContext({viewport:{width:1440,height:860},deviceScaleFactor:2});
   const p=await context.newPage(); await mockNetwork(p);
+  // A 4-core machine starts at "balanced" (a capable one would start at "high").
+  await p.addInitScript(()=>Object.defineProperty(navigator,"hardwareConcurrency",{get:()=>4}));
   try {
     await p.goto("http://localhost:4173/?record"); await waitForGlobe(p);
     const canvas=p.locator(".cesium-widget canvas");
