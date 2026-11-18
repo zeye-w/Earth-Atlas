@@ -24,6 +24,7 @@ import { CLOUD_METADATA_URL, latestCloudObservation } from "../src/cloudData.ts"
 import { STARLINK, constellationUrl, parseOmmCsv } from "../src/constellationData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { parseGeologicalUnits } from "../src/geology.ts";
+import { POLAR_CAP_EDGE, polarCapProbeUrl } from "../src/polarCapData.ts";
 
 const SITE = (process.env.SITE_URL || "https://earth-atlas.edwardlab.workers.dev").replace(/\/$/, "");
 const HOUR = 3_600_000;
@@ -130,6 +131,15 @@ const CHECKS = [
     const bytes = (await response.arrayBuffer()).byteLength;
     if (!response.ok || bytes < 5000) throw new Error(`HTTP ${response.status}, ${bytes} bytes`);
     return TRUE_COLOR_LAYER + " tile " + Math.round(bytes / 1024) + " KB";
+  }],
+  ["Feed", "NASA GIBS polar caps", async () => {
+    // The browser draws these into WebGL, so the answer must allow cross-origin use.
+    const response = await get(polarCapProbeUrl(-90, POLAR_CAP_EDGE, 0, 90));
+    const type = response.headers.get("content-type") ?? "", cors = response.headers.get("access-control-allow-origin");
+    const bytes = (await response.arrayBuffer()).byteLength;
+    if (!response.ok || !type.startsWith("image/") || bytes < 2000) throw new Error(`HTTP ${response.status}, ${type || "no type"}, ${bytes} bytes`);
+    if (cors !== "*" && cors !== SITE) throw new Error("no CORS header (" + (cors ?? "none") + ")");
+    return `${type}, ${Math.round(bytes / 1024)} KB, CORS ${cors}`;
   }],
   ["Feed", "Macrostrat geology", async () => {
     const units = parseGeologicalUnits(await json("https://macrostrat.org/api/v2/geologic_units/map?lat=43&lng=-89.3&format=json"));

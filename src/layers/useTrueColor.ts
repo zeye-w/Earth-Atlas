@@ -31,7 +31,7 @@ function insertIndex(viewer: Viewer): number {
 }
 
 /**
- * NASA GIBS daily true colour for the timeline's UTC day (yesterday when
+ * NASA GIBS daily true colour for the timeline's UTC day (the latest complete mosaic when
  * live, since today's mosaic is still filling in). While replaying the day
  * is held until the replay pauses, so tiles are not refetched every second.
  */

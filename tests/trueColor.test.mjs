@@ -3,11 +3,16 @@ import { test } from "node:test";
 import { trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { quakesAt } from "../src/earthquakeData.ts";
 
-test("true colour shows yesterday for today or the future, else the moment's UTC day", () => {
-  const now = new Date("2026-10-20T05:00:00Z");
+test("true colour shows the latest complete mosaic for today or the future, else the moment's UTC day", () => {
+  const now = new Date("2026-10-20T09:00:00Z");
   assert.equal(trueColorDate(now, now), "2026-10-19");
   assert.equal(trueColorDate(new Date("2026-10-20T23:00:00Z"), now), "2026-10-19");
   assert.equal(trueColorDate(new Date("2026-10-19T23:59:00Z"), now), "2026-10-19");
+  // In the small hours yesterday's mosaic is still missing its last passes.
+  const early = new Date("2026-10-20T01:15:00Z");
+  assert.equal(trueColorDate(early, early), "2026-10-18");
+  assert.equal(trueColorDate(new Date("2026-10-19T12:00:00Z"), early), "2026-10-18");
+  assert.equal(trueColorDate(new Date("2026-10-18T12:00:00Z"), early), "2026-10-18");
   assert.equal(trueColorDate(new Date("2026-10-01T00:30:00Z"), now), "2026-10-01");
   assert.match(trueColorUrl("2026-10-19"), /\/VIIRS_NOAA20_CorrectedReflectance_TrueColor\/default\/2026-10-19\/GoogleMapsCompatible_Level9\/\{z\}\/\{y\}\/\{x\}\.jpg$/);
 });

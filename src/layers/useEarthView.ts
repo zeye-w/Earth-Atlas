@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Credit, ImageryLayer, TileMapServiceImageryProvider, UrlTemplateImageryProvider, buildModuleUrl, type Entity, type Viewer } from "cesium";
+import { Credit, ImageryLayer, UrlTemplateImageryProvider, type Entity, type Viewer } from "cesium";
+import { createPolarCapLayers } from "../polarCaps";
 import { addWorldCityMarkers, declutterCityLabels } from "../cityMarkers";
 import { NIGHT_LIGHTS_REFRESH_MS, NightLightsImageryProvider } from "../nightLights";
 import type { TimeController } from "../timeline";
@@ -18,11 +19,11 @@ function createNightBaseLayer(show: boolean): ImageryLayer {
   return darkenForNight(new ImageryLayer(new UrlTemplateImageryProvider({ url: BLUE_MARBLE_URL, maximumLevel: 8 })), show);
 }
 
-// Web Mercator imagery stops at ~85°, so the poles show the bundled Natural
-// Earth layer; darken a copy of it too, or each pole is a bright disc on the
-// night side.
-function createPolarNightBaseLayer(show: boolean): ImageryLayer {
-  return darkenForNight(ImageryLayer.fromProviderAsync(TileMapServiceImageryProvider.fromUrl(buildModuleUrl("Assets/Textures/NaturalEarthII"))), show);
+// Web Mercator imagery stops at ~85°, so the poles have their own day layers
+// (src/polarCaps.ts); darken copies of those too, or each pole is a bright
+// disc on the night side.
+function createPolarNightBaseLayers(show: boolean): ImageryLayer[] {
+  return createPolarCapLayers().map((layer) => darkenForNight(layer, show));
 }
 
 function darkenForNight(layer: ImageryLayer, show: boolean): ImageryLayer {
@@ -58,7 +59,7 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
   const markersRef = useRef<Entity[]>([]);
   const lightsRef = useRef<ImageryLayer | null>(null);
   const nightBaseRef = useRef<ImageryLayer | null>(null);
-  const polarNightBaseRef = useRef<ImageryLayer | null>(null);
+  const polarNightBaseRef = useRef<ImageryLayer[]>([]);
   const lightsVisibleRef = useRef(toggles.lights);
   lightsVisibleRef.current = toggles.lights;
 
@@ -69,9 +70,9 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
     // Let the base globe and controls paint before decoding/extracting lights.
     const initializeLights = () => {
       if (viewer.isDestroyed()) return;
-      // Just above the bundled Natural Earth layer (index 0, see useViewer).
-      polarNightBaseRef.current = createPolarNightBaseLayer(lightsVisibleRef.current);
-      viewer.imageryLayers.add(polarNightBaseRef.current, 1);
+      // Above the day layers, polar caps included (see useViewer).
+      polarNightBaseRef.current = createPolarNightBaseLayers(lightsVisibleRef.current);
+      for (const layer of polarNightBaseRef.current) viewer.imageryLayers.add(layer);
       nightBaseRef.current = createNightBaseLayer(lightsVisibleRef.current);
       viewer.imageryLayers.add(nightBaseRef.current);
       lightsRef.current = createLightsLayer(lightsVisibleRef.current, timeline.getState().live);
@@ -115,7 +116,7 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
       if (!viewer.isDestroyed()) {
         for (const marker of markersRef.current) viewer.entities.remove(marker);
         if (nightBaseRef.current) viewer.imageryLayers.remove(nightBaseRef.current, true);
-        if (polarNightBaseRef.current) viewer.imageryLayers.remove(polarNightBaseRef.current, true);
+        for (const layer of polarNightBaseRef.current) viewer.imageryLayers.remove(layer, true);
         for (let i = viewer.imageryLayers.length - 1; i >= 0; i--) {
           const layer = viewer.imageryLayers.get(i);
           if (layer.imageryProvider instanceof NightLightsImageryProvider) viewer.imageryLayers.remove(layer, true);
@@ -124,7 +125,7 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
       markersRef.current = [];
       lightsRef.current = null;
       nightBaseRef.current = null;
-      polarNightBaseRef.current = null;
+      polarNightBaseRef.current = [];
     };
   }, [viewer, timeline]);
 
@@ -153,7 +154,7 @@ export function useEarthView(viewer: Viewer | null, toggles: { dayNight: boolean
     if (!viewer || !lightsRef.current) return;
     lightsRef.current.show = toggles.lights;
     if (nightBaseRef.current) nightBaseRef.current.show = toggles.lights;
-    if (polarNightBaseRef.current) polarNightBaseRef.current.show = toggles.lights;
+    for (const layer of polarNightBaseRef.current) layer.show = toggles.lights;
     viewer.scene.requestRender();
   }, [viewer, toggles.lights]);
 
