@@ -8,7 +8,7 @@ import type { SatelliteSpeed } from "../satelliteOverlay";
 /** Every layer toggle: the shareable scene keys plus geographic labels and the atmosphere shells. */
 export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; trueColor: boolean; starlink: boolean; solarWind: boolean; flights: boolean; temperature: boolean; shells: boolean;
   cables: boolean; ixps: boolean; dataCenters: boolean; rootServers: boolean; dnsFlows: boolean; launches: boolean; naturalEvents: boolean; storms: boolean;
-  moon: boolean; eclipses: boolean; meteors: boolean };
+  moon: boolean; eclipses: boolean; meteors: boolean; realSky: boolean; constellations: boolean; sun: boolean };
 
 export interface LayerOptions {
   cloudOpacity: number;
@@ -32,7 +32,9 @@ function initialToggles(scene: SceneState | null): LayerToggles {
     cables: Boolean(scene?.layers.cables), ixps: Boolean(scene?.layers.ixps), dataCenters: Boolean(scene?.layers.dataCenters), rootServers: Boolean(scene?.layers.rootServers), dnsFlows: Boolean(scene?.layers.dnsFlows),
     // The launch calendar is not part of shared scenes.
     launches: false, naturalEvents: Boolean(scene?.layers.naturalEvents), storms: Boolean(scene?.layers.storms),
-    moon: Boolean(scene?.layers.moon), eclipses: Boolean(scene?.layers.eclipses), meteors: Boolean(scene?.layers.meteors) };
+    moon: Boolean(scene?.layers.moon), eclipses: Boolean(scene?.layers.eclipses), meteors: Boolean(scene?.layers.meteors),
+    // The real sky is on unless a shared scene turned it off.
+    realSky: scene?.layers.realSky ?? true, constellations: Boolean(scene?.layers.constellations), sun: Boolean(scene?.layers.sun) };
 }
 
 function initialOptions(scene: SceneState | null): LayerOptions {
@@ -61,5 +63,6 @@ export function useLayerSettings(scene: SceneState | null) {
 export function sceneLayers(layers: LayerToggles): SceneState["layers"] {
   return { ...Object.fromEntries(LAYER_KEYS.map((key) => [key, layers[key]])), geoLabels: layers.geoLabels, trueColor: layers.trueColor, starlink: layers.starlink, solarWind: layers.solarWind, flights: layers.flights, temperature: layers.temperature,
     cables: layers.cables, ixps: layers.ixps, dataCenters: layers.dataCenters, rootServers: layers.rootServers, dnsFlows: layers.dnsFlows,
-    naturalEvents: layers.naturalEvents, storms: layers.storms, moon: layers.moon, eclipses: layers.eclipses, meteors: layers.meteors } as SceneState["layers"];
+    naturalEvents: layers.naturalEvents, storms: layers.storms, moon: layers.moon, eclipses: layers.eclipses, meteors: layers.meteors,
+    realSky: layers.realSky, constellations: layers.constellations, sun: layers.sun } as SceneState["layers"];
 }

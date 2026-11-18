@@ -68,3 +68,12 @@ test("an eclipse this week and a major meteor peak become highlights; faint ones
   // A penumbral lunar eclipse alone, or a peak three days away, is not news.
   assert.deepEqual(pickHighlights(input({ sky: { eclipses: [penumbral], showers: [shower("PER", 100, 72)] } })).map((h) => h.kind), ["terminator", "iss"]);
 });
+
+test("a big solar flare in the last day becomes a highlight; small or old ones do not", () => {
+  const flare = (peakClass, peakFlux, hoursAgo) => ({ begin: NOW - (hoursAgo + 0.2) * H, peak: NOW - hoursAgo * H, end: null, peakClass, peakFlux });
+  const picks = pickHighlights(input({ flares: [flare("M2.0", 2e-5, 1), flare("X1.4", 1.4e-4, 5), flare("X9.0", 9e-4, 30)] }));
+  assert.equal(picks[0].kind, "flare");
+  assert.equal(picks[0].flare.peakClass, "X1.4");
+  assert.deepEqual(pickHighlights(input({ flares: [flare("M2.0", 2e-5, 1)] })).map((h) => h.kind), ["terminator", "iss"]);
+  assert.ok(ENGLISH["{0} 级太阳耀斑"]);
+});

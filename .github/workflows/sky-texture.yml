@@ -1,0 +1,48 @@
+name: Sky textures
+# Builds the globe's sky box (scripts/sky/build-sky.py) from NASA SVS Deep
+# Star Maps 2020 and publishes the faces and previews to the "sky-build"
+# release for review; the reviewed files are then committed to public/sky/.
+on:
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths: ["scripts/sky/**", ".github/workflows/sky-texture.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sky-texture
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: pip install --quiet numpy opencv-python-headless OpenEXR
+      - name: Complete svs.gsfc.nasa.gov's certificate chain (it omits the intermediate)
+        run: |
+          set -euo pipefail
+          echo | openssl s_client -connect svs.gsfc.nasa.gov:443 -servername svs.gsfc.nasa.gov 2>/dev/null | openssl x509 > leaf.pem
+          aia=$(openssl x509 -in leaf.pem -noout -ext authorityInfoAccess | sed -n 's/.*CA Issuers - URI:\(.*\)/\1/p' | head -1)
+          curl -sSfL "$aia" -o inter.der
+          (openssl x509 -inform DER -in inter.der 2>/dev/null || openssl x509 -in inter.der) > inter.pem
+          cat /etc/ssl/certs/ca-certificates.crt inter.pem > bundle.pem
+      - name: Download the star map and constellation figures
+        run: |
+          base=https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851
+          curl -sSfL --retry 3 --cacert bundle.pem -o starmap.exr $base/starmap_2020_8k.exr
+          curl -sSfL --retry 3 --cacert bundle.pem -o figures.tif $base/constellation_figures_8k.tif
+          ls -l starmap.exr figures.tif
+      - name: Build the sky box faces
+        run: python3 scripts/sky/build-sky.py starmap.exr figures.tif node_modules/@cesium/engine/Source/Assets/Textures/SkyBox out/sky
+      - name: Publish for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view sky-build >/dev/null 2>&1 || gh release create sky-build --title 'Sky textures (build output)' --notes 'Output of the Sky textures workflow, for review before it is committed to public/sky/.' --latest=false
+          gh release upload sky-build out/sky/* --clobber

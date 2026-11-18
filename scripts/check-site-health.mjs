@@ -25,6 +25,7 @@ import { STARLINK, constellationUrl, parseOmmCsv } from "../src/constellationDat
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { parseGeologicalUnits } from "../src/geology.ts";
 import { POLAR_CAP_EDGE, polarCapProbeUrl } from "../src/polarCapData.ts";
+import { FLARES_URL, XRAYS_URL, flareClass, parseFlares, parseXrays } from "../src/solarActivity.ts";
 
 const SITE = (process.env.SITE_URL || "https://earth-atlas.edwardlab.workers.dev").replace(/\/$/, "");
 const HOUR = 3_600_000;
@@ -140,6 +141,11 @@ const CHECKS = [
     if (!response.ok || !type.startsWith("image/") || bytes < 2000) throw new Error(`HTTP ${response.status}, ${type || "no type"}, ${bytes} bytes`);
     if (cors !== "*" && cors !== SITE) throw new Error("no CORS header (" + (cors ?? "none") + ")");
     return `${type}, ${Math.round(bytes / 1024)} KB, CORS ${cors}`;
+  }],
+  ["Feed", "NOAA X-ray flares", async () => {
+    const [flares, xray] = [parseFlares(await json(FLARES_URL)), parseXrays(await json(XRAYS_URL))];
+    if (!xray) throw new Error("no 0.1-0.8 nm X-ray sample");
+    return `${flares.length} flares in 7 days, now ${flareClass(xray.flux)}, ${fresh(xray.time, HOUR, "X-ray sample")}`;
   }],
   ["Feed", "Macrostrat geology", async () => {
     const units = parseGeologicalUnits(await json("https://macrostrat.org/api/v2/geologic_units/map?lat=43&lng=-89.3&format=json"));

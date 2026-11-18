@@ -37,6 +37,9 @@ export const LAYER_INFO: Record<LayerKey, { tab: LayerTab; label: string }> = {
   moon: { tab: "space", label: "月亮" },
   eclipses: { tab: "space", label: "日食与月食" },
   meteors: { tab: "space", label: "流星雨" },
+  realSky: { tab: "space", label: "真实星空" },
+  constellations: { tab: "space", label: "星座连线" },
+  sun: { tab: "space", label: "实时太阳" },
   flights: { tab: "human", label: "实时航班" },
   cables: { tab: "human", label: "海底光缆" },
   ixps: { tab: "human", label: "互联网交换中心" },
@@ -46,13 +49,14 @@ export const LAYER_INFO: Record<LayerKey, { tab: LayerTab; label: string }> = {
 };
 
 /** On in the default view; turning these on is not "opening" a layer. */
-export const DEFAULT_ON: ReadonlySet<LayerKey> = new Set(["dayNight", "atmosphere", "lights", "aurora", "geoLabels", "cities", "satellites"]);
+export const DEFAULT_ON: ReadonlySet<LayerKey> = new Set(["dayNight", "atmosphere", "lights", "aurora", "geoLabels", "cities", "satellites", "realSky"]);
 
 /** Layers the visitor has turned on beyond the default view, in panel order. */
 export function openedLayers(layers: LayerToggles): LayerKey[] {
   return (Object.keys(LAYER_INFO) as LayerKey[]).filter((key) => layers[key] && !DEFAULT_ON.has(key)
     // Predicted paths only show with the satellites.
-    && !(key === "paths" && !layers.satellites));
+    && !(key === "paths" && !layers.satellites)
+    && !(key === "constellations" && !layers.realSky));
 }
 
 export function openedCounts(layers: LayerToggles): Record<LayerTab, number> {

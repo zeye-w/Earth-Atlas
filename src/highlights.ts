@@ -9,6 +9,7 @@ import type { Launch, LaunchSnapshot } from "./launchData.ts";
 import type { Earthquake } from "./earthquakeData.ts";
 import type { Eclipse } from "./astronomy/eclipses.ts";
 import type { ShowerOutlook } from "./astronomy/meteors.ts";
+import type { Flare } from "./solarActivity.ts";
 
 export type Highlight =
   | { kind: "storm"; id: string; score: number; storm: Storm; windKt: number | null; latitude: number; longitude: number }
@@ -19,7 +20,8 @@ export type Highlight =
   | { kind: "terminator"; id: string; score: number }
   | { kind: "iss"; id: string; score: number }
   | { kind: "eclipse"; id: string; score: number; eclipse: Eclipse }
-  | { kind: "meteor"; id: string; score: number; outlook: ShowerOutlook };
+  | { kind: "meteor"; id: string; score: number; outlook: ShowerOutlook }
+  | { kind: "flare"; id: string; score: number; flare: Flare };
 
 export interface HighlightInput {
   hazards: HazardSnapshot | null;
@@ -28,6 +30,8 @@ export interface HighlightInput {
   kp: number | null;
   /** Eclipses around now and the meteor shower outlook (computed in the browser). */
   sky?: { eclipses: readonly Eclipse[]; showers: readonly ShowerOutlook[] } | null;
+  /** Solar flares of the last days (NOAA GOES). */
+  flares?: readonly Flare[] | null;
   now: number;
 }
 
@@ -38,13 +42,15 @@ const MIN_HIGHLIGHTS = 3;
 export const QUAKE_MIN_MAGNITUDE = 5.5;
 /** Geomagnetic storm (G1) and stronger. */
 export const KP_STORM = 5;
+/** Flares worth a highlight: M5 and stronger. */
+export const BIG_FLARE_FLUX = 5e-5;
 /** Showers worth a highlight at their peak (Quadrantids, Eta Aquariids, Perseids, Geminids). */
 export const MAJOR_SHOWER_ZHR = 50;
 /** Strong typhoon (CMA) and stronger, in knots (41.5 m/s). */
 const STRONG_STORM_KT = 80.7;
 
 /** Up to four highlights, most notable first; evergreen ones fill in when the world is quiet. */
-export function pickHighlights({ hazards, launches, quakes, kp, sky, now }: HighlightInput): Highlight[] {
+export function pickHighlights({ hazards, launches, quakes, kp, sky, flares, now }: HighlightInput): Highlight[] {
   const picks: Highlight[] = [];
 
   // Tropical cyclones under way now: alerts first, then intensity. One, or two if both are red.
@@ -86,6 +92,11 @@ export function pickHighlights({ hazards, launches, quakes, kp, sky, now }: High
   const shower = (sky?.showers ?? []).filter((o) => o.shower.zhr >= MAJOR_SHOWER_ZHR && o.peak > now - 24 * HOUR && o.peak - now <= 48 * HOUR)
     .sort((a, b) => b.shower.zhr - a.shower.zhr)[0];
   if (shower) picks.push({ kind: "meteor", id: "meteor:" + shower.shower.code, score: 55 + (shower.moonAtPeak < 0.5 ? 5 : 0), outlook: shower });
+
+  // The strongest big flare of the last day: X class is news, a strong M flare a filler.
+  const flare = (flares ?? []).filter((f) => f.peakFlux >= BIG_FLARE_FLUX && f.peak <= now && now - f.peak <= 24 * HOUR)
+    .sort((a, b) => b.peakFlux - a.peakFlux)[0];
+  if (flare) picks.push({ kind: "flare", id: "flare:" + flare.begin, score: flare.peakFlux >= 1e-4 ? 68 + Math.min(10, flare.peakFlux / 1e-4) : 45, flare });
 
   picks.sort((a, b) => b.score - a.score);
   const chosen = picks.slice(0, MAX_HIGHLIGHTS);
