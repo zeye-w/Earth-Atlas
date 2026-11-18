@@ -50,9 +50,19 @@ def tonemap(hdr, exposure):
     x = 1.0 - np.exp(-exposure * np.maximum(hdr, 0))
     return np.clip(x ** (1 / 2.2), 0, 1)
 
-starmap = cv2.imread(starmap_path, cv2.IMREAD_UNCHANGED)
-if starmap is None: raise SystemExit("cannot read " + starmap_path)
-starmap = starmap[..., :3].astype(np.float32)  # BGR
+def read_exr(path):
+    """RGB as float32 (returned BGR, like OpenCV), with the OpenEXR package (OpenCV lacks some compressions)."""
+    import OpenEXR
+    with OpenEXR.File(path) as f:
+        channels = f.channels()
+        print("exr channels", {k: getattr(v.pixels, "shape", None) for k, v in channels.items()})
+        if "RGB" in channels or "RGBA" in channels:
+            rgb = channels.get("RGB", channels.get("RGBA")).pixels[..., :3]
+        else:
+            rgb = np.stack([channels[c].pixels for c in ("R", "G", "B")], -1)
+    return np.ascontiguousarray(rgb[..., ::-1]).astype(np.float32)
+
+starmap = read_exr(starmap_path)
 print("starmap", starmap.shape, "percentiles", np.percentile(starmap, [50, 90, 99, 99.9, 99.99]))
 figures = cv2.imread(figures_path, cv2.IMREAD_UNCHANGED)
 if figures is None: raise SystemExit("cannot read " + figures_path)

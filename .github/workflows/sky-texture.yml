@@ -23,7 +23,7 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: pip install --quiet numpy opencv-python-headless
+      - run: pip install --quiet numpy opencv-python-headless OpenEXR
       - name: Complete svs.gsfc.nasa.gov's certificate chain (it omits the intermediate)
         run: |
           set -euo pipefail
