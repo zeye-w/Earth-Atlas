@@ -1,5 +1,12 @@
-/* Today's highlights (HighlightsCard): below the scene title, centred over the globe. */
-.highlights.glass-panel { left:50%; top:172px; transform:translateX(-50%); width:min(340px, calc(100% - 32px)); border-radius:16px; }
+/*
+ * Today's highlights (HighlightsCard): in the top bar between the brand and
+ * the controls; the open list drops down over the globe. The anchor takes the
+ * free space in the bar and the card is centred in it.
+ */
+.highlights-anchor { order:1; position:relative; flex:1 1 0; align-self:stretch; min-width:0; }
+.topbar > .brand { order:0; }
+.topbar > .header-right { order:2; }
+.highlights.glass-panel { left:50%; top:20px; transform:translateX(-50%); width:min(340px, calc(100vw - 32px)); border-radius:16px; z-index:31; }
 .highlights:not(.open).glass-panel { width:auto; border-radius:999px; }
 .highlights-head { display:flex; align-items:center; gap:7px; width:100%; padding:8px 13px; border:0; background:none; color:var(--text); font-size:11px; font-weight:600; letter-spacing:.06em; cursor:pointer; }
 .highlights-head span { flex:1; text-align:left; }
@@ -12,9 +19,15 @@
 .highlights li small { font-size:9px; font-weight:600; letter-spacing:.08em; }
 .highlights li strong { font-size:12px; font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
 .highlights li em { font-style:normal; font-size:10px; line-height:1.4; color:var(--text-3); font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+/* Narrower screens: the bar is full, so the card sits just below it, centred on the page. */
+@media(max-width:1220px) {
+  .highlights-anchor { position:static; flex:0 0 0; }
+  .highlights.glass-panel { top:80px; }
+}
 /* Tablets: with the side card open, centre in the space to its right (as the dock does). */
 @media(min-width:761px) and (max-width:1220px) {
   .app-shell:has(.sidebar:not(.is-collapsed)) .highlights.glass-panel { left:calc(var(--sidebar-right) + (100% - var(--sidebar-right)) / 2); width:min(320px, calc(100% - var(--sidebar-right) - 32px)); }
+  .app-shell:has(.sidebar:not(.is-collapsed)) .highlights:not(.open).glass-panel { width:auto; }
 }
 /* Phones: just under the top bar, out of the way of the bottom sheets. */
 @media(max-width:760px) {
