@@ -10,6 +10,7 @@ import type { Earthquake } from "./earthquakeData.ts";
 import type { Eclipse } from "./astronomy/eclipses.ts";
 import type { ShowerOutlook } from "./astronomy/meteors.ts";
 import type { Flare } from "./solarActivity.ts";
+import { LUNAR_DISTANCE_KM, type Asteroid } from "./spaceData.ts";
 
 export type Highlight =
   | { kind: "storm"; id: string; score: number; storm: Storm; windKt: number | null; latitude: number; longitude: number }
@@ -21,7 +22,8 @@ export type Highlight =
   | { kind: "iss"; id: string; score: number }
   | { kind: "eclipse"; id: string; score: number; eclipse: Eclipse }
   | { kind: "meteor"; id: string; score: number; outlook: ShowerOutlook }
-  | { kind: "flare"; id: string; score: number; flare: Flare };
+  | { kind: "flare"; id: string; score: number; flare: Flare }
+  | { kind: "asteroid"; id: string; score: number; asteroid: Asteroid };
 
 export interface HighlightInput {
   hazards: HazardSnapshot | null;
@@ -32,6 +34,8 @@ export interface HighlightInput {
   sky?: { eclipses: readonly Eclipse[]; showers: readonly ShowerOutlook[] } | null;
   /** Solar flares of the last days (NOAA GOES). */
   flares?: readonly Flare[] | null;
+  /** Near-Earth asteroids' close approaches (NASA JPL). */
+  asteroids?: readonly Asteroid[] | null;
   now: number;
 }
 
@@ -50,7 +54,7 @@ export const MAJOR_SHOWER_ZHR = 50;
 const STRONG_STORM_KT = 80.7;
 
 /** Up to four highlights, most notable first; evergreen ones fill in when the world is quiet. */
-export function pickHighlights({ hazards, launches, quakes, kp, sky, flares, now }: HighlightInput): Highlight[] {
+export function pickHighlights({ hazards, launches, quakes, kp, sky, flares, asteroids, now }: HighlightInput): Highlight[] {
   const picks: Highlight[] = [];
 
   // Tropical cyclones under way now: alerts first, then intensity. One, or two if both are red.
@@ -97,6 +101,11 @@ export function pickHighlights({ hazards, launches, quakes, kp, sky, flares, now
   const flare = (flares ?? []).filter((f) => f.peakFlux >= BIG_FLARE_FLUX && f.peak <= now && now - f.peak <= 24 * HOUR)
     .sort((a, b) => b.peakFlux - a.peakFlux)[0];
   if (flare) picks.push({ kind: "flare", id: "flare:" + flare.begin, score: flare.peakFlux >= 1e-4 ? 68 + Math.min(10, flare.peakFlux / 1e-4) : 45, flare });
+
+  // An asteroid passing inside the Moon's distance, from a day ago to three days ahead.
+  const rock = (asteroids ?? []).filter((a) => a.distanceKm < LUNAR_DISTANCE_KM && a.approach > now - 24 * HOUR && a.approach - now <= 72 * HOUR)
+    .sort((a, b) => a.distanceKm - b.distanceKm)[0];
+  if (rock) picks.push({ kind: "asteroid", id: "asteroid:" + rock.id, score: 52 + (1 - rock.distanceKm / LUNAR_DISTANCE_KM) * 20, asteroid: rock });
 
   picks.sort((a, b) => b.score - a.score);
   const chosen = picks.slice(0, MAX_HIGHLIGHTS);

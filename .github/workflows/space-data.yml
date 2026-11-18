@@ -1,0 +1,32 @@
+name: Update near-Earth space data
+# Close approaches of near-Earth asteroids and the deep space probes, from
+# NASA JPL (scripts/fetch-space.mjs), published for /api/space.
+# Also started by the Worker's cron (worker/dispatch.ts), as GitHub's own schedule runs late.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 3 * * *"
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths: ["scripts/fetch-space.mjs", "src/spaceData.ts", ".github/workflows/space-data.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: space-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --experimental-strip-types scripts/fetch-space.mjs space.json
+      - name: Publish data asset without changing application branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view space-data >/dev/null 2>&1 || gh release create space-data --title 'Near-Earth space data' --notes 'Close approaches and deep space probes from NASA JPL, for /api/space.' --latest=false
+          gh release upload space-data space.json --clobber

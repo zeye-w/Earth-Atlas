@@ -77,3 +77,12 @@ test("a big solar flare in the last day becomes a highlight; small or old ones d
   assert.deepEqual(pickHighlights(input({ flares: [flare("M2.0", 2e-5, 1)] })).map((h) => h.kind), ["terminator", "iss"]);
   assert.ok(ENGLISH["{0} 级太阳耀斑"]);
 });
+
+test("an asteroid passing inside the Moon's distance soon becomes a highlight", () => {
+  const rock = (id, distanceKm, hours) => ({ id, name: id, approach: NOW + hours * H, distanceKm, distanceRangeKm: [distanceKm, distanceKm], speedKms: 10, h: 27, diameterM: null, track: [] });
+  const picks = pickHighlights(input({ asteroids: [rock("far", 900_000, 10), rock("near", 120_000, 30), rock("later", 50_000, 24 * 10)] }));
+  assert.equal(picks[0].kind, "asteroid");
+  assert.equal(picks[0].asteroid.id, "near");
+  assert.deepEqual(pickHighlights(input({ asteroids: [rock("far", 900_000, 10)] })).map((h) => h.kind), ["terminator", "iss"]);
+  assert.ok(ENGLISH["小行星 {0} 掠过地球"]);
+});

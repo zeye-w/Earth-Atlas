@@ -26,6 +26,7 @@ import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorD
 import { parseGeologicalUnits } from "../src/geology.ts";
 import { POLAR_CAP_EDGE, polarCapProbeUrl } from "../src/polarCapData.ts";
 import { FLARES_URL, XRAYS_URL, flareClass, parseFlares, parseXrays } from "../src/solarActivity.ts";
+import { parseSpaceSnapshot } from "../src/spaceData.ts";
 
 const SITE = (process.env.SITE_URL || "https://earth-atlas.edwardlab.workers.dev").replace(/\/$/, "");
 const HOUR = 3_600_000;
@@ -83,6 +84,12 @@ const CHECKS = [
   ["Worker", "/api/hazards", async () => {
     const snapshot = parseHazardSnapshot(await json(SITE + "/api/hazards"));
     return `${snapshot.events.length} events, ${snapshot.storms.length} cyclones, ${fresh(snapshot.fetched, 2 * HOUR, "snapshot")}`;
+  }],
+  ["Worker", "/api/space", async () => {
+    const snapshot = parseSpaceSnapshot(await json(SITE + "/api/space"));
+    if (snapshot.probes.length < 5) throw new Error("only " + snapshot.probes.length + " probes");
+    // Fetched daily at 03:30 UTC by space-data.yml.
+    return `${snapshot.asteroids.length} asteroids, ${snapshot.probes.length} probes, ${fresh(snapshot.fetched, 36 * HOUR, "snapshot")}`;
   }],
   ["Worker", "Weather snapshot", async () => {
     const grid = parseWeather(await json(SITE + "/data/weather/latest.json"));

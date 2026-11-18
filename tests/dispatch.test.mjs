@@ -9,12 +9,13 @@ test("the flight snapshot is due every tick; the two-hourly and weather jobs on 
   assert.deepEqual(dueWorkflows(at("2026-11-06T02:45:00Z")), ["flight-data.yml", "launch-data.yml"]);
   assert.deepEqual(dueWorkflows(at("2026-11-06T03:15:00Z")), ["flight-data.yml", "site-health.yml"]);
   assert.deepEqual(dueWorkflows(at("2026-11-06T04:15:00Z")), ["flight-data.yml", "weather-data.yml"]);
+  assert.deepEqual(dueWorkflows(at("2026-11-06T03:30:00Z")), ["flight-data.yml", "space-data.yml"]);
   // A tick a few seconds late still counts as its slot.
   assert.deepEqual(dueWorkflows(at("2026-11-06T02:45:07Z")), ["flight-data.yml", "launch-data.yml"]);
-  // Over a day: 96 flight runs, 12 launch, 12 health, 4 weather.
+  // Over a day: 96 flight runs, 12 launch, 12 health, 4 weather, 1 space.
   const day = Array.from({ length: 96 }, (_, i) => dueWorkflows(at("2026-11-06T00:00:00Z") + i * 15 * 60_000)).flat();
   const count = (w) => day.filter((x) => x === w).length;
-  assert.deepEqual([count("flight-data.yml"), count("launch-data.yml"), count("site-health.yml"), count("weather-data.yml")], [96, 12, 12, 4]);
+  assert.deepEqual([count("flight-data.yml"), count("launch-data.yml"), count("site-health.yml"), count("weather-data.yml"), count("space-data.yml")], [96, 12, 12, 4, 1]);
 });
 
 test("a dispatch posts to the workflow's dispatches endpoint on main with the token", async () => {
