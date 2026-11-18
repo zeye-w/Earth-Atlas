@@ -115,12 +115,17 @@ export function diameterRange(h: number): [number, number] {
   return [d(0.25), d(0.05)];
 }
 
+type Lang = "zh" | "en";
+
 /** A size for people: the measured diameter, else the albedo range, rounded. */
-export function sizeLabel(a: Pick<Asteroid, "h" | "diameterM">): string {
+export function sizeLabel(a: Pick<Asteroid, "h" | "diameterM">, lang: Lang = "zh"): string {
+  const about = lang === "en" ? "about " : "约 ";
   const round = (m: number) => (m >= 1000 ? (m / 1000).toFixed(m >= 10_000 ? 0 : 1) + " km" : m >= 100 ? Math.round(m / 10) * 10 + " m" : Math.max(1, Math.round(m)) + " m");
-  if (a.diameterM) return "约 " + round(a.diameterM);
-  const [lo, hi] = diameterRange(a.h);
-  return "约 " + round(lo) + "–" + round(hi);
+  if (a.diameterM) return about + round(a.diameterM);
+  const [lo, hi] = diameterRange(a.h).map(round);
+  // "10–23 m", not "10 m–23 m".
+  const unit = (x: string) => x.split(" ")[1];
+  return about + (unit(lo) === unit(hi) ? lo.split(" ")[0] : lo) + "–" + hi;
 }
 
 /** Geocentric position at `time`, interpolated along the track (null outside it). */
@@ -143,17 +148,17 @@ export function probeAt(p: Probe, time: number): Vec3 {
 export const length = (v: Vec3) => Math.hypot(v[0], v[1], v[2]);
 
 /** "1.68 LD" style distance in lunar distances, or AU / km for the far ones. */
-export function distanceLabel(km: number): string {
-  if (km >= 0.1 * AU_KM) return (km / AU_KM).toFixed(km >= 10 * AU_KM ? 0 : 2) + " 天文单位";
-  if (km >= 2_000_000) return Math.round(km / 10_000) + " 万公里";
-  return Math.round(km).toLocaleString("en-US") + " 公里";
+export function distanceLabel(km: number, lang: Lang = "zh"): string {
+  if (km >= 0.1 * AU_KM) return (km / AU_KM).toFixed(km >= 10 * AU_KM ? 0 : 2) + (lang === "en" ? " AU" : " 天文单位");
+  if (km >= 2_000_000) return lang === "en" ? (km / 1e6).toFixed(1) + " million km" : Math.round(km / 10_000) + " 万公里";
+  return Math.round(km).toLocaleString("en-US") + (lang === "en" ? " km" : " 公里");
 }
 
 /** One-way light time, e.g. "23 小时 6 分" or "5.1 秒". */
-export function lightTimeLabel(km: number): string {
+export function lightTimeLabel(km: number, lang: Lang = "zh"): string {
   const s = km / LIGHT_KM_S;
-  if (s < 60) return s.toFixed(1) + " 秒";
+  if (s < 60) return s.toFixed(1) + (lang === "en" ? " s" : " 秒");
   const m = Math.round(s / 60);
-  if (m < 60) return m + " 分钟";
-  return Math.floor(m / 60) + " 小时" + (m % 60 ? " " + (m % 60) + " 分" : "");
+  if (m < 60) return m + (lang === "en" ? " min" : " 分钟");
+  return lang === "en" ? Math.floor(m / 60) + " h" + (m % 60 ? " " + (m % 60) + " min" : "") : Math.floor(m / 60) + " 小时" + (m % 60 ? " " + (m % 60) + " 分" : "");
 }

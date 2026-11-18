@@ -3,6 +3,7 @@ import { dnsFlowsResponse, type DnsFlowsContext } from "./ripeAtlas.ts";
 import { adminPage, collectStats, statsSummary, type StatsEnv } from "./stats.ts";
 import { launchesResponse } from "./launches.ts";
 import { hazardsResponse } from "./hazards.ts";
+import { spaceResponse } from "./space.ts";
 import { runSchedule, type DispatchEnv } from "./dispatch.ts";
 /**
  * Cloudflare Worker in front of the static site. Only /api/* reaches it
@@ -17,6 +18,8 @@ import { runSchedule, type DispatchEnv } from "./dispatch.ts";
  * GET /api/launches — the real launch calendar snapshot (worker/launches.ts).
  *
  * GET /api/hazards — natural events and tropical cyclones (worker/hazards.ts).
+ *
+ * GET /api/space — near-Earth asteroids and deep space probes (worker/space.ts).
  *
  * Every 15 minutes a cron trigger starts the data workflows on GitHub
  * (worker/dispatch.ts), which GitHub's own schedules do not run on time.
@@ -86,6 +89,7 @@ export default {
     }
     if (url.pathname === "/api/launches") return launchesResponse(request);
     if (url.pathname === "/api/hazards") return hazardsResponse(request);
+    if (url.pathname === "/api/space") return spaceResponse(request);
     if (url.pathname === "/api/stats/collect") return collectStats(request, env, ctx);
     if (url.pathname === "/api/stats/summary") return statsSummary(request, env);
     if (url.pathname === "/admin" || url.pathname === "/admin/") return adminPage();

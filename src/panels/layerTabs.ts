@@ -40,6 +40,8 @@ export const LAYER_INFO: Record<LayerKey, { tab: LayerTab; label: string }> = {
   realSky: { tab: "space", label: "真实星空" },
   constellations: { tab: "space", label: "星座连线" },
   sun: { tab: "space", label: "实时太阳" },
+  asteroids: { tab: "space", label: "近地小行星" },
+  probes: { tab: "space", label: "深空探测器" },
   flights: { tab: "human", label: "实时航班" },
   cables: { tab: "human", label: "海底光缆" },
   ixps: { tab: "human", label: "互联网交换中心" },

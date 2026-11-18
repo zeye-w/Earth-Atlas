@@ -35,6 +35,10 @@ import { useHighlights } from "./layers/useHighlights";
 import { HighlightsCard } from "./panels/HighlightsCard";
 import { AstronomyGroup } from "./panels/AstronomyGroup";
 import { SkyGroup } from "./panels/SkyGroup";
+import { DeepSpaceGroup } from "./panels/DeepSpaceGroup";
+import { useSpace } from "./layers/useSpace";
+import { cislunarCamera } from "./spaceOverlay";
+import type { Asteroid } from "./spaceData";
 import { useSky } from "./layers/useSky";
 import { EclipseCard } from "./panels/EclipseCard";
 import { loadAstronomy, useAstronomy, useAstronomyModule } from "./layers/useAstronomy";
@@ -146,11 +150,13 @@ function App() {
   const [astronomyWanted, setAstronomyWanted] = useState(false);
   const [astronomyReveal, setAstronomyReveal] = useState<number | null>(null);
   const [skyReveal, setSkyReveal] = useState<number | null>(null);
+  const [spaceReveal, setSpaceReveal] = useState<number | null>(null);
+  const [selectedAsteroid, setSelectedAsteroid] = useState<string | null>(null);
   // The layer panel's category tab (remembered); revealing a group switches to its tab.
   const [panelTab, setPanelTab] = useState<LayerTab>(savedTab);
   const choosePanelTab = (tab: LayerTab) => { setPanelTab(tab); saveTab(tab); };
   useEffect(() => { if (hazardReveal !== null) setPanelTab("earth"); }, [hazardReveal]);
-  useEffect(() => { if (launchReveal !== null || astronomyReveal !== null || skyReveal !== null) setPanelTab("space"); }, [launchReveal, astronomyReveal, skyReveal]);
+  useEffect(() => { if (launchReveal !== null || astronomyReveal !== null || skyReveal !== null || spaceReveal !== null) setPanelTab("space"); }, [launchReveal, astronomyReveal, skyReveal, spaceReveal]);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -298,11 +304,14 @@ function App() {
   // Turning eclipses off closes the eclipse (and gives the globe back to the timeline).
   useEffect(() => { if (!layers.eclipses) setEclipseView(null); }, [layers.eclipses]);
 
-  // The magnetosphere reaches tens of Earth radii: allow zooming out that far.
+  // The magnetosphere reaches tens of Earth radii, near-Earth space millions of
+  // kilometres: allow zooming out that far while those layers are on.
   useEffect(() => {
     if (!viewer) return;
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.solarWind ? 600_000_000 : 65_000_000;
-  }, [viewer, layers.solarWind]);
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.asteroids || layers.probes ? 6_000_000_000 : layers.solarWind ? 600_000_000 : 65_000_000;
+  }, [viewer, layers.solarWind, layers.asteroids, layers.probes]);
+  const space = useSpace(viewer, { asteroids: layers.asteroids, probes: layers.probes }, selectedAsteroid, timeline);
+  useEffect(() => { if (!layers.asteroids) setSelectedAsteroid(null); }, [layers.asteroids]);
   const trackedSatellite = satellites.catalog.find(({ choice }) => choice.id === trackedSatelliteId)?.choice ?? null;
   const vectorState = useGeologyMap(viewer, { visible: layers.geology, opacity: options.opacity, mapMode: options.mapMode, ageFilter: options.ageFilter, rockFilter: options.rockFilter });
 
@@ -448,6 +457,10 @@ function App() {
         setAstronomyReveal((n) => (n ?? 0) + 1);
         void selectEclipse(item.eclipse);
         break;
+      case "asteroid":
+        setSpaceReveal((n) => (n ?? 0) + 1);
+        selectAsteroid(item.asteroid);
+        break;
       case "flare":
         setLayer("sun", true);
         setSkyReveal((n) => (n ?? 0) + 1);
@@ -573,6 +586,24 @@ function App() {
   };
 
   // Side view of the magnetosphere: Sun to one side, Earth in the middle.
+  // Near-Earth space, from about three million kilometres.
+  const viewCislunar = () => {
+    if (!viewer) return;
+    takeCamera();
+    setTrackedSatelliteId(null);
+    if (isNarrow()) setControlsOpen(false);
+    const state = timeline.getState();
+    // With the layer panel open on a wide screen, centre the Earth in the space beside it.
+    const view = cislunarCamera(6_500_000, state.live ? now() : state.time, controlsOpen && !isNarrow() ? 0.24 : 0);
+    viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.4 });
+  };
+  const selectAsteroid = (asteroid: Asteroid) => {
+    track("layer", "asteroid");
+    setLayer("asteroids", true);
+    setSelectedAsteroid(asteroid.id);
+    viewCislunar();
+  };
+
   const viewMagnetosphere = () => {
     takeCamera();
     if (!viewer) return;
@@ -662,6 +693,7 @@ function App() {
           </TabPane>
           <TabPane tab="space" current={panelTab}>
           <SkyGroup layers={layers} setLayer={setPanelLayer} reveal={skyReveal} />
+          <DeepSpaceGroup layers={layers} setLayer={setPanelLayer} space={space} selected={selectedAsteroid} onSelectAsteroid={selectAsteroid} onViewCislunar={viewCislunar} reveal={spaceReveal} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
             records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
             trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}

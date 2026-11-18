@@ -114,6 +114,7 @@ export async function mockNetwork(page: Page, { locale = "zh", highlights = "clo
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.hostname === "localhost" && url.pathname === "/api/flights") return json(route, flightSnapshot());
+    if (url.hostname === "localhost" && url.pathname === "/api/space") return json(route, spaceSnapshot());
     if (url.hostname === "localhost" && url.pathname === "/api/internet/dns-flows") return json(route, JSON.parse(internetFixture("dns-flows")));
     if (url.hostname === "localhost" && url.pathname.startsWith("/data/internet/")) return json(route, JSON.parse(internetFixture(url.pathname.slice("/data/internet/".length).replace(/\.json$/, ""))));
     if (url.hostname === "localhost" || url.protocol === "data:" || url.protocol === "blob:") return route.continue();
@@ -177,4 +178,18 @@ export async function showLayerGroup(page: Page, name: string): Promise<void> {
     const id = (await pane.getAttribute("id"))!.replace("layer-tab-", "layer-tab-button-");
     await page.locator("#" + id).click();
   }
+}
+
+/** Synthetic /api/space (not real objects): one asteroid passing at 0.8 lunar distances tomorrow, JWST and Voyager 1. */
+export function spaceSnapshot() {
+  const now = Date.now(), H = 3_600_000, approach = now + 20 * H;
+  const track = Array.from({ length: 49 }, (_, i) => { const t = approach + (i - 24) * H; return [t, 307_000 + (i - 24) * 24_000, (i - 24) * 18_000, 40_000]; });
+  return {
+    v: 1, fetched: now - H,
+    asteroids: [{ id: "E2E AB1", name: "(E2E AB1)", approach, distanceKm: 307_500, distanceRangeKm: [307_000, 308_000], speedKms: 11.2, h: 26.5, diameterM: null, track }],
+    probes: [
+      { id: -170, key: "jwst", time: now, position: [384_897, 1_580_682, 402_378], velocity: [-0.1, 0.08, -0.05], sunDistanceKm: 1.49e8 },
+      { id: -31, key: "voyager1", time: now, position: [-4.9e9, -2.48e10, 5.4e9], velocity: [2.3, -3.2, -0.3], sunDistanceKm: 2.5e10 },
+    ],
+  };
 }

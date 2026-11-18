@@ -9,11 +9,12 @@ import { now } from "../clock";
 import { loadAstronomy } from "./useAstronomy";
 import type { Eclipse, ShowerOutlook } from "../astronomy/index";
 import { fetchSolarActivity, type Flare } from "../solarActivity";
+import { fetchSpace, type Asteroid } from "../spaceData";
 
 const REFRESH_MS = 15 * 60_000;
 
 interface Sources { hazards: HazardSnapshot | null; launches: LaunchSnapshot | null; quakes: Earthquake[] | null; kp: number | null;
-  sky: { eclipses: Eclipse[]; showers: ShowerOutlook[] } | null; flares: Flare[] | null }
+  sky: { eclipses: Eclipse[]; showers: ShowerOutlook[] } | null; flares: Flare[] | null; asteroids: Asteroid[] | null }
 
 const HOUR = 3_600_000;
 /** Eclipses and meteor peaks around now, from the astronomy code (loaded on demand). */
@@ -25,8 +26,8 @@ async function skySoon(): Promise<Sources["sky"]> {
 
 /** Each source is optional: one feed down only drops its highlights. */
 async function fetchSources(signal: AbortSignal): Promise<Sources> {
-  const [hazards, launches, quakes, geomagnetic, sky, solar] = await Promise.allSettled([
-    fetchHazards(signal), fetchLaunches(signal), fetchQuakes("day", signal), fetchGeomagnetic(signal), skySoon(), fetchSolarActivity(signal),
+  const [hazards, launches, quakes, geomagnetic, sky, solar, space] = await Promise.allSettled([
+    fetchHazards(signal), fetchLaunches(signal), fetchQuakes("day", signal), fetchGeomagnetic(signal), skySoon(), fetchSolarActivity(signal), fetchSpace(signal),
   ]);
   return {
     hazards: hazards.status === "fulfilled" ? hazards.value : null,
@@ -35,6 +36,7 @@ async function fetchSources(signal: AbortSignal): Promise<Sources> {
     kp: geomagnetic.status === "fulfilled" ? geomagnetic.value.now.kp : null,
     sky: sky.status === "fulfilled" ? sky.value : null,
     flares: solar.status === "fulfilled" ? solar.value.flares : null,
+    asteroids: space.status === "fulfilled" ? space.value.asteroids : null,
   };
 }
 

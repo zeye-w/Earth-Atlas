@@ -19,6 +19,8 @@ export function dueWorkflows(scheduledTime: number): string[] {
   // Two-hourly jobs on different ticks, so they do not all start together.
   if (hour % 2 === 0 && minute === 45) due.push("launch-data.yml");
   if (hour % 2 === 1 && minute === 15) due.push("site-health.yml");
+  // Near-Earth space data once a day, at 03:30 UTC.
+  if (hour === 3 && minute === 30) due.push("space-data.yml");
   // GFS weather after each model run, as weather-data.yml's own schedule.
   if ([4, 10, 16, 22].includes(hour) && minute === 15) due.push("weather-data.yml");
   return due;
