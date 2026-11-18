@@ -1,0 +1,34 @@
+name: Sky probe
+# Temporary: lists NASA SVS star map files and checks the solar data sources.
+on:
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths: [".github/workflows/sky-probe.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: NASA SVS Deep Star Maps 2020 (4851) and related pages
+        run: |
+          for id in 4851 4856; do
+            echo "== $id"
+            curl -sSL "https://svs.gsfc.nasa.gov/$id/" | grep -oE 'href="[^"]+\.(exr|tif|tiff|png|jpg)"' | sort -u | head -80
+          done
+      - name: File sizes
+        run: |
+          for f in $(curl -sSL https://svs.gsfc.nasa.gov/4851/ | grep -oE 'href="[^"]+\.(exr|tif|png|jpg)"' | sed 's/href="//;s/"$//' | sort -u | grep -E '4k|8k' | head -30); do
+            u="$f"; case "$u" in http*) ;; *) u="https://svs.gsfc.nasa.gov$u";; esac
+            echo "$(curl -sSIL "$u" | grep -i '^content-length' | tail -1 | tr -d '\r') $u"
+          done
+      - name: Solar sources (status, type, CORS)
+        run: |
+          for u in https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_HMIIC.jpg https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0193.jpg \
+                   https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json https://services.swpc.noaa.gov/json/goes/primary/xray-flares-7-day.json https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json; do
+            echo "== $u"
+            curl -sS -o body -D head -H "Origin: https://earth-atlas.edwardlab.workers.dev" "$u"; grep -iE '^(HTTP|content-type|content-length|access-control-allow-origin|last-modified|cache-control)' head
+            case "$u" in *.json) head -c 700 body; echo;; esac
+          done
