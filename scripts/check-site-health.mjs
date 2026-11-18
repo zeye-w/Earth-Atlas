@@ -58,6 +58,15 @@ const CHECKS = [
     if (!response.ok || !html.includes("TerraScope")) throw new Error("HTTP " + response.status);
     return "HTTP 200";
   }],
+  ["Site", "Intro video", async () => {
+    // The opening video index.html plays on a first visit (public/intro/).
+    const html = await (await get(SITE + "/")).text();
+    if (!html.includes("intro-video")) throw new Error("home page has no intro markup (old deploy?)");
+    const response = await get(SITE + "/intro/intro.mp4");
+    const type = response.headers.get("content-type") ?? "", bytes = (await response.arrayBuffer()).byteLength;
+    if (!response.ok || !type.startsWith("video/") || bytes < 100_000) throw new Error(`HTTP ${response.status}, ${type || "no type"}, ${bytes} bytes`);
+    return `${type}, ${Math.round(bytes / 1024)} KB`;
+  }],
   ["Worker", "/api/flights", async () => {
     const { source, time, flights } = decodeFlights(await json(SITE + "/api/flights"));
     if (flights.length < 1000) throw new Error("only " + flights.length + " aircraft");
