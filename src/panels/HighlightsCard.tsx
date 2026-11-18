@@ -1,5 +1,6 @@
 import { t, localeTag, useLocale } from "../i18n";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import type { Highlight } from "../highlights";
 import { knotsToKmh } from "../hazardData";
@@ -87,7 +88,7 @@ function Item({ item, at, onSelect }: { item: Highlight; at: number; onSelect: (
   );
 }
 
-/** "Today's highlights" over the globe: a few live things worth a look, one click each. */
+/** "Today's highlights" at the top of the page: a few live things worth a look, one click each. */
 export function HighlightsCard({ highlights, ready, onSelect }: { highlights: Highlight[]; ready: boolean; onSelect: (item: Highlight) => void }) {
   const [open, setOpen] = useState(initialOpen);
   const toggle = () => {
@@ -98,15 +99,18 @@ export function HighlightsCard({ highlights, ready, onSelect }: { highlights: Hi
   };
   const at = useClockTick(open && highlights.some((h) => h.kind === "launch"));
   if (!ready || !highlights.length) return null;
-  return (
-    <section className={"highlights glass-panel" + (open ? " open" : "")} aria-label={t("今日看点")}>
-      <button type="button" className="highlights-head" onClick={toggle} aria-expanded={open}>
-        <Sparkles size={13} aria-hidden="true" />
-        <span>{t("今日看点")}</span>
-        {!open && <b>{highlights.length}</b>}
-        {open ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
-      </button>
-      {open && <ul>{highlights.map((item) => <Item key={item.id} item={item} at={at} onSelect={onSelect} />)}</ul>}
-    </section>
+  // In the top bar, between the brand and the controls (narrow screens: just below the bar, see highlights.css).
+  const bar = document.querySelector<HTMLElement>(".topbar");
+  const card = (
+      <section className={"highlights glass-panel" + (open ? " open" : "")} aria-label={t("今日看点")}>
+        <button type="button" className="highlights-head" onClick={toggle} aria-expanded={open}>
+          <Sparkles size={13} aria-hidden="true" />
+          <span>{t("今日看点")}</span>
+          {!open && <b>{highlights.length}</b>}
+          {open ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
+        </button>
+        {open && <ul>{highlights.map((item) => <Item key={item.id} item={item} at={at} onSelect={onSelect} />)}</ul>}
+      </section>
   );
+  return bar ? createPortal(<div className="highlights-anchor">{card}</div>, bar) : card;
 }
