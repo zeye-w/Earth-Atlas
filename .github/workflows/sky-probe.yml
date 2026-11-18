@@ -1,5 +1,5 @@
 name: Sky probe
-# Temporary: lists NASA SVS star map files and checks the solar data sources.
+# Temporary: lists NASA SVS star map files.
 on:
   push:
     branches: [claude/exciting-hypatia-1rt14s]
@@ -12,23 +12,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: NASA SVS Deep Star Maps 2020 (4851) and related pages
+      - name: Complete svs.gsfc.nasa.gov's certificate chain (it omits the intermediate)
+        run: |
+          set -euo pipefail
+          echo | openssl s_client -connect svs.gsfc.nasa.gov:443 -servername svs.gsfc.nasa.gov 2>/dev/null | openssl x509 > leaf.pem
+          openssl x509 -in leaf.pem -noout -issuer -subject
+          aia=$(openssl x509 -in leaf.pem -noout -ext authorityInfoAccess | sed -n 's/.*CA Issuers - URI:\(.*\)/\1/p' | head -1)
+          echo "issuer cert: $aia"
+          curl -sSfL "$aia" -o inter.der
+          (openssl x509 -inform DER -in inter.der 2>/dev/null || openssl x509 -in inter.der) > inter.pem
+          cat /etc/ssl/certs/ca-certificates.crt inter.pem > bundle.pem
+          curl -sS --cacert bundle.pem -o /dev/null -w "page %{http_code}\n" https://svs.gsfc.nasa.gov/4851/
+      - name: Files on 4851 and 4856
         run: |
           for id in 4851 4856; do
             echo "== $id"
-            curl -sSL "https://svs.gsfc.nasa.gov/$id/" | grep -oE 'href="[^"]+\.(exr|tif|tiff|png|jpg)"' | sort -u | head -80
-          done
-      - name: File sizes
-        run: |
-          for f in $(curl -sSL https://svs.gsfc.nasa.gov/4851/ | grep -oE 'href="[^"]+\.(exr|tif|png|jpg)"' | sed 's/href="//;s/"$//' | sort -u | grep -E '4k|8k' | head -30); do
-            u="$f"; case "$u" in http*) ;; *) u="https://svs.gsfc.nasa.gov$u";; esac
-            echo "$(curl -sSIL "$u" | grep -i '^content-length' | tail -1 | tr -d '\r') $u"
-          done
-      - name: Solar sources (status, type, CORS)
-        run: |
-          for u in https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_0171.jpg https://sdo.gsfc.nasa.gov/assets/img/latest/latest_1024_HMIIC.jpg https://sdo.gsfc.nasa.gov/assets/img/latest/latest_512_0193.jpg \
-                   https://services.swpc.noaa.gov/json/goes/primary/xray-flares-latest.json https://services.swpc.noaa.gov/json/goes/primary/xray-flares-7-day.json https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json; do
-            echo "== $u"
-            curl -sS -o body -D head -H "Origin: https://earth-atlas.edwardlab.workers.dev" "$u"; grep -iE '^(HTTP|content-type|content-length|access-control-allow-origin|last-modified|cache-control)' head
-            case "$u" in *.json) head -c 700 body; echo;; esac
+            curl -sSL --cacert bundle.pem "https://svs.gsfc.nasa.gov/$id/" | grep -oE 'href="[^"]+\.(exr|tif|tiff|png|jpg)"' | sed 's/href="//;s/"$//' | sort -u > files-$id.txt
+            for f in $(cat files-$id.txt); do
+              u="$f"; case "$u" in http*) ;; *) u="https://svs.gsfc.nasa.gov$u";; esac
+              echo "$(curl -sSIL --cacert bundle.pem "$u" | grep -i '^content-length' | tail -1 | tr -d '\r' | awk '{printf "%8.1f MB", $2/1e6}') $u"
+            done
           done
