@@ -1,10 +1,11 @@
 import {test,expect} from "@playwright/test";
-import {mockNetwork,sceneUrl,waitForGlobe} from "./mocks";
+import {mockNetwork,sceneUrl,waitForGlobe,showLayerGroup} from "./mocks";
 // Orbital positions are synthetic test fixtures; the working must update live.
 test("tracking card opens the live working: formulas, substituted numbers, location step",async({page,context})=>{
  const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
  await mockNetwork(page);
  await page.goto(sceneUrl(0,0,17_000_000,{satellites:true}));await waitForGlobe(page);
+ await showLayerGroup(page,"SATELLITES");
  const group=page.locator("#earth-layer-panel details",{has:page.locator("summary",{hasText:"SATELLITES"})});
  if(!(await group.evaluate(el=>(el as HTMLDetailsElement).open)))await group.locator("summary").click();
  await page.getByRole("button",{name:"跟踪 ISS · 国际空间站",exact:true}).click();

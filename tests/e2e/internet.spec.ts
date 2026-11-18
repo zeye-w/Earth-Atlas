@@ -1,9 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
-import { mockNetwork, sceneUrl, waitForGlobe } from "./mocks";
+import { mockNetwork, sceneUrl, waitForGlobe, showLayerGroup } from "./mocks";
 
 // Synthetic datasets (tests/e2e/fixtures/internet/), not real infrastructure.
 const layerPanel = (page: Page) => page.locator("#earth-layer-panel");
 async function openInternet(page: Page) {
+  await showLayerGroup(page, "INTERNET");
   const details = layerPanel(page).locator("details", { has: page.locator("summary", { hasText: "INTERNET" }) });
   if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator(":scope > summary").click();
 }

@@ -1549,5 +1549,16 @@ export const ENGLISH: Readonly<Record<string, string>> = {
   "；": "; ",
   "，": ", ",
   "{0}：此刻约 {1}% 的地球表面天已全黑、辐射点在地平线以上（地球上的青色区域）": "{0}: right now about {1}% of the Earth's surface is fully dark with the radiant above the horizon (the teal area on the globe)",
-  "{0}：此刻地球上没有天黑而且辐射点已升起的地方，稍后再看": "{0}: right now nowhere on Earth is dark with the radiant risen; check back later"
+  "{0}：此刻地球上没有天黑而且辐射点已升起的地方，稍后再看": "{0}: right now nowhere on Earth is dark with the radiant risen; check back later",
+  "地球": "Earth",
+  "太空": "Space",
+  "人类活动": "Human activity",
+  "互动": "Interactive",
+  "图层分类": "Layer categories",
+  "已打开 {0} 个": "{0} turned on",
+  "已打开的图层": "Layers turned on",
+  "已打开": "On",
+  "关闭{0}": "Turn off {0}",
+  "全部关闭": "Turn all off",
+  "卫星预测轨迹": "Predicted satellite paths"
 };

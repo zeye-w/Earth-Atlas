@@ -158,3 +158,13 @@ export async function waitForGlobe(page: Page): Promise<void> {
   await page.locator("#splash").waitFor({ state: "detached", timeout: 30_000 });
   await page.locator(".cesium-widget canvas").waitFor();
 }
+
+/** Switches the layer panel to the tab holding a group (by its summary text), if it is on another tab. */
+export async function showLayerGroup(page: Page, name: string): Promise<void> {
+  const pane = page.locator("#earth-layer-panel .tab-pane", { has: page.locator("summary", { hasText: name }) });
+  if (!(await pane.count())) return;
+  if (await pane.isHidden()) {
+    const id = (await pane.getAttribute("id"))!.replace("layer-tab-", "layer-tab-button-");
+    await page.locator("#" + id).click();
+  }
+}

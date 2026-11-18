@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ETNA, QUAKE_POINT, mockNetwork, sceneUrl, waitForGlobe } from "./mocks";
+import { ETNA, QUAKE_POINT, mockNetwork, sceneUrl, waitForGlobe, showLayerGroup } from "./mocks";
 
 let pageErrors: string[] = [];
 
@@ -18,6 +18,7 @@ const inspector = (page: Page) => page.locator("#earth-inspector-panel");
 const groupSummary = (page: Page, name: string) => layerPanel(page).locator("summary", { hasText: name });
 
 async function openGroup(page: Page, name: string) {
+  await showLayerGroup(page, name);
   const details = layerPanel(page).locator("details", { has: page.locator("summary", { hasText: name }) });
   if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await groupSummary(page, name).click();
 }

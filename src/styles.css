@@ -207,6 +207,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 h1 { margin:21px 0 12px; font-size:clamp(25px,2.1vw,30px); font-weight:600; line-height:1.4; letter-spacing:-.03em; }
 h1 em { font-style:normal; color:var(--text-2); }
 .lead { max-width:265px; margin:0; font-size:12px; line-height:2; color:var(--text-2); }
+h1.compact { margin:14px 0 4px; font-size:17px; line-height:1.5; letter-spacing:-.01em; }
+h1.compact em { margin-left:.25em; }
+/* Layer categories (LayerPanel): a tab row, then the layers turned on. */
+.layer-tabs { display:flex; gap:4px; margin:18px 0 0; padding:3px; border-radius:12px; background:var(--fill); border:1px solid var(--line); overflow-x:auto; scrollbar-width:none; }
+.layer-tabs::-webkit-scrollbar { display:none; }
+.layer-tabs button { flex:1 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:5px; padding:7px 10px; border:0; border-radius:9px; background:transparent; color:var(--text-2); font-size:11.5px; font-weight:500; white-space:nowrap; cursor:pointer; transition:background-color .2s, color .2s; }
+.layer-tabs button:hover { color:var(--text); }
+.layer-tabs button.active { color:var(--text); background:var(--fill-strong); box-shadow:inset 0 1px 0 rgba(255,255,255,.12); }
+.layer-tabs button:focus-visible { outline:2px solid var(--focus); outline-offset:1px; }
+.layer-tabs b { min-width:15px; padding:0 4px; border-radius:999px; font-size:9.5px; font-weight:600; line-height:15px; color:#0b0c0f; background:#8fe3ff; font-variant-numeric:tabular-nums; }
+.opened-layers { display:flex; flex-wrap:wrap; align-items:center; gap:5px; margin-top:12px; }
+.opened-layers > span { margin-right:2px; font-size:10px; color:var(--text-3); }
+.opened-layers button { display:inline-flex; align-items:center; gap:4px; padding:3px 7px 3px 9px; border-radius:999px; border:1px solid var(--line); background:var(--fill); color:var(--text-2); font-size:10px; cursor:pointer; }
+.opened-layers button:hover { color:var(--text); background:var(--fill-strong); }
+.opened-layers button.clear { padding:3px 9px; border-style:dashed; color:var(--text-3); }
+.tab-pane[hidden] { display:none; }
 .section-caption { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:10px; font-weight:600; letter-spacing:.13em; white-space:nowrap; color:var(--text-2); }
 .section-caption span { font-size:11px; font-weight:400; letter-spacing:0; color:var(--text-3); }
 
