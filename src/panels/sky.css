@@ -1,0 +1,14 @@
+/* The sky and the live Sun (SkyGroup). */
+.sun-section { display:flex; flex-direction:column; gap:8px; }
+.sdo { margin:0; display:flex; flex-direction:column; gap:6px; }
+.sdo img, .sdo-missing { display:block; width:100%; height:auto; aspect-ratio:1; border-radius:12px; background:#000; border:1px solid var(--line); }
+.sdo-missing { display:grid; place-items:center; font-size:10px; color:var(--text-3); }
+.sdo figcaption { font-size:9px; line-height:1.5; color:var(--text-3); }
+.sdo-views { display:flex; flex-wrap:wrap; gap:4px; }
+.sdo-views button { padding:4px 8px; border-radius:999px; border:1px solid var(--line); background:var(--fill); color:var(--text-2); font-size:10px; cursor:pointer; }
+.sdo-views button[aria-pressed="true"] { color:var(--text); background:var(--fill-strong); border-color:rgba(255,255,255,.2); }
+.flare-level { font-weight:700; font-variant-numeric:tabular-nums; }
+.flare-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px; }
+.flare-list li { display:flex; align-items:baseline; gap:8px; padding:4px 8px; border-radius:8px; background:rgba(255,255,255,.04); font-size:10px; color:var(--text-2); }
+.flare-list b { min-width:34px; }
+.flare-list em { margin-left:auto; font-style:normal; font-size:9px; color:var(--text-3); }
