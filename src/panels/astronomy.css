@@ -1,0 +1,24 @@
+/* Astronomy (AstronomyGroup, EclipseCard). */
+.astro-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; max-height:260px; overflow-y:auto; scrollbar-width:thin; }
+.astro-list button { width:100%; display:flex; align-items:flex-start; gap:8px; padding:6px 8px; border-radius:8px; border:1px solid transparent; background:rgba(255,255,255,.04); color:var(--text); text-align:left; cursor:pointer; }
+.astro-list button:hover { background:var(--fill-strong); }
+.astro-list button.selected { background:var(--fill-strong); border-color:rgba(255,255,255,.2); }
+.astro-list i { flex:none; width:9px; height:9px; margin-top:3px; border-radius:50%; box-shadow:0 0 0 2px rgba(5,9,16,.8); }
+.astro-list span { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.astro-list strong { font-size:10px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+.astro-list small { font-size:9px; color:var(--text-3); }
+.astro-list.compact li { display:flex; justify-content:space-between; gap:8px; padding:3px 8px; font-size:10px; color:var(--text-2); }
+.astro-list.compact small { font-variant-numeric:tabular-nums; }
+.astro-badge { margin-left:6px; padding:0 5px; border-radius:999px; font-style:normal; font-size:8.5px; font-weight:600; color:#0b0c0f; background:#ffcf5a; vertical-align:1px; }
+.astro-badge.live { background:#46e6c8; }
+.tonight { margin-top:10px; padding-top:10px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
+.tonight-result dl { margin:0; display:flex; flex-direction:column; gap:6px; }
+.tonight-result dl > div { display:grid; grid-template-columns:62px 1fr; gap:8px; font-size:10px; line-height:1.5; }
+.tonight-result dt { color:var(--text-3); }
+.tonight-result dd { margin:0; color:var(--text); min-width:0; overflow-wrap:anywhere; }
+.astro-inline { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; }
+.eclipse-clock { display:flex; align-items:center; gap:8px; margin:2px 0 8px; }
+.eclipse-clock button { flex:none; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; border:1px solid var(--line); background:var(--fill); color:var(--text); cursor:pointer; }
+.eclipse-clock input { flex:1; min-width:0; accent-color:#ffcf5a; }
+.eclipse-clock output { flex:none; font-size:11px; font-variant-numeric:tabular-nums; color:var(--text); }
+.eclipse-note { margin:8px 0 0; font-size:9px; line-height:1.5; color:var(--text-3); }

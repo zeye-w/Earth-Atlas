@@ -56,3 +56,15 @@ test("highlight copy has English text and clicks are counted by the statistics",
   const batch = parseBatch({ visitor: "abcdef12", session: "abcdef34", lang: "zh", device: "desktop", events: [{ name: "highlight", detail: "storm" }] });
   assert.deepEqual(batch.events, [{ name: "highlight", detail: "storm" }]);
 });
+
+test("an eclipse this week and a major meteor peak become highlights; faint ones do not", () => {
+  const solar = { type: "solar", id: "solar:2026-11-05", kind: "total", peak: NOW + 20 * H, latitude: 10, longitude: 20, obscuration: 1 };
+  const penumbral = { type: "lunar", id: "lunar:2026-11-06", kind: "penumbral", peak: NOW + 30 * H, semiDuration: { penumbral: 120, partial: 0, total: 0 } };
+  const shower = (code, zhr, hours, moon = 0.1) => ({ shower: { code, name: code, zhr }, peak: NOW + hours * H, active: true, moonAtPeak: moon });
+  const picks = pickHighlights(input({ sky: { eclipses: [penumbral, solar], showers: [shower("GEM", 150, 30), shower("URS", 10, 5)] } }));
+  assert.deepEqual(picks.map((h) => h.kind), ["eclipse", "meteor", "terminator"]);
+  assert.equal(picks[0].eclipse.id, "solar:2026-11-05");
+  assert.equal(picks[1].outlook.shower.code, "GEM");
+  // A penumbral lunar eclipse alone, or a peak three days away, is not news.
+  assert.deepEqual(pickHighlights(input({ sky: { eclipses: [penumbral], showers: [shower("PER", 100, 72)] } })).map((h) => h.kind), ["terminator", "iss"]);
+});
