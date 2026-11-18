@@ -62,9 +62,9 @@ const CHECKS = [
     // The opening video index.html plays on a first visit (public/intro/).
     const html = await (await get(SITE + "/")).text();
     if (!html.includes("intro-video")) throw new Error("home page has no intro markup (old deploy?)");
-    const response = await get(SITE + "/intro/intro.mp4", { method: "HEAD" });
-    const type = response.headers.get("content-type") ?? "", bytes = Number(response.headers.get("content-length"));
-    if (!response.ok || !type.startsWith("video/")) throw new Error(`HTTP ${response.status}, ${type || "no type"}`);
+    const response = await get(SITE + "/intro/intro.mp4");
+    const type = response.headers.get("content-type") ?? "", bytes = (await response.arrayBuffer()).byteLength;
+    if (!response.ok || !type.startsWith("video/") || bytes < 100_000) throw new Error(`HTTP ${response.status}, ${type || "no type"}, ${bytes} bytes`);
     return `${type}, ${Math.round(bytes / 1024)} KB`;
   }],
   ["Worker", "/api/flights", async () => {
