@@ -1683,5 +1683,6 @@ export const ENGLISH: Readonly<Record<string, string>> = {
   "卫星坟场轨道 · +300 km": "Graveyard orbit · +300 km",
   "南大西洋异常区": "South Atlantic Anomaly",
   "地月 {0}": "Earth–Moon {0}",
-  "各轨道的高度和倾角是真实的，绕地轴的朝向只是示意，方便区分；金色的地球同步轨道和灰色虚线的「坟场轨道」位置是真实的。": "Each orbit's altitude and inclination are real; how they are turned around the axis is only illustrative, to tell them apart. The gold geostationary ring and the grey dashed graveyard orbit are where they really are."
+  "各轨道的高度和倾角是真实的，绕地轴的朝向只是示意，方便区分；金色的地球同步轨道和灰色虚线的「坟场轨道」位置是真实的。": "Each orbit's altitude and inclination are real; how they are turned around the axis is only illustrative, to tell them apart. The gold geostationary ring and the grey dashed graveyard orbit are where they really are.",
+  "远景模式 · 已暂停地表细节": "Far view \u00b7 ground detail paused"
 };

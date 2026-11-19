@@ -190,10 +190,21 @@ export class SatelliteOverlay {
     this.update(true);
   }
 
+  /** Far view (src/farView.ts): no propagation, nothing drawn; positions snap back on return. */
+  private far = false;
+  setFar(far: boolean): void {
+    if (far === this.far || this.viewer.isDestroyed()) return;
+    this.far = far;
+    if (far) {
+      for (const pair of this.pairs) { pair.marker.show = false; pair.path.show = false; }
+      this.viewer.scene.requestRender();
+    } else this.update(this.showPaths);
+  }
+
   private readonly onFrame = (frameMs: number): void => {
     if (this.viewer.isDestroyed()) return;
     this.frameHandle = requestAnimationFrame(this.onFrame);
-    if (document.visibilityState !== "visible") return;
+    if (document.visibilityState !== "visible" || this.far) return;
     const camera = this.viewer.scene.camera;
     const height = camera.positionCartographic.height;
     const fps = satelliteFrameRate(this.speed, height, this.viewer.canvas.clientHeight);

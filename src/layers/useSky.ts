@@ -30,8 +30,9 @@ function preload(faces: Record<keyof typeof SIDES, string>): Promise<Record<keyo
 
 let defaultSky: SkyBox | null = null;
 
-export function useSky(viewer: Viewer | null, layers: { realSky: boolean; constellations: boolean; sun: boolean }, quality: RenderQuality) {
-  const size = quality === "high" ? 2048 : 1024;
+export function useSky(viewer: Viewer | null, layers: { realSky: boolean; constellations: boolean; sun: boolean }, quality: RenderQuality, far = false) {
+  // In the far view the globe costs almost nothing, so the sky gets the sharper faces (except in eco).
+  const size = quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
   useEffect(() => {
     if (!viewer) return;
     const scene = viewer.scene;
