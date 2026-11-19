@@ -330,7 +330,7 @@ function App() {
     viewer.camera.frustum.far = layers.solarSystem ? 5.0e13 : 1.0e10;
     viewer.scene.requestRender();
   }, [viewer, layers.solarSystem]);
-  useSolarSystem(viewer, astronomy.module, layers.solarSystem, solarLapse?.time ?? null, selectedPlanet, timeline);
+  const solarSystem = useSolarSystem(viewer, astronomy.module, layers.solarSystem, solarLapse?.time ?? null, selectedPlanet, timeline);
   // The fast-forward clock: a tenth of a second at a time while playing.
   useEffect(() => {
     if (!solarLapse?.playing) return;
@@ -670,7 +670,9 @@ function App() {
     const view = scale === "inner" ? module.solarSystemCamera(viewer, 5, time, shift)
       : scale === "outer" ? module.solarSystemCamera(viewer, 80, time, shift)
       : module.solarSystemCamera(viewer, Math.max(0.25, module.length(module.helio(scale, time)) / module.AU_KM * 0.12), time, shift, module.fromEarth(scale, time));
-    viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.6 });
+    // Once there, rotation and zoom turn around the Sun (or the planet), not the Earth.
+    viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.6,
+      complete: () => solarSystem.setPivot(scale === "inner" || scale === "outer" ? "sun" : scale) });
   };
 
   const viewMagnetosphere = () => {

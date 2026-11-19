@@ -29,3 +29,35 @@ test("the solar system lists the planets, flies out to them and fast-forwards", 
   await expect(clock).toHaveText(before!);
   expect(errors).toEqual([]);
 });
+
+test("in the solar system view the camera turns around the Sun, and reset gives it back to the Earth", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await mockNetwork(page);
+  await page.goto(sceneUrl(116, 30, 20_000_000, { solarSystem: true }));
+  await waitForGlobe(page);
+  await showLayerGroup(page, "SOLAR SYSTEM");
+  const details = layerPanel(page).locator("details", { has: page.locator("summary", { hasText: "SOLAR SYSTEM" }) });
+  if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator(":scope > summary").click();
+  await layerPanel(page).getByRole("button", { name: "内太阳系" }).click();
+  const sun = page.locator(".solar-labels span", { hasText: "太阳" }).first();
+  const mars = page.locator(".solar-labels span", { hasText: "木星" });
+  await expect(mars).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(3_500);
+  const at = async () => { const s = await sun.boundingBox(); const m = await mars.boundingBox(); return { sun: s!, other: m! }; };
+  const before = await at();
+  const canvas = (await page.locator(".cesium-widget canvas").boundingBox())!;
+  await page.mouse.move(canvas.x + canvas.width * 0.7, canvas.y + canvas.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(canvas.x + canvas.width * 0.8, canvas.y + canvas.height * 0.45, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(1_500);
+  const after = await at();
+  // The Sun stays put on screen; the planets swing around it.
+  expect(Math.hypot(after.sun.x - before.sun.x, after.sun.y - before.sun.y)).toBeLessThan(12);
+  expect(Math.hypot(after.other.x - before.other.x, after.other.y - before.other.y)).toBeGreaterThan(20);
+  // Reset: back to the Earth, out of the far view.
+  await page.getByRole("button", { name: "返回全球视角" }).click();
+  await expect(page.locator(".far-view-note")).toHaveCount(0, { timeout: 20_000 });
+  expect(errors).toEqual([]);
+});

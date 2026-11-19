@@ -35,4 +35,6 @@ export function useSolarSystem(viewer: Viewer | null, module: AstronomyModule | 
   useEffect(() => { overlayRef.current?.setProbes(space.data); overlayRef.current?.setTime(lapseRef.current ?? sceneTime(timeline.getState())); }, [space.data, active, timeline]);
   useEffect(() => { if (lapseTime !== null) overlayRef.current?.setTime(lapseTime); else overlayRef.current?.setTime(sceneTime(timeline.getState())); }, [lapseTime, active, timeline]);
   useEffect(() => { overlayRef.current?.setSelected(selected); }, [selected, active]);
+  /** Turn the camera around the Sun or a planet (after a flight out to it). */
+  return { setPivot: (key: "sun" | SolarBody | null) => overlayRef.current?.setPivot(key) };
 }
