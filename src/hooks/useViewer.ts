@@ -86,7 +86,7 @@ export function useViewer(
       if (scene.sun) scene.sun.show = false;
       if (scene.moon) scene.moon.show = false;
       scene.screenSpaceCameraController.minimumZoomDistance = 15000;
-      scene.screenSpaceCameraController.maximumZoomDistance = 65000000;
+      scene.screenSpaceCameraController.maximumZoomDistance = 600_000_000;
 
       // Physically positioned SunLight replaces the camera-following studio
       // light. The viewer clock does not run; the timeline sets it (live:

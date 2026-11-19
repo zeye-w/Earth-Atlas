@@ -20,3 +20,18 @@ test("zooming far out pauses ground detail and says so; coming back restores it"
   await expect(page.locator("#earth-layer-panel .opened-layers")).toContainText("星链星座");
   expect(errors).toEqual([]);
 });
+
+test("with the default layers the wheel zooms out far enough for the far view", async ({ page }) => {
+  await mockNetwork(page);
+  await page.goto(sceneUrl(116, 30, 20_000_000));
+  await waitForGlobe(page);
+  const note = page.locator(".far-view-note");
+  await expect(note).toHaveCount(0);
+  const canvas = page.locator(".cesium-widget canvas");
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.6, box.y + box.height / 2);
+  await expect.poll(async () => {
+    await page.mouse.wheel(0, 2_000);
+    return note.count();
+  }, { timeout: 30_000, intervals: [300] }).toBe(1);
+});
