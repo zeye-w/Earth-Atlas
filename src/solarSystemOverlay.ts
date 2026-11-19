@@ -1,8 +1,10 @@
 import {
   ArcType, Cartesian2, Cartesian3, Color, ColorMaterialProperty, ConstantPositionProperty, ConstantProperty, Entity, Matrix3, Matrix4, NearFarScalar,
-  PolylineDashMaterialProperty, SceneTransforms, Transforms, type Viewer,
+  PerspectiveFrustum, PolylineDashMaterialProperty, SceneTransforms, Transforms, type Viewer,
 } from "cesium";
-import { AU_KM, BELT_RINGS, eclipticRing, ECLIPTIC_NORTH, helio, orbit, SOLAR_PLANETS, sunFromEarth, type SolarBodyKey, type Vec3 } from "./astronomy/solarSystem.ts";
+import { closeViewDistanceKm, hasSphere, MOONS, moonPositions, PLANET_FACTS, planetFrame, SUN_RADIUS_KM, type MoonInfo, type SphereKey } from "./astronomy/planetBodies.ts";
+import { PlanetSpheres } from "./planetSpheres";
+import { AU_KM, BELT_RINGS, eclipticRing, ECLIPTIC_NORTH, fromEarth, helio, length, orbit, SOLAR_PLANETS, sunFromEarth, type SolarBodyKey, type Vec3 } from "./astronomy/solarSystem.ts";
 import { probeAt, probeInfo, type SpaceSnapshot } from "./spaceData";
 import { t } from "./i18n";
 
@@ -29,7 +31,7 @@ const ORBIT_SELECTED = new ColorMaterialProperty(Color.WHITE.withAlpha(0.75));
  */
 class HtmlLabels {
   private root: HTMLDivElement;
-  private items: { el: HTMLSpanElement; position: Cartesian3 | null }[] = [];
+  private items: { el: HTMLSpanElement; position: Cartesian3 | null; offset: number }[] = [];
   private removeListener: () => void;
   private scratch = new Cartesian2();
 
@@ -46,11 +48,14 @@ class HtmlLabels {
     el.textContent = text;
     el.style.color = color;
     this.root.appendChild(el);
-    this.items.push({ el, position: null });
+    this.items.push({ el, position: null, offset: 0 });
     return this.items.length - 1;
   }
 
   set(index: number, position: Cartesian3 | null): void { this.items[index].position = position; }
+
+  /** Extra distance (px) from the point, to clear a planet's disc. */
+  setOffset(index: number, px: number): void { this.items[index].offset = px; }
 
   remove(index: number): void { this.items[index].el.remove(); this.items[index].position = null; }
 
@@ -66,7 +71,7 @@ class HtmlLabels {
       const screen = inFront ? SceneTransforms.worldToWindowCoordinates(scene, p!, this.scratch) : undefined;
       if (!screen) { item.el.style.display = "none"; continue; }
       item.el.style.display = "";
-      item.el.style.transform = `translate(${Math.round(screen.x + 9)}px, ${Math.round(screen.y - 8)}px)`;
+      item.el.style.transform = `translate(${Math.round(screen.x + 9 + item.offset * 0.72)}px, ${Math.round(screen.y - 8 - item.offset * 0.72)}px)`;
     }
   }
 
@@ -91,6 +96,13 @@ export class SolarSystemOverlay {
   private pivotKey: "sun" | SolarBodyKey | null = null;
   private pivotMatrix: Matrix4 | null = null;
   private restoreCamera: () => void;
+  private spheres: PlanetSpheres;
+  private moons: { moon: MoonInfo; entity: Entity; label: number; position: Cartesian3 | null }[] = [];
+  /** Per planet: whether its point is hidden behind its disc, and its moons shown. */
+  private near = new Map<SphereKey, { disc: boolean; moons: boolean }>();
+  private removePreRender: () => void;
+  private closeView = false;
+  private minimumZoom: number;
 
   constructor(private viewer: Viewer) {
     this.labels = new HtmlLabels(viewer);
@@ -112,6 +124,13 @@ export class SolarSystemOverlay {
       const mid = eclipticRing((belt.from + belt.to) / 2, 8)[2];
       this.beltLabels.push({ entity: named(add({}), t(belt.name), belt.color), helio: mid });
     }
+    this.spheres = new PlanetSpheres(viewer);
+    for (const moon of MOONS) {
+      const entity = add({ show: false, point: { pixelSize: 4, color: Color.fromCssColorString("#ddd6c8") } });
+      this.moons.push({ moon, entity, label: this.labels.add(t(moon.name), "#ddd6c8"), position: null });
+    }
+    this.minimumZoom = viewer.scene.screenSpaceCameraController.minimumZoomDistance;
+    this.removePreRender = viewer.scene.preRender.addEventListener(() => this.updateNear());
     // Any other flight (reset, search, a place) is in Earth coordinates: give the camera back to the Earth first.
     const camera = viewer.camera;
     const flyTo = camera.flyTo, setView = camera.setView;
@@ -125,11 +144,17 @@ export class SolarSystemOverlay {
     const camera = this.viewer.camera;
     const ours = this.pivotMatrix !== null && Matrix4.equals(camera.transform, this.pivotMatrix);
     this.pivotKey = key;
+    const controller = this.viewer.scene.screenSpaceCameraController;
     if (key === null) {
       if (ours) camera.lookAtTransform(Matrix4.IDENTITY);
       this.pivotMatrix = null;
+      controller.minimumZoomDistance = this.minimumZoom;
       return;
     }
+    // Around a body the zoom limit is measured from it, less the Earth's radius (Cesium
+    // measures height over the Earth's ellipsoid): keep the camera outside the body.
+    const radius = (key === "sun" ? SUN_RADIUS_KM * 1.6 : hasSphere(key) ? PLANET_FACTS[key].radius * 1.6 : 0) * KM;
+    controller.minimumZoomDistance = Math.max(this.minimumZoom, radius - 6_371_000);
     const origin = this.positionOf(key);
     if (!origin) return;
     this.pivotMatrix = Matrix4.fromTranslation(origin);
@@ -141,6 +166,48 @@ export class SolarSystemOverlay {
   private positionOf(key: "sun" | SolarBodyKey): Cartesian3 | undefined {
     const entity = key === "sun" ? this.sun : this.planets.get(key);
     return entity?.position?.getValue(this.viewer.clock.currentTime);
+  }
+
+  /**
+   * Close to a planet: its textured disc (once more than a pixel across) in
+   * place of its point, and its moons (once their orbits spread out on screen).
+   */
+  private updateNear(): void {
+    const { camera, canvas } = this.viewer.scene;
+    const fovy = camera.frustum instanceof PerspectiveFrustum ? camera.frustum.fovy ?? 1 : 1;
+    const pxPerRadian = canvas.clientHeight / 2 / Math.tan(fovy / 2);
+    let changed = false;
+    for (const key of Object.keys(PLANET_FACTS) as SphereKey[]) {
+      const center = this.spheres.center(key);
+      if (!center) continue;
+      const d = Math.max(1, Cartesian3.distance(camera.positionWC, center));
+      const discPx = (PLANET_FACTS[key].radius * KM / d) * pxPerRadian;
+      this.spheres.setVisible(key, discPx > 0.6);
+      const moons = this.moons.filter((x) => x.moon.planet === key);
+      const orbitPx = moons.length ? (Math.min(...moons.map((x) => x.moon.distance)) * KM / d) * pxPerRadian : 0;
+      const state = { disc: discPx > 4, moons: orbitPx > 10 };
+      const before = this.near.get(key);
+      const planet = this.planets.get(key)!;
+      const label = this.labelOf.get(planet);
+      if (label !== undefined) this.labels.setOffset(label, state.disc ? discPx : 0);
+      if (before && before.disc === state.disc && before.moons === state.moons) continue;
+      this.near.set(key, state);
+      changed = true;
+      planet.point!.show = new ConstantProperty(!state.disc);
+      for (const item of moons) {
+        item.entity.show = state.moons;
+        this.labels.set(item.label, state.moons ? item.position : null);
+      }
+    }
+    // In a close view the orbits and belts would cut across the disc: hide them.
+    const close = [...this.near.values()].some((n) => n.disc);
+    if (close !== this.closeView) {
+      this.closeView = close;
+      for (const o of this.orbits.values()) o.entity.show = !close;
+      for (const b of this.belts) b.entity.show = !close;
+      changed = true;
+    }
+    if (changed) this.viewer.scene.requestRender();
   }
 
   /** After the bodies move, the camera moves with its pivot (keeping its offset and direction). */
@@ -204,8 +271,23 @@ export class SolarSystemOverlay {
     for (const b of this.belts) b.entity.polyline!.positions = new ConstantProperty(b.helio.map(place));
     for (const b of this.beltLabels) b.entity.position = new ConstantPositionProperty(place(b.helio));
     for (const p of this.probes) p.entity.position = new ConstantPositionProperty(fixed(p.at(time)));
+    // The planets' discs and moons, for the close views.
+    for (const key of Object.keys(PLANET_FACTS) as SphereKey[]) {
+      const h = helio(key, time);
+      const center = place(h);
+      const frame = planetFrame(key, time);
+      const toSun = Cartesian3.normalize(fixed([-h[0], -h[1], -h[2]]), new Cartesian3());
+      this.spheres.setPose(key, center, m, frame.body, frame.equator, toSun);
+      for (const { moon, position } of moonPositions(key, time)) {
+        const item = this.moons.find((x) => x.moon.key === moon.key)!;
+        item.position = Cartesian3.add(center, fixed(position), new Cartesian3());
+        item.entity.position = new ConstantPositionProperty(item.position);
+      }
+    }
     const julianNow = this.viewer.clock.currentTime;
     for (const [entity, index] of this.labelOf) this.labels.set(index, entity.position?.getValue(julianNow) ?? null);
+    this.near.clear();
+    this.updateNear();
     this.followPivot();
     this.viewer.scene.requestRender();
   }
@@ -216,6 +298,9 @@ export class SolarSystemOverlay {
     if (this.viewer.isDestroyed()) return;
     this.setPivot(null);
     this.restoreCamera();
+    this.removePreRender();
+    this.spheres.dispose();
+    for (const item of this.moons) this.viewer.entities.remove(item.entity);
     const all = [this.sun, ...this.planets.values(), ...[...this.orbits.values()].map((o) => o.entity), ...this.belts.map((b) => b.entity), ...this.beltLabels.map((b) => b.entity), ...this.probes.map((p) => p.entity)];
     for (const e of all) this.viewer.entities.remove(e);
     this.labels.dispose();
@@ -241,6 +326,33 @@ export function solarSystemCamera(viewer: Viewer, au: number, time: number, shif
   const centerFixed = Cartesian3.multiplyByScalar(toFixed(center), KM, new Cartesian3());
   const destination = Cartesian3.add(centerFixed, Cartesian3.add(Cartesian3.multiplyByScalar(north, d * 0.9, new Cartesian3()), Cartesian3.multiplyByScalar(tilt, d * 0.42, new Cartesian3()), new Cartesian3()), new Cartesian3());
   const direction = Cartesian3.normalize(Cartesian3.subtract(centerFixed, destination, new Cartesian3()), new Cartesian3());
+  const right = Cartesian3.normalize(Cartesian3.cross(direction, north, new Cartesian3()), new Cartesian3());
+  const up = Cartesian3.normalize(Cartesian3.cross(right, direction, new Cartesian3()), new Cartesian3());
+  if (shift) Cartesian3.add(destination, Cartesian3.multiplyByScalar(right, -shift * d, new Cartesian3()), destination);
+  return { destination, direction, up };
+}
+
+/**
+ * A close look at one planet: from its day side, a little above the ecliptic
+ * and to one side (so the disc has a terminator), at a distance that shows
+ * the whole disc (and Saturn's ring). Pluto, which has no disc here, is seen
+ * from farther out.
+ */
+export function planetCamera(viewer: Viewer, key: SolarBodyKey, time: number, shift = 0): { destination: Cartesian3; direction: Cartesian3; up: Cartesian3 } {
+  const julian = viewer.clock.currentTime;
+  const m = Transforms.computeIcrfToFixedMatrix(julian) ?? Transforms.computeTemeToPseudoFixedMatrix(julian);
+  const toFixed = (v: Vec3) => Matrix3.multiplyByVector(m, new Cartesian3(v[0], v[1], v[2]), new Cartesian3());
+  const h = helio(key, time);
+  const d = (hasSphere(key) ? closeViewDistanceKm(key) : Math.max(0.05 * AU_KM, length(h) * 0.03)) * KM;
+  const north = toFixed(ECLIPTIC_NORTH);
+  const toSun = Cartesian3.normalize(toFixed([-h[0], -h[1], -h[2]]), new Cartesian3());
+  // Saturn from well above its ring plane, so the ring opens up (seen from the Sun it is nearly edge-on around 2025).
+  const above = hasSphere(key) && PLANET_FACTS[key].ring ? toFixed(planetFrame(key, time).north) : north;
+  const side = Cartesian3.normalize(Cartesian3.cross(north, toSun, new Cartesian3()), new Cartesian3());
+  const offset = Cartesian3.normalize(Cartesian3.add(Cartesian3.add(Cartesian3.multiplyByScalar(toSun, 0.85, new Cartesian3()), Cartesian3.multiplyByScalar(above, above === north ? 0.35 : 0.75, new Cartesian3()), new Cartesian3()), Cartesian3.multiplyByScalar(side, 0.55, new Cartesian3()), new Cartesian3()), new Cartesian3());
+  const center = Cartesian3.multiplyByScalar(toFixed(fromEarth(key, time)), KM, new Cartesian3());
+  const destination = Cartesian3.add(center, Cartesian3.multiplyByScalar(offset, d, new Cartesian3()), new Cartesian3());
+  const direction = Cartesian3.normalize(Cartesian3.subtract(center, destination, new Cartesian3()), new Cartesian3());
   const right = Cartesian3.normalize(Cartesian3.cross(direction, north, new Cartesian3()), new Cartesian3());
   const up = Cartesian3.normalize(Cartesian3.cross(right, direction, new Cartesian3()), new Cartesian3());
   if (shift) Cartesian3.add(destination, Cartesian3.multiplyByScalar(right, -shift * d, new Cartesian3()), destination);
