@@ -135,10 +135,16 @@ const CHECKS = [
     return records.length + " satellites";
   }],
   ["Feed", "NASA GIBS true colour", async () => {
-    const response = await get(trueColorUrl(trueColorDate(new Date())).replace("{z}/{y}/{x}", "3/3/6"));
-    const bytes = (await response.arrayBuffer()).byteLength;
-    if (!response.ok || bytes < 5000) throw new Error(`HTTP ${response.status}, ${bytes} bytes`);
-    return TRUE_COLOR_LAYER + " tile " + Math.round(bytes / 1024) + " KB";
+    // Three tiles across the globe: a gap in one day's mosaic (an empty 1.6 KB
+    // tile) is NASA's and shows as base imagery; most of the day missing is an outage.
+    const date = trueColorDate(new Date());
+    const sizes = await Promise.all(["3/3/6", "3/2/1", "3/4/2"].map(async (tile) => {
+      const response = await get(trueColorUrl(date).replace("{z}/{y}/{x}", tile));
+      return response.ok ? (await response.arrayBuffer()).byteLength : 0;
+    }));
+    const full = sizes.filter((bytes) => bytes >= 5000).length;
+    if (full < 2) throw new Error(`${date}: only ${full} of 3 tiles have data (${sizes.join(", ")} bytes)`);
+    return `${TRUE_COLOR_LAYER} ${date}, ${full} of 3 tiles with data`;
   }],
   ["Feed", "NASA GIBS polar caps", async () => {
     // The browser draws these into WebGL, so the answer must allow cross-origin use.

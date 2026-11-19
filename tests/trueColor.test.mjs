@@ -14,7 +14,7 @@ test("true colour shows the latest complete mosaic for today or the future, else
   assert.equal(trueColorDate(new Date("2026-10-19T12:00:00Z"), early), "2026-10-18");
   assert.equal(trueColorDate(new Date("2026-10-18T12:00:00Z"), early), "2026-10-18");
   assert.equal(trueColorDate(new Date("2026-10-01T00:30:00Z"), now), "2026-10-01");
-  assert.match(trueColorUrl("2026-10-19"), /\/VIIRS_NOAA20_CorrectedReflectance_TrueColor\/default\/2026-10-19\/GoogleMapsCompatible_Level9\/\{z\}\/\{y\}\/\{x\}\.jpg$/);
+  assert.match(trueColorUrl("2026-10-19"), /\/VIIRS_NOAA21_CorrectedReflectance_TrueColor\/default\/2026-10-19\/GoogleMapsCompatible_Level9\/\{z\}\/\{y\}\/\{x\}\.jpg$/);
 });
 
 test("earthquake replay shows events up to the moment and flags missing coverage", () => {

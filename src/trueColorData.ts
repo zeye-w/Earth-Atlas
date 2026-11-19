@@ -3,8 +3,10 @@
  * one global mosaic per UTC day assembled from the satellite's daytime
  * passes (public domain). https://nasa-gibs.github.io/gibs-api-docs/
  */
-export const TRUE_COLOR_LAYER = "VIIRS_NOAA20_CorrectedReflectance_TrueColor";
-export const TRUE_COLOR_SOURCE = "NOAA-20 VIIRS";
+// NOAA-21: NOAA-20's mosaic of 2026-11-17 has large gaps that were never
+// filled, while NOAA-21 (same instrument, same orbit plane) is complete.
+export const TRUE_COLOR_LAYER = "VIIRS_NOAA21_CorrectedReflectance_TrueColor";
+export const TRUE_COLOR_SOURCE = "NOAA-21 VIIRS";
 export const TRUE_COLOR_MAX_LEVEL = 9;
 
 export function trueColorUrl(date: string, layer = TRUE_COLOR_LAYER): string {

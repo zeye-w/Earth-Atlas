@@ -62,7 +62,7 @@ English · [简体中文](README.zh-CN.md)
 </tr>
 <tr>
 <td><img src="docs/screenshots/timeline.jpg" alt="Timeline replaying earthquakes"><br><b>Timeline</b><br>Drag or replay through the last 24 h / 7 / 30 days: the terminator, earthquakes (appearing as they happened), satellite positions and the daily imagery follow the chosen moment. Live-only feeds (aurora, clouds) say so instead of showing stale data.</td>
-<td><img src="docs/screenshots/true-color.jpg" alt="Daily true-colour imagery"><br><b>Daily true colour</b><br>NASA GIBS NOAA-20 VIIRS corrected reflectance for the selected UTC day — the real clouds, snow and smoke of that day rather than the static Blue Marble.</td>
+<td><img src="docs/screenshots/true-color.jpg" alt="Daily true-colour imagery"><br><b>Daily true colour</b><br>NASA GIBS NOAA-21 VIIRS corrected reflectance for the selected UTC day — the real clouds, snow and smoke of that day rather than the static Blue Marble.</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/geo-labels.jpg" alt="Geographic labels over East Asia"><br><b>Geographic labels</b><br>Oceans, seas, straits, mountain ranges, deserts, plains, basins and rivers in Chinese, placed from Natural Earth geometry, with collision-aware layout that reveals more as you zoom in.</td>
@@ -87,7 +87,7 @@ English · [简体中文](README.zh-CN.md)
 | Layer | Source | Update |
 | --- | --- | --- |
 | Day imagery | NASA GIBS — Blue Marble shaded relief & bathymetry | static |
-| Daily true colour | NASA GIBS — NOAA-20 VIIRS corrected reflectance | daily (previous UTC day when live) |
+| Daily true colour | NASA GIBS — NOAA-21 VIIRS corrected reflectance | daily (previous UTC day when live) |
 | City lights | NASA GIBS — VIIRS Black Marble 2016 | 2016 composite (not tonight's lights) |
 | Aurora | NOAA SWPC — OVATION aurora nowcast | every 10 min |
 | Kp index | NOAA SWPC — planetary K-index | every 10 min |
