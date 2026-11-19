@@ -7,7 +7,7 @@ import { QUAKE_ID_PREFIX, type Earthquake } from "./earthquakeData";
 import { VOLCANO_ID_PREFIX, type Volcano } from "./volcanoData";
 import type { Observer, SatellitePass } from "./satellitePasses";
 import { RENDER_QUALITY_LABELS } from "./performance";
-import { readScene, sceneHash, type SceneState } from "./sceneState";
+import { MAX_CAMERA_HEIGHT, readScene, sceneHash, type SceneState } from "./sceneState";
 import { track } from "./analytics";
 import { HOME_VIEW, useViewer } from "./hooks/useViewer";
 import { useRenderQuality } from "./hooks/useRenderQuality";
@@ -317,13 +317,13 @@ function App() {
   // Turning eclipses off closes the eclipse (and gives the globe back to the timeline).
   useEffect(() => { if (!layers.eclipses) setEclipseView(null); }, [layers.eclipses]);
 
-  // The magnetosphere reaches tens of Earth radii, near-Earth space millions of
-  // kilometres: allow zooming out that far while those layers are on.
+  // Near-Earth space reaches millions of kilometres, the planets billions:
+  // allow zooming out that far while those layers are on.
   useEffect(() => {
     if (!viewer) return;
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.solarSystem ? 2.0e13 : layers.asteroids || layers.probes || layers.lagrange ? 6_000_000_000
-      : layers.solarWind || layers.orbitBands || layers.radiationBelts || layers.geoSats ? 600_000_000 : 65_000_000;
-  }, [viewer, layers.solarWind, layers.asteroids, layers.probes, layers.lagrange, layers.orbitBands, layers.radiationBelts, layers.geoSats, layers.solarSystem]);
+    // By default out to 600,000 km (past the far view's 100,000 km, beyond the Moon's orbit).
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.solarSystem ? 2.0e13 : layers.asteroids || layers.probes || layers.lagrange ? 6_000_000_000 : MAX_CAMERA_HEIGHT;
+  }, [viewer, layers.asteroids, layers.probes, layers.lagrange, layers.solarSystem]);
   // Cesium draws nothing farther than 10 million km from the camera by default; the planets are billions away.
   useEffect(() => {
     if (!viewer || viewer.isDestroyed()) return;
@@ -581,7 +581,7 @@ function App() {
     const point = selectedVolcano ? { latitude: selectedVolcano.lat, longitude: selectedVolcano.lon } : selectedQuake ? { latitude: selectedQuake.latitude, longitude: selectedQuake.longitude } : geology.coordinates;
     const scene: SceneState = {
       v: 1,
-      camera: [CesiumMath.toDegrees(position.longitude), CesiumMath.toDegrees(position.latitude), Math.max(15000, Math.min(65000000, position.height)), camera.heading, camera.pitch, camera.roll],
+      camera: [CesiumMath.toDegrees(position.longitude), CesiumMath.toDegrees(position.latitude), Math.max(15000, Math.min(MAX_CAMERA_HEIGHT, position.height)), camera.heading, camera.pitch, camera.roll],
       layers: sceneLayers(layers),
       point: point ?? undefined,
       time: live ? undefined : timeline.getState().time,
