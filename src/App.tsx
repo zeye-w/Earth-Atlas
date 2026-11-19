@@ -37,6 +37,8 @@ import { AstronomyGroup } from "./panels/AstronomyGroup";
 import { SkyGroup } from "./panels/SkyGroup";
 import { DeepSpaceGroup } from "./panels/DeepSpaceGroup";
 import { NearEarthGroup } from "./panels/NearEarthGroup";
+import { SolarSystemGroup, type SolarLapse } from "./panels/SolarSystemGroup";
+import { useSolarSystem, type SolarBody } from "./layers/useSolarSystem";
 import { useNearEarth } from "./layers/useNearEarth";
 import { altitudeCamera, sideViewCamera } from "./nearEarthOverlay";
 import type { RulerItem } from "./nearEarth";
@@ -157,6 +159,9 @@ function App() {
   const [skyReveal, setSkyReveal] = useState<number | null>(null);
   const [spaceReveal, setSpaceReveal] = useState<number | null>(null);
   const [selectedAsteroid, setSelectedAsteroid] = useState<string | null>(null);
+  // The solar system's fast-forward clock (null: follow the timeline) and the planet picked.
+  const [solarLapse, setSolarLapse] = useState<SolarLapse | null>(null);
+  const [selectedPlanet, setSelectedPlanet] = useState<SolarBody | null>(null);
   // The layer panel's category tab (remembered); revealing a group switches to its tab.
   const [panelTab, setPanelTab] = useState<LayerTab>(savedTab);
   const choosePanelTab = (tab: LayerTab) => { setPanelTab(tab); saveTab(tab); };
@@ -272,7 +277,8 @@ function App() {
   // Far view (src/farView.ts): ground-level detail paused and hidden, a sharper sky.
   const farView = useFarView(viewer);
   useEarthView(viewer, farView ? { ...layers, cities: false } : layers, timeline);
-  useSky(viewer, layers, render.quality, farView);
+  // The Sun's disc shows with the solar system too.
+  useSky(viewer, { ...layers, sun: layers.sun || layers.solarSystem }, render.quality, farView);
   const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
   const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity, timeline);
   // The aurora forecast only exists for "now": hidden while viewing another moment.
@@ -300,7 +306,7 @@ function App() {
     setHazardSelection((current) => (current?.kind === "event" && !layers.naturalEvents) || (current?.kind === "storm" && !layers.storms) ? null : current);
   }, [layers.naturalEvents, layers.storms]);
   useEffect(() => { if (!layers.launches) setSelectedLaunch(null); }, [layers.launches]);
-  const astronomy = useAstronomyModule(layers.moon || layers.eclipses || layers.meteors || astronomyWanted);
+  const astronomy = useAstronomyModule(layers.moon || layers.eclipses || layers.meteors || layers.solarSystem || astronomyWanted);
   // The shower on the meteor map: the one picked, else the next to peak.
   const shower: MeteorShower | null = useMemo(() => {
     if (!astronomy.module || !layers.meteors) return null;
@@ -315,9 +321,24 @@ function App() {
   // kilometres: allow zooming out that far while those layers are on.
   useEffect(() => {
     if (!viewer) return;
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.asteroids || layers.probes || layers.lagrange ? 6_000_000_000
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.solarSystem ? 2.0e13 : layers.asteroids || layers.probes || layers.lagrange ? 6_000_000_000
       : layers.solarWind || layers.orbitBands || layers.radiationBelts || layers.geoSats ? 600_000_000 : 65_000_000;
-  }, [viewer, layers.solarWind, layers.asteroids, layers.probes, layers.lagrange, layers.orbitBands, layers.radiationBelts, layers.geoSats]);
+  }, [viewer, layers.solarWind, layers.asteroids, layers.probes, layers.lagrange, layers.orbitBands, layers.radiationBelts, layers.geoSats, layers.solarSystem]);
+  // Cesium draws nothing farther than 10 million km from the camera by default; the planets are billions away.
+  useEffect(() => {
+    if (!viewer || viewer.isDestroyed()) return;
+    viewer.camera.frustum.far = layers.solarSystem ? 5.0e13 : 1.0e10;
+    viewer.scene.requestRender();
+  }, [viewer, layers.solarSystem]);
+  useSolarSystem(viewer, astronomy.module, layers.solarSystem, solarLapse?.time ?? null, selectedPlanet, timeline);
+  // The fast-forward clock: a tenth of a second at a time while playing.
+  useEffect(() => {
+    if (!solarLapse?.playing) return;
+    const step = solarLapse.daysPerSecond * 86_400_000 / 10;
+    const timer = window.setInterval(() => setSolarLapse((l) => (l && l.playing ? { ...l, time: l.time + step } : l)), 100);
+    return () => window.clearInterval(timer);
+  }, [solarLapse?.playing, solarLapse?.daysPerSecond]);
+  useEffect(() => { if (!layers.solarSystem) { setSolarLapse(null); setSelectedPlanet(null); } }, [layers.solarSystem]);
   useNearEarth(viewer, { orbitBands: layers.orbitBands, radiationBelts: layers.radiationBelts, lagrange: layers.lagrange }, timeline);
   const geoSats = useConstellation(viewer, layers.geoSats, GEOSYNC, timeline);
   const space = useSpace(viewer, { asteroids: layers.asteroids, probes: layers.probes }, selectedAsteroid, timeline);
@@ -637,6 +658,21 @@ function App() {
     viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.2 });
   };
 
+  // The solar system from above the ecliptic (inner: 5 AU, outer: 80 AU), or close to one planet.
+  const viewSolarSystem = async (scale: "inner" | "outer" | SolarBody) => {
+    if (!viewer) return;
+    const module = astronomy.module ?? await loadAstronomy();
+    takeCamera();
+    setTrackedSatelliteId(null);
+    if (isNarrow()) setControlsOpen(false);
+    const time = solarLapse?.time ?? (timeline.getState().live ? now() : timeline.getState().time);
+    const shift = controlsOpen && !isNarrow() ? 0.24 : 0;
+    const view = scale === "inner" ? module.solarSystemCamera(viewer, 5, time, shift)
+      : scale === "outer" ? module.solarSystemCamera(viewer, 80, time, shift)
+      : module.solarSystemCamera(viewer, Math.max(0.25, module.length(module.helio(scale, time)) / module.AU_KM * 0.12), time, shift, module.fromEarth(scale, time));
+    viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.6 });
+  };
+
   const viewMagnetosphere = () => {
     takeCamera();
     if (!viewer) return;
@@ -726,6 +762,9 @@ function App() {
           </TabPane>
           <TabPane tab="space" current={panelTab}>
           <SkyGroup layers={layers} setLayer={setPanelLayer} reveal={skyReveal} />
+          <SolarSystemGroup layers={layers} setLayer={setPanelLayer} module={astronomy.module} failed={astronomy.failed} lapse={solarLapse} onLapse={setSolarLapse}
+            onView={(scale) => void viewSolarSystem(scale)} selected={selectedPlanet}
+            onSelectPlanet={(key) => { setSelectedPlanet(key); void viewSolarSystem(key); }} />
           <NearEarthGroup layers={layers} setLayer={setPanelLayer} geoStatus={geoSats.status} onSideView={viewSide} onRulerItem={showRulerItem} />
           <DeepSpaceGroup layers={layers} setLayer={setPanelLayer} space={space} selected={selectedAsteroid} onSelectAsteroid={selectAsteroid} onViewCislunar={viewCislunar} reveal={spaceReveal} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}

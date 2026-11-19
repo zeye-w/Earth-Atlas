@@ -1,0 +1,13 @@
+/* The solar system (SolarSystemGroup). */
+.solar-system { display:flex; flex-direction:column; gap:8px; }
+.solar-views { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.solar-clock { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.solar-clock > button { flex:none; width:28px; height:28px; display:grid; place-items:center; border-radius:50%; border:1px solid var(--line); background:var(--fill); color:var(--text); cursor:pointer; }
+.solar-speeds { display:flex; gap:3px; }
+.solar-speeds button { padding:4px 7px; border-radius:999px; border:1px solid var(--line); background:var(--fill); color:var(--text-2); font-size:10px; cursor:pointer; }
+.solar-speeds button[aria-checked="true"] { color:var(--text); background:var(--fill-strong); border-color:rgba(255,255,255,.2); }
+.solar-clock output { margin-left:auto; font-size:11px; font-variant-numeric:tabular-nums; color:var(--text); }
+.space-list.planets small + small { margin-top:-1px; }
+/* Planet names over the scene (solarSystemOverlay.ts): page text, as Cesium's labels blur at these distances. */
+.solar-labels { position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:1; }
+.solar-labels span { position:absolute; left:0; top:0; font:500 12px/1 Inter, system-ui, sans-serif; white-space:nowrap; text-shadow:0 0 3px #000, 0 0 6px #000; will-change:transform; }

@@ -9,7 +9,7 @@ import type { SatelliteSpeed } from "../satelliteOverlay";
 export type LayerToggles = Record<LayerKey, boolean> & { geoLabels: boolean; trueColor: boolean; starlink: boolean; solarWind: boolean; flights: boolean; temperature: boolean; shells: boolean;
   cables: boolean; ixps: boolean; dataCenters: boolean; rootServers: boolean; dnsFlows: boolean; launches: boolean; naturalEvents: boolean; storms: boolean;
   moon: boolean; eclipses: boolean; meteors: boolean; realSky: boolean; constellations: boolean; sun: boolean; asteroids: boolean; probes: boolean;
-  orbitBands: boolean; geoSats: boolean; radiationBelts: boolean; lagrange: boolean };
+  orbitBands: boolean; geoSats: boolean; radiationBelts: boolean; lagrange: boolean; solarSystem: boolean };
 
 export interface LayerOptions {
   cloudOpacity: number;
@@ -37,7 +37,7 @@ function initialToggles(scene: SceneState | null): LayerToggles {
     // The real sky is on unless a shared scene turned it off.
     realSky: scene?.layers.realSky ?? true, constellations: Boolean(scene?.layers.constellations), sun: Boolean(scene?.layers.sun),
     asteroids: Boolean(scene?.layers.asteroids), probes: Boolean(scene?.layers.probes),
-    orbitBands: Boolean(scene?.layers.orbitBands), geoSats: Boolean(scene?.layers.geoSats), radiationBelts: Boolean(scene?.layers.radiationBelts), lagrange: Boolean(scene?.layers.lagrange) };
+    orbitBands: Boolean(scene?.layers.orbitBands), geoSats: Boolean(scene?.layers.geoSats), radiationBelts: Boolean(scene?.layers.radiationBelts), lagrange: Boolean(scene?.layers.lagrange), solarSystem: Boolean(scene?.layers.solarSystem) };
 }
 
 function initialOptions(scene: SceneState | null): LayerOptions {
@@ -69,5 +69,5 @@ export function sceneLayers(layers: LayerToggles): SceneState["layers"] {
     naturalEvents: layers.naturalEvents, storms: layers.storms, moon: layers.moon, eclipses: layers.eclipses, meteors: layers.meteors,
     realSky: layers.realSky, constellations: layers.constellations, sun: layers.sun,
     asteroids: layers.asteroids, probes: layers.probes,
-    orbitBands: layers.orbitBands, geoSats: layers.geoSats, radiationBelts: layers.radiationBelts, lagrange: layers.lagrange } as SceneState["layers"];
+    orbitBands: layers.orbitBands, geoSats: layers.geoSats, radiationBelts: layers.radiationBelts, lagrange: layers.lagrange, solarSystem: layers.solarSystem } as SceneState["layers"];
 }
