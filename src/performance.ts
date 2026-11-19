@@ -126,3 +126,16 @@ export class FrameRateMonitor {
  */
 export const GLOBAL_VECTOR_MAX_ZOOM = 5;
 export const GLOBAL_VECTOR_TILE_NODES = (4 ** (GLOBAL_VECTOR_MAX_ZOOM + 1) - 1) / 3;
+
+export type SkySize = 1024 | 2048 | 4096;
+
+/**
+ * Face size: 4096 px in "high" quality in the far view (about 15 MB, only
+ * where the graphics card takes it), 2048 in "high" or any far view, 1024
+ * otherwise.
+ */
+export function skySize(quality: RenderQuality, far: boolean, maxCubeMap: number): SkySize {
+  if (quality === "high" && far && maxCubeMap >= 4096) return 4096;
+  return quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
+}
+

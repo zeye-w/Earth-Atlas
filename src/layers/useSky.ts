@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { SkyBox, type Viewer } from "cesium";
-import type { RenderQuality } from "../performance";
+import { skySize, type RenderQuality, type SkySize } from "../performance";
 
 /**
  * The real sky behind the globe: NASA's Deep Star Maps 2020 (stars and the
@@ -14,7 +14,7 @@ const SIDES = { positiveX: "px", negativeX: "mx", positiveY: "py", negativeY: "m
 /** Delay after the globe is created before the sky's faces are fetched. */
 const START_DELAY_MS = 3_000;
 
-export function skyFaces(variant: "sky" | "lines", size: 1024 | 2048): Record<keyof typeof SIDES, string> {
+export function skyFaces(variant: "sky" | "lines", size: SkySize): Record<keyof typeof SIDES, string> {
   return Object.fromEntries(Object.entries(SIDES).map(([side, face]) => [side, `/sky/${variant}-${size}-${face}.jpg`])) as Record<keyof typeof SIDES, string>;
 }
 
@@ -28,11 +28,18 @@ function preload(faces: Record<keyof typeof SIDES, string>): Promise<Record<keyo
   }))).then((entries) => Object.fromEntries(entries) as Record<keyof typeof SIDES, HTMLImageElement>);
 }
 
+/** The graphics card's largest cube map, from the globe's own WebGL context (asking again returns the same one). */
+function maxCubeMapSize(viewer: Viewer): number {
+  const canvas = viewer.canvas;
+  const gl = (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext | null;
+  return gl ? Number(gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE)) || 0 : 0;
+}
+
 let defaultSky: SkyBox | null = null;
 
 export function useSky(viewer: Viewer | null, layers: { realSky: boolean; constellations: boolean; sun: boolean }, quality: RenderQuality, far = false) {
   // In the far view the globe costs almost nothing, so the sky gets the sharper faces (except in eco).
-  const size = quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
+  const size = skySize(quality, far, viewer ? maxCubeMapSize(viewer) : 0);
   useEffect(() => {
     if (!viewer) return;
     const scene = viewer.scene;

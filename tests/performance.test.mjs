@@ -82,3 +82,13 @@ test("a still globe asks for finer tiles and every profile keeps a tile cache", 
   assert.ok(renderSettings("balanced", 1).tileCacheSize >= 1000);
   assert.ok(renderSettings("eco", 1).tileCacheSize > 100);
 });
+
+test("sky faces: 4096 px only for high quality far out on a capable card", async () => {
+  const { skySize } = await import("../src/performance.ts");
+  assert.equal(skySize("high", true, 16384), 4096);
+  assert.equal(skySize("high", true, 2048), 2048);
+  assert.equal(skySize("high", false, 16384), 2048);
+  assert.equal(skySize("balanced", true, 16384), 2048);
+  assert.equal(skySize("balanced", false, 16384), 1024);
+  assert.equal(skySize("eco", true, 16384), 1024);
+});
