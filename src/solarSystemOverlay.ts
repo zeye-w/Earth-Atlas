@@ -1,5 +1,5 @@
 import {
-  ArcType, Cartesian2, Cartesian3, Color, ConstantPositionProperty, ConstantProperty, Entity, Matrix3, NearFarScalar,
+  ArcType, Cartesian2, Cartesian3, Color, ColorMaterialProperty, ConstantPositionProperty, ConstantProperty, Entity, Matrix3, NearFarScalar,
   PolylineDashMaterialProperty, SceneTransforms, Transforms, type Viewer,
 } from "cesium";
 import { AU_KM, BELT_RINGS, eclipticRing, ECLIPTIC_NORTH, helio, orbit, SOLAR_PLANETS, sunFromEarth, type SolarBodyKey, type Vec3 } from "./astronomy/solarSystem.ts";
@@ -17,6 +17,8 @@ import { t } from "./i18n";
 const KM = 1000;
 /** Labels and points only from about a million kilometres out: near the Earth they are clutter. */
 const FADE = new NearFarScalar(5.0e8, 0, 2.0e9, 1);
+const ORBIT = new ColorMaterialProperty(Color.WHITE.withAlpha(0.32));
+const ORBIT_SELECTED = new ColorMaterialProperty(Color.WHITE.withAlpha(0.75));
 
 
 
@@ -95,7 +97,8 @@ export class SolarSystemOverlay {
       const color = Color.fromCssColorString(p.color);
       // The Earth is the globe itself; it gets a name and a point too, as it is a speck from out here.
       this.planets.set(p.key, named(add({ point: { pixelSize: p.size, color, outlineColor: Color.BLACK, outlineWidth: 1, translucencyByDistance: FADE } }), t(p.name), p.color));
-      this.orbits.set(p.key, { entity: add({ polyline: { positions: [], width: p.key === "Earth" ? 1.6 : 1.1, arcType: ArcType.NONE, material: color.withAlpha(p.key === "Earth" ? 0.7 : 0.45) } }), helio: [] });
+      // All orbits the same thin pale white; the planets' own colours are on their points.
+      this.orbits.set(p.key, { entity: add({ polyline: { positions: [], width: 1, arcType: ArcType.NONE, material: ORBIT } }), helio: [] });
     }
     for (const belt of BELT_RINGS) {
       const color = Color.fromCssColorString(belt.color);
@@ -125,6 +128,8 @@ export class SolarSystemOverlay {
   setSelected(key: SolarBodyKey | null): void {
     this.selected = key;
     for (const [k, entity] of this.planets) entity.point!.pixelSize = new ConstantProperty(SOLAR_PLANETS.find((p) => p.key === k)!.size + (k === key ? 4 : 0));
+    // The chosen planet's orbit a little brighter, to see which one it is.
+    for (const [k, o] of this.orbits) o.entity.polyline!.material = k === key ? ORBIT_SELECTED : ORBIT;
     this.viewer.scene.requestRender();
   }
 

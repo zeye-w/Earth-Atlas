@@ -6,9 +6,10 @@ and the constellation figures overlay.
 
   python3 scripts/sky/build-sky.py <starmap.exr> <figures.tif> <cesium sky box dir> <out dir>
 
-Writes, for sizes 2048 and 1024, the six faces of a Cesium sky box
+Writes, for sizes 4096, 2048 and 1024, the six faces of a Cesium sky box
 (sky-{size}-{px,mx,py,my,pz,mz}.jpg) and the same with constellation figures
-(lines-{size}-*.jpg), plus previews. Cesium samples the sky box cube map with
+(lines-{size}-*.jpg), plus previews. The smaller sizes are area-averaged
+from the 4096 px faces, which keeps stars sharper than sampling them directly. Cesium samples the sky box cube map with
 the direction in its inertial frame (x to the equinox, z to the celestial
 pole, see SkyBoxVS.glsl); which way the map's right ascension runs is found
 by matching the faces against Cesium's own Tycho sky box.
@@ -116,17 +117,25 @@ print("chosen", best)
 if best[0] < 0.5: raise SystemExit("no orientation matches Cesium's sky box well; check the face convention")
 _, ra_sign, ra_offset, face_fix = best
 
-display = tonemap(starmap, exposure)
+display = tonemap(starmap, exposure).astype(np.float32)
+del starmap, lum  # the 16K map is 1.6 GB in memory
+# A light unsharp mask: stars in the source are soft point-spread blobs.
+blurred = cv2.GaussianBlur(display, (0, 0), 1.0)
+display = np.clip(display + 0.45 * (display - blurred), 0, 1)
+del blurred
 gold = np.array([90, 190, 245], np.float32) / 255  # BGR, a soft gold
-with_lines = display * (1 - 0.55 * figures[..., None]) + gold * (0.55 * figures[..., None])
+with_lines = (display * (1 - 0.55 * figures[..., None]) + gold * (0.55 * figures[..., None])).astype(np.float32)
+del figures
 
+JPEG = [cv2.IMWRITE_JPEG_QUALITY, 90, cv2.IMWRITE_JPEG_PROGRESSIVE, 1]
 for name, image in (("sky", display), ("lines", with_lines)):
     for face in FACES:
-        big = np.ascontiguousarray(dihedral(sample(image.astype(np.float32), face_dirs(face, 2048), ra_sign, ra_offset), face_fix[face]))
+        big = np.ascontiguousarray(dihedral(sample(image, face_dirs(face, 4096), ra_sign, ra_offset), face_fix[face]))
         big8 = np.clip(big * 255 + 0.5, 0, 255).astype(np.uint8)
-        cv2.imwrite(os.path.join(out, f"{name}-2048-{face}.jpg"), big8, [cv2.IMWRITE_JPEG_QUALITY, 88, cv2.IMWRITE_JPEG_PROGRESSIVE, 1])
-        small = cv2.resize(big8, (1024, 1024), interpolation=cv2.INTER_AREA)
-        cv2.imwrite(os.path.join(out, f"{name}-1024-{face}.jpg"), small, [cv2.IMWRITE_JPEG_QUALITY, 88, cv2.IMWRITE_JPEG_PROGRESSIVE, 1])
+        del big
+        cv2.imwrite(os.path.join(out, f"{name}-4096-{face}.jpg"), big8, JPEG)
+        for size in (2048, 1024):
+            cv2.imwrite(os.path.join(out, f"{name}-{size}-{face}.jpg"), cv2.resize(big8, (size, size), interpolation=cv2.INTER_AREA), JPEG)
 
 # Previews: the faces in a cross, and the equirectangular map.
 def cross(name):

@@ -35,8 +35,8 @@ jobs:
       - name: Download the star map and constellation figures
         run: |
           base=https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851
-          curl -sSfL --retry 3 --cacert bundle.pem -o starmap.exr $base/starmap_2020_8k.exr
-          curl -sSfL --retry 3 --cacert bundle.pem -o figures.tif $base/constellation_figures_8k.tif
+          curl -sSfL --retry 3 --cacert bundle.pem -o starmap.exr $base/starmap_2020_16k.exr
+          curl -sSfL --retry 3 --cacert bundle.pem -o figures.tif $base/constellation_figures_16k.tif
           ls -l starmap.exr figures.tif
       - name: Build the sky box faces
         run: python3 scripts/sky/build-sky.py starmap.exr figures.tif node_modules/@cesium/engine/Source/Assets/Textures/SkyBox out/sky
