@@ -4,12 +4,15 @@ Sky box textures for the globe's background, from NASA SVS "Deep Star Maps
 Tycho-2 and Gaia stars plus the Milky Way, equirectangular, celestial ICRF)
 and the constellation figures overlay.
 
-  python3 scripts/sky/build-sky.py <starmap.exr> <figures.tif> <cesium sky box dir> <out dir>
+  python3 scripts/sky/build-sky.py <starmap.exr> <figures.tif> <cesium sky box dir> <out dir> <size> [exposure]
 
-Writes, for sizes 4096, 2048 and 1024, the six faces of a Cesium sky box
-(sky-{size}-{px,mx,py,my,pz,mz}.jpg) and the same with constellation figures
-(lines-{size}-*.jpg), plus previews. The smaller sizes are area-averaged
-from the 4096 px faces, which keeps stars sharper than sampling them directly. Cesium samples the sky box cube map with
+Writes the six faces of a Cesium sky box at <size> px
+(sky-{size}-{px,mx,py,my,pz,mz}.jpg) and, up to 2048 px, the same with the
+constellation figures (lines-{size}-*.jpg), plus 1024 px faces from the
+2048 ones, and previews. Each size should come from the map that matches it
+(8K for 2048, 16K for 4096): area-averaging a finer map spreads each star
+over more pixels and dims it. The exposure (printed by the 8K run) can be
+passed to the 16K run so both look the same. Cesium samples the sky box cube map with
 the direction in its inertial frame (x to the equinox, z to the celestial
 pole, see SkyBoxVS.glsl); which way the map's right ascension runs is found
 by matching the faces against Cesium's own Tycho sky box.
@@ -20,6 +23,8 @@ import cv2
 import numpy as np
 
 starmap_path, figures_path, cesium_dir, out = sys.argv[1:5]
+SIZE = int(sys.argv[5]) if len(sys.argv) > 5 else 2048
+EXPOSURE = float(sys.argv[6]) if len(sys.argv) > 6 else None
 os.makedirs(out, exist_ok=True)
 FACES = ["px", "mx", "py", "my", "pz", "mz"]
 
@@ -76,8 +81,9 @@ figures = cv2.resize(figures, (starmap.shape[1], starmap.shape[0]), interpolatio
 
 # Exposure: put the Milky Way's bright regions (99th percentile) at about 30% grey.
 p99 = float(np.percentile(starmap.max(-1), 99))
-exposure = -np.log(1 - 0.3 ** 2.2) / max(p99, 1e-9)
+exposure = EXPOSURE if EXPOSURE is not None else -np.log(1 - 0.3 ** 2.2) / max(p99, 1e-9)
 print("exposure", exposure)
+with open(os.path.join(out, "exposure.txt"), "w") as f: f.write(repr(exposure))
 
 # Which way right ascension runs on the map: match against Cesium's Tycho sky box.
 def cesium_face(face, n=256):
@@ -119,23 +125,26 @@ _, ra_sign, ra_offset, face_fix = best
 
 display = tonemap(starmap, exposure).astype(np.float32)
 del starmap, lum  # the 16K map is 1.6 GB in memory
-# A light unsharp mask: stars in the source are soft point-spread blobs.
-blurred = cv2.GaussianBlur(display, (0, 0), 1.0)
-display = np.clip(display + 0.45 * (display - blurred), 0, 1)
-del blurred
+if SIZE > 2048:
+    # A light unsharp mask for the finest faces only, where stars are a pixel or two.
+    blurred = cv2.GaussianBlur(display, (0, 0), 1.0)
+    display = np.clip(display + 0.3 * (display - blurred), 0, 1)
+    del blurred
 gold = np.array([90, 190, 245], np.float32) / 255  # BGR, a soft gold
 with_lines = (display * (1 - 0.55 * figures[..., None]) + gold * (0.55 * figures[..., None])).astype(np.float32)
 del figures
 
-JPEG = [cv2.IMWRITE_JPEG_QUALITY, 90, cv2.IMWRITE_JPEG_PROGRESSIVE, 1]
-for name, image in (("sky", display), ("lines", with_lines)):
+# The 4096 px faces weigh most: a little more compression there.
+JPEG = [cv2.IMWRITE_JPEG_QUALITY, 84 if SIZE > 2048 else 88, cv2.IMWRITE_JPEG_PROGRESSIVE, 1]
+variants = (("sky", display), ("lines", with_lines)) if SIZE <= 2048 else (("sky", display),)
+for name, image in variants:
     for face in FACES:
-        big = np.ascontiguousarray(dihedral(sample(image, face_dirs(face, 4096), ra_sign, ra_offset), face_fix[face]))
+        big = np.ascontiguousarray(dihedral(sample(image, face_dirs(face, SIZE), ra_sign, ra_offset), face_fix[face]))
         big8 = np.clip(big * 255 + 0.5, 0, 255).astype(np.uint8)
         del big
-        cv2.imwrite(os.path.join(out, f"{name}-4096-{face}.jpg"), big8, JPEG)
-        for size in (2048, 1024):
-            cv2.imwrite(os.path.join(out, f"{name}-{size}-{face}.jpg"), cv2.resize(big8, (size, size), interpolation=cv2.INTER_AREA), JPEG)
+        cv2.imwrite(os.path.join(out, f"{name}-{SIZE}-{face}.jpg"), big8, JPEG)
+        if SIZE == 2048:
+            cv2.imwrite(os.path.join(out, f"{name}-1024-{face}.jpg"), cv2.resize(big8, (1024, 1024), interpolation=cv2.INTER_AREA), JPEG)
 
 # Previews: the faces in a cross, and the equirectangular map.
 def cross(name):
@@ -145,6 +154,6 @@ def cross(name):
     for f, (r, c) in {"py": (0, 1), "mx": (1, 0), "pz": (1, 1), "px": (1, 2), "mz": (1, 3), "my": (2, 1)}.items():
         canvas[r * n:(r + 1) * n, c * n:(c + 1) * n] = faces[f]
     cv2.imwrite(os.path.join(out, f"preview-{name}-cross.jpg"), canvas, [cv2.IMWRITE_JPEG_QUALITY, 85])
-cross("sky"); cross("lines")
+if SIZE == 2048: cross("sky"); cross("lines")
 cv2.imwrite(os.path.join(out, "preview-equirect.jpg"), cv2.resize(np.clip(with_lines * 255, 0, 255).astype(np.uint8), (2048, 1024), interpolation=cv2.INTER_AREA), [cv2.IMWRITE_JPEG_QUALITY, 85])
 for f in sorted(os.listdir(out)): print(f"{os.path.getsize(os.path.join(out, f)) / 1024:8.0f} KB {f}")

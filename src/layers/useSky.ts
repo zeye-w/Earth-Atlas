@@ -39,7 +39,7 @@ let defaultSky: SkyBox | null = null;
 
 export function useSky(viewer: Viewer | null, layers: { realSky: boolean; constellations: boolean; sun: boolean }, quality: RenderQuality, far = false) {
   // In the far view the globe costs almost nothing, so the sky gets the sharper faces (except in eco).
-  const size = skySize(quality, far, viewer ? maxCubeMapSize(viewer) : 0);
+  const size = skySize(quality, far, viewer ? maxCubeMapSize(viewer) : 0, window.devicePixelRatio);
   useEffect(() => {
     if (!viewer) return;
     const scene = viewer.scene;
@@ -50,7 +50,8 @@ export function useSky(viewer: Viewer | null, layers: { realSky: boolean; conste
       if (defaultSky && scene.skyBox !== defaultSky) { scene.skyBox = defaultSky; scene.requestRender(); }
       return;
     }
-    const faces = skyFaces(layers.constellations ? "lines" : "sky", size);
+    // The constellation figures come at up to 2048 px.
+    const faces = skyFaces(layers.constellations ? "lines" : "sky", layers.constellations && size > 2048 ? 2048 : size);
     const swap = () => preload(faces).then((images) => {
       if (cancelled || viewer.isDestroyed()) return;
       const previous = scene.skyBox;

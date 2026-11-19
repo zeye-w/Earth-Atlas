@@ -37,13 +37,17 @@ export interface RenderSettings {
   fxaa: boolean;
   tileCacheSize: number;
 }
-/** `settled`: the camera has been still for a while (not just stopped). */
-export function renderSettings(quality: RenderQuality, devicePixelRatio: number, moving = false, settled = false): RenderSettings {
+/**
+ * `settled`: the camera has been still for a while (not just stopped).
+ * `far`: the far view (src/farView.ts), where the globe costs almost
+ * nothing, so the sky is drawn at the screen's own resolution (up to 2×).
+ */
+export function renderSettings(quality: RenderQuality, devicePixelRatio: number, moving = false, settled = false, far = false): RenderSettings {
   const profile = RENDER_PROFILES[quality];
   const dpr = Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1;
   // Reduce fill-rate only during interaction; restore the selected profile at rest.
   const motionCap = quality === "high" ? 1.25 : 1;
-  const resolutionScale = Math.min(dpr, profile.maxPixelRatio, moving ? motionCap : Infinity);
+  const resolutionScale = far && quality !== "eco" ? Math.min(dpr, 2) : Math.min(dpr, profile.maxPixelRatio, moving ? motionCap : Infinity);
   return {
     resolutionScale,
     targetFrameRate: profile.targetFrameRate,
@@ -130,12 +134,13 @@ export const GLOBAL_VECTOR_TILE_NODES = (4 ** (GLOBAL_VECTOR_MAX_ZOOM + 1) - 1) 
 export type SkySize = 1024 | 2048 | 4096;
 
 /**
- * Face size: 4096 px in "high" quality in the far view (about 15 MB, only
- * where the graphics card takes it), 2048 in "high" or any far view, 1024
- * otherwise.
+ * Face size: 4096 px in "high" quality in the far view on a high-density
+ * screen (about 20 MB, only where the graphics card takes it), 2048 in
+ * "high" or any far view, 1024 otherwise.
  */
-export function skySize(quality: RenderQuality, far: boolean, maxCubeMap: number): SkySize {
-  if (quality === "high" && far && maxCubeMap >= 4096) return 4096;
+export function skySize(quality: RenderQuality, far: boolean, maxCubeMap: number, devicePixelRatio = 1): SkySize {
+  // Finer than 2048 px only shows on a high-density screen.
+  if (quality === "high" && far && maxCubeMap >= 4096 && devicePixelRatio >= 1.5) return 4096;
   return quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
 }
 

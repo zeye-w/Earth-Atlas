@@ -1,9 +1,10 @@
+import { isFarView, onFarView } from "../farView";
 import { useEffect, useRef, useState } from "react";
 import type { Viewer } from "cesium";
 import { AUTO_QUALITY_MIN_FPS, FrameRateMonitor, initialRenderQuality, lowerRenderQuality, renderSettings, type RenderQuality } from "../performance";
 
 function applyRenderQuality(viewer: Viewer, quality: RenderQuality, moving = false, settled = false) {
-  const settings = renderSettings(quality, window.devicePixelRatio, moving, settled);
+  const settings = renderSettings(quality, window.devicePixelRatio, moving, settled, isFarView());
   viewer.resolutionScale = settings.resolutionScale;
   viewer.targetFrameRate = settings.targetFrameRate;
   viewer.scene.globe.maximumScreenSpaceError = settings.maximumScreenSpaceError;
@@ -50,6 +51,7 @@ export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (qualit
       if (!viewer.isDestroyed()) applyRenderQuality(viewer, quality, moving && autoQuality && !suspendAuto, settled && !suspendAuto);
     };
     apply();
+    const offFar = onFarView(apply);
     // The first view loads at the normal budget (it holds the loading screen); the finer tiles follow.
     detailTimer = window.setTimeout(() => { settled = true; apply(); }, 2_500);
     const removeStart = viewer.camera.moveStart.addEventListener(() => {
@@ -66,7 +68,7 @@ export function useRenderQuality(viewer: Viewer | null, onAutoDowngrade: (qualit
     };
     window.addEventListener("resize", onResize);
     return () => {
-      removeStart(); removeEnd(); window.clearTimeout(settleTimer); window.clearTimeout(detailTimer);
+      removeStart(); removeEnd(); offFar(); window.clearTimeout(settleTimer); window.clearTimeout(detailTimer);
       cancelAnimationFrame(resizeFrame); window.removeEventListener("resize", onResize);
     };
   }, [viewer, quality, autoQuality, suspendAuto]);
