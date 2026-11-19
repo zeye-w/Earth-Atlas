@@ -2,7 +2,7 @@
 
 # TerraScope · 数字地球
 
-**A real-time 3D digital Earth in the browser — live sunlight, night lights, aurora, earthquakes, volcanoes, satellites, flights and global geology, all from open data.**
+**An interactive 3D digital Earth in the browser — Earth science, astronomy, satellites, space weather, natural hazards and global infrastructure, brought together with open data and immersive 3D experiences.**
 
 English · [简体中文](README.zh-CN.md)
 
@@ -23,19 +23,23 @@ English · [简体中文](README.zh-CN.md)
 - **Real Earth, right now** — sunlight from the current UTC time, NASA Blue Marble by day and NASA Black Marble city lights on the night side.
 - **Live geophysics** — USGS earthquakes, NOAA aurora forecast and Kp index, Smithsonian volcano catalogue, PB2002 plate boundaries.
 - **Flights** — thousands of aircraft from volunteer ADS-B receivers (OpenSky Network), drawn at their altitude and heading, refreshed about every 15 minutes and dead-reckoned in between.
-- **Today's highlights** — a small card picks what is worth a look right now from the live feeds (a red-alert typhoon, an imminent launch, a large earthquake, a geomagnetic storm, an erupting volcano, or the day–night line and the ISS on a quiet day); one click turns on the layer and shows it.
+- **Today's highlights** — a card in the top bar picks what is worth a look right now from the live feeds (a red-alert typhoon, an imminent launch, a large earthquake, a geomagnetic storm, an erupting volcano, or the day–night line and the ISS on a quiet day); one click turns on the layer and shows it.
+- **Interactive experiences** — launch artistic fireworks at Beijing, Shanghai, Tokyo, Paris or a picked point, with spherical, ring and golden-willow effects. A virtual rocket show can be watched from a real launch site. Optional local OSM 3D buildings and Bing aerial imagery add a city backdrop; illustrative window lights are labelled as such.
+- **Bilingual interface and intro** — English and Simplified Chinese UI; first-time visitors start in English, and the chosen language is remembered. A short 1080p globe-ascent intro leads into the live scene.
+- **Layer navigation** — four tabs organise Earth, Space, Human activity and Interactive layers. The panel shows active-layer chips with one-click controls, and remembers the last tab.
+- **Usage analytics** — anonymous usage statistics can be switched off in Settings. The dashboard reports aggregate visits, sessions, retention and feature use without collecting names, coordinates, search terms or full URLs.
 - **Astronomy** — the Moon (where it is overhead, the half of the Earth that sees it, its phase and the coming quarters, and the Moon itself in the sky), solar and lunar eclipses for the next three years (the central path and its limits, and the Moon's shadow crossing the Earth on the eclipse's own clock, with how much of the Sun is covered at a picked place), the ten major meteor showers (peaks, rates, moonlight, and where the radiant is up in a dark sky right now), and "what's up tonight" for your location or a picked place: darkness, the Moon, the naked-eye planets, active showers and the next eclipse seen from there. All computed in the browser with astronomy-engine; eclipse and meteor peaks show up in today's highlights.
 - **Sky and Sun** — the real sky behind the globe: NASA's Deep Star Maps 2020 (stars and the Milky Way where they really are, with optional constellation figures) as the sky box, loaded after the globe; and the live Sun: NASA SDO's latest images in five wavelengths, the X-ray level now and the week's flares from NOAA GOES. A big flare joins today's highlights.
 - **Structure of near-Earth space** — the orbit bands (low Earth orbit, the navigation satellites' medium orbits, the geostationary ring and the graveyard orbit, a Molniya orbit) with CelesTrak's geosynchronous satellites as the ring over the equator; the Van Allen belts as shells along the tilted geomagnetic dipole's field lines, with the South Atlantic Anomaly; the Earth–Moon Lagrange points L1–L5 turning with the Moon; a side view; and an altitude ruler (log scale from the ISS to Webb) that flies out to each item.
 - **Near-Earth space** — asteroids passing within 10 lunar distances in the next 60 days (date, distance, speed, size from brightness) with their real tracks, and where the deep space probes are now (Webb, SOHO, Parker, Europa Clipper, JUICE, Psyche, Lucy, Juno, New Horizons, the Voyagers) with their distance and one-way light time. A cislunar view from about 6.5 million km shows the Moon's orbit, the Sun–Earth L1 and L2 points, the asteroids' tracks and the probes (or the direction to the far ones). A flyby inside the Moon's distance joins today's highlights.
 - **Natural hazards** — open natural events (wildfires, icebergs, dust, floods, volcanoes…) from NASA EONET, and tropical cyclones with their observed track coloured by intensity, forecast track, uncertainty cone and wind swaths from GDACS, replayable along the timeline. Western Pacific typhoons show their Chinese names; Chinese readers get the CMA grades, English readers Saffir–Simpson.
-- **Launches** — upcoming rocket launches worldwide with live countdowns, marked at their pads, plus a virtual launch at any real launch site: the rocket waits on a generic launch complex, vents, swings its service arms clear, counts down from T−10 and lifts off.
+- **Launches and virtual rocket shows** — an upcoming worldwide launch calendar with live countdowns, launch-site markers and mission details, plus 14 built-in launch sites for a simulated space show. The rocket stands on a detailed launch complex, vents, waits through a T−10 countdown, clears the service arms, ignites and lifts off with a follow camera.
 - **Satellites in orbit** — positions predicted with SGP4 from CelesTrak orbital elements, with orbit paths at true altitude, pass predictions for your location, and a tracking camera with live telemetry beside the satellite.
 - **Internet infrastructure** — submarine cables and data centres mapped in OpenStreetMap, internet exchanges from Wikidata, and **measured** DNS queries: RIPE Atlas probes reaching the root-server instance that actually answered.
 - **Geology on demand** — Macrostrat global geologic map; click anywhere for rock units, ages and lithology.
 - **Travel in time** — a timeline replays the past 24 hours, 7 or 30 days (and looks a day ahead): sunlight, earthquakes, satellite positions and daily satellite imagery all follow it.
 - **Honest by design** — no fabricated data. When a feed is down the layer says so and draws nothing; illustrative elements are labelled.
-- **Fast and light** — render-on-demand, automatic quality by frame rate, layers loaded only when switched on; no API keys or paid services.
+- **Fast and light** — render-on-demand, device-aware starting quality, automatic quality reduction when frame rates fall, finer imagery after the globe settles, and larger tile caches. Core globe layers need no API key; optional 3D city buildings and aerial imagery for interactive shows require a Cesium ion token.
 
 ## Feature tour
 
@@ -73,6 +77,13 @@ English · [简体中文](README.zh-CN.md)
 
 <p align="center"><img src="docs/screenshots/mobile.jpg" alt="TerraScope on a phone" width="260"><br><sub>Works on phones too: panels become bottom sheets and quality starts in Eco mode.</sub></p>
 
+## Interactive experiences
+
+- **Fireworks.** Choose Beijing, Shanghai, Tokyo or Paris, or pick a point on the globe. Three artistic styles — sphere, ring and golden willow — play as a short multi-burst show with a coordinated finale. This is a visual simulation, not a real event or a physically modelled ballistic trajectory.
+- **Virtual rocket launch.** Choose one of the 14 bundled real launch sites or open an upcoming mission from the launch calendar. The show builds a launch complex with a service tower and swing arms, runs a T−10 sequence with venting and engine ignition, then follows the rocket during simulated ascent. Altitude, speed, smoke and trajectory are visualised effects, not telemetry from a real launch.
+- **Local 3D city backdrop.** During a show, TerraScope can load Cesium ion OSM Buildings and nearby Bing aerial imagery on demand. Warm window lights are an artistic day/night effect. This optional backdrop requires `VITE_CESIUM_ION_TOKEN`; fireworks and the rocket show remain usable without it, but the city assets are unavailable.
+- **Opening and language.** The 1080p intro can be skipped or replayed; English and Simplified Chinese are available, with the first-visit default set to English and the user's choice remembered.
+
 **Internet infrastructure** (screenshots to follow with the layer panel). Five layers, each labelled with what it is:
 
 - *Submarine cables* — communication cables mapped by OpenStreetMap volunteers (ODbL), drawn with pulses running along them. The pulses only mark the line as a communication route; they are **illustrative**, not traffic. Mapping is incomplete (see the notes below), and landing stations are not shown because OSM does not tag them.
@@ -97,6 +108,9 @@ English · [简体中文](README.zh-CN.md)
 | Natural events | NASA EONET — Earth Observatory Natural Event Tracker, via the site's Worker (`/api/hazards`) | every 30 minutes |
 | Tropical cyclones | GDACS (alerts, forecast tracks, cones, wind swaths) merged with EONET's JTWC/NHC tracks, via `/api/hazards` | every 30 minutes |
 | Launch calendar | The Space Devs — Launch Library 2, fetched by the [Update launch calendar](.github/workflows/launch-data.yml) workflow and served at `/api/launches` | every 2 hours |
+| Launch sites | 14 bundled real launch pads in `src/launchSites.ts` | bundled |
+| Optional city backdrop | Cesium ion — OSM Buildings and Bing Aerial imagery, loaded only for interactive shows | on demand; requires `VITE_CESIUM_ION_TOKEN` |
+| Near-Earth space geometry | IGRF-14 dipole approximation for the radiation belts; circular restricted three-body model for Earth–Moon Lagrange points | computed in the browser |
 | Earthquakes | USGS — GeoJSON summary feeds | every 5 min |
 | Volcanoes | Smithsonian GVP — *Volcanoes of the World* | bundled, refreshed by workflow |
 | Plate boundaries | Bird (2003) PB2002, GeoJSON by Hugo Ahlenius / Nordpil (ODC-BY) | bundled |
@@ -119,6 +133,12 @@ English · [简体中文](README.zh-CN.md)
 
 Full attribution and scientific limits are in [docs/TECHNICAL.md](docs/TECHNICAL.md).
 
+## Privacy and usage analytics
+
+The anonymous usage analytics feature can be switched off in Settings. When enabled on the production site, it records a random browser visitor ID, a per-tab session ID, interface language, broad device category, feature-use events and foreground session duration. Cloudflare supplies the country; referrers are reduced to their domain.
+
+TerraScope does **not** collect names, precise coordinates, search terms or full page URLs. Analytics are not sent in recording mode, on non-production deployments, or when the browser sends Do Not Track / Global Privacy Control. Turning the setting off removes the stored visitor ID. Events are stored in the project's Cloudflare D1 database and records older than 400 days are cleaned up automatically. The light-themed maintainer dashboard is available at `/admin` and is protected by a runtime secret.
+
 ## Getting started
 
 Requires Node.js 22+.
@@ -131,7 +151,7 @@ npm run build        # production build
 npm run test:e2e     # Playwright end-to-end tests against the build (all services mocked)
 ```
 
-No API keys are needed. A network connection is required for the live imagery and data feeds.
+The core globe and open-data layers need no API keys. The optional 3D city backdrop for fireworks and virtual launches requires a Cesium ion token named `VITE_CESIUM_ION_TOKEN`. A network connection is required for live imagery and data feeds.
 
 ### Experimental iPhone Live Photo capture
 
@@ -150,13 +170,16 @@ scripts/             data generators, live smoke tests, screenshot capture
 tests/               unit tests (node:test) and e2e tests (Playwright)
 ```
 
-Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that serves the flight snapshot at `/api/flights`, serves the launch calendar at `/api/launches`, natural hazards at `/api/hazards` and measured DNS queries at `/api/internet/dns-flows`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
+Deployed on Cloudflare Workers (`wrangler.jsonc`): static assets, plus a small Worker (`worker/`) that serves flight snapshots at `/api/flights`, the launch calendar at `/api/launches`, natural hazards at `/api/hazards`, near-Earth space data at `/api/space`, measured DNS queries at `/api/internet/dns-flows`, and anonymous analytics at `/api/stats/collect` and `/api/stats/summary`. The protected statistics dashboard is served at `/admin`. The screenshots in this README are rendered with live data by the [README Screenshots](.github/workflows/screenshots.yml) workflow.
 
 The data workflows (flight snapshot every 15 minutes, launch calendar and site health every two hours, GFS weather four times a day) are started by the Worker's cron trigger through the GitHub API (`worker/dispatch.ts`), because GitHub's own schedules often run hours late; their schedules remain as a fallback. This needs the Worker secret `GITHUB_DISPATCH_TOKEN`: a fine-grained GitHub token for this repository with only *Actions: read and write*.
 
 ## Scientific notes
 
 - Satellite positions are SGP4 **predictions** from public orbital elements, not live telemetry.
+- Fireworks and virtual rocket launches are artistic simulations. Their particles, smoke, countdown, trajectory, altitude and speed are not observations or telemetry from real events.
+- The optional city backdrop is local to the selected show or launch site; it is not a complete, uniformly surveyed 3D model of every city. Window lighting is illustrative.
+- Example orbit orientations in the near-Earth-space diagram are illustrative; the documented orbital altitudes and inclinations are the reference quantities.
 - City lights are a 2016 annual composite; the aurora curtain shape and motion are stylised, while its position and brightness follow the NOAA forecast.
 - Flight coverage depends on volunteer receivers, so it is not every flight; between updates positions are extrapolated from speed and track.
 - Volcano colours reflect catalogued eruption years, not current alert levels.
