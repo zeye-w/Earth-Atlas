@@ -35,11 +35,15 @@ jobs:
       - name: Download the star map and constellation figures
         run: |
           base=https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851
-          curl -sSfL --retry 3 --cacert bundle.pem -o starmap.exr $base/starmap_2020_8k.exr
-          curl -sSfL --retry 3 --cacert bundle.pem -o figures.tif $base/constellation_figures_8k.tif
-          ls -l starmap.exr figures.tif
+          curl -sSfL --retry 3 --cacert bundle.pem -o starmap8k.exr $base/starmap_2020_8k.exr
+          curl -sSfL --retry 3 --cacert bundle.pem -o figures8k.tif $base/constellation_figures_8k.tif
+          ls -l *.exr *.tif
       - name: Build the sky box faces
-        run: python3 scripts/sky/build-sky.py starmap.exr figures.tif node_modules/@cesium/engine/Source/Assets/Textures/SkyBox out/sky
+        # 2048/1024 px from the 8K map. (4096 px faces from the 16K map were tried:
+        # its faint stars are single dim pixels, so the sky looked sparser, not sharper.)
+        run: |
+          python3 scripts/sky/build-sky.py starmap8k.exr figures8k.tif node_modules/@cesium/engine/Source/Assets/Textures/SkyBox out/sky 2048
+          rm out/sky/exposure.txt
       - name: Publish for review
         env:
           GH_TOKEN: ${{ github.token }}

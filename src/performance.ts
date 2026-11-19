@@ -37,13 +37,17 @@ export interface RenderSettings {
   fxaa: boolean;
   tileCacheSize: number;
 }
-/** `settled`: the camera has been still for a while (not just stopped). */
-export function renderSettings(quality: RenderQuality, devicePixelRatio: number, moving = false, settled = false): RenderSettings {
+/**
+ * `settled`: the camera has been still for a while (not just stopped).
+ * `far`: the far view (src/farView.ts), where the globe costs almost
+ * nothing, so the sky is drawn at the screen's own resolution (up to 2×).
+ */
+export function renderSettings(quality: RenderQuality, devicePixelRatio: number, moving = false, settled = false, far = false): RenderSettings {
   const profile = RENDER_PROFILES[quality];
   const dpr = Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1;
   // Reduce fill-rate only during interaction; restore the selected profile at rest.
   const motionCap = quality === "high" ? 1.25 : 1;
-  const resolutionScale = Math.min(dpr, profile.maxPixelRatio, moving ? motionCap : Infinity);
+  const resolutionScale = far && quality !== "eco" ? Math.min(dpr, 2) : Math.min(dpr, profile.maxPixelRatio, moving ? motionCap : Infinity);
   return {
     resolutionScale,
     targetFrameRate: profile.targetFrameRate,
@@ -126,3 +130,16 @@ export class FrameRateMonitor {
  */
 export const GLOBAL_VECTOR_MAX_ZOOM = 5;
 export const GLOBAL_VECTOR_TILE_NODES = (4 ** (GLOBAL_VECTOR_MAX_ZOOM + 1) - 1) / 3;
+
+export type SkySize = 1024 | 2048;
+
+/**
+ * Face size: 2048 px in "high" quality or any far view (except eco), 1024
+ * otherwise. Faces built from NASA's 16K map at 4096 px were tried and look
+ * sparser, not sharper (its faint stars are single dim pixels), so 2048 from
+ * the 8K map is the finest.
+ */
+export function skySize(quality: RenderQuality, far: boolean): SkySize {
+  return quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
+}
+

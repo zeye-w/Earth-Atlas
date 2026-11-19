@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { SkyBox, type Viewer } from "cesium";
-import type { RenderQuality } from "../performance";
+import { skySize, type RenderQuality, type SkySize } from "../performance";
 
 /**
  * The real sky behind the globe: NASA's Deep Star Maps 2020 (stars and the
@@ -14,7 +14,7 @@ const SIDES = { positiveX: "px", negativeX: "mx", positiveY: "py", negativeY: "m
 /** Delay after the globe is created before the sky's faces are fetched. */
 const START_DELAY_MS = 3_000;
 
-export function skyFaces(variant: "sky" | "lines", size: 1024 | 2048): Record<keyof typeof SIDES, string> {
+export function skyFaces(variant: "sky" | "lines", size: SkySize): Record<keyof typeof SIDES, string> {
   return Object.fromEntries(Object.entries(SIDES).map(([side, face]) => [side, `/sky/${variant}-${size}-${face}.jpg`])) as Record<keyof typeof SIDES, string>;
 }
 
@@ -32,7 +32,7 @@ let defaultSky: SkyBox | null = null;
 
 export function useSky(viewer: Viewer | null, layers: { realSky: boolean; constellations: boolean; sun: boolean }, quality: RenderQuality, far = false) {
   // In the far view the globe costs almost nothing, so the sky gets the sharper faces (except in eco).
-  const size = quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
+  const size = skySize(quality, far);
   useEffect(() => {
     if (!viewer) return;
     const scene = viewer.scene;
