@@ -61,3 +61,34 @@ test("in the solar system view the camera turns around the Sun, and reset gives 
   await expect(page.locator(".far-view-note")).toHaveCount(0, { timeout: 20_000 });
   expect(errors).toEqual([]);
 });
+
+test("flying to a planet shows its mapped disc, its moons and its facts; maps load only then", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const maps: string[] = [];
+  page.on("request", (request) => { const m = /\/planets\/([a-z-]+)\.(jpg|png)$/.exec(request.url()); if (m) maps.push(m[1]); });
+  await mockNetwork(page);
+  await page.goto(sceneUrl(116, 30, 20_000_000, { solarSystem: true }));
+  await waitForGlobe(page);
+  await showLayerGroup(page, "SOLAR SYSTEM");
+  const details = layerPanel(page).locator("details", { has: page.locator("summary", { hasText: "SOLAR SYSTEM" }) });
+  if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator(":scope > summary").click();
+  await layerPanel(page).getByRole("button", { name: "外太阳系" }).click();
+  await expect(page.locator(".solar-labels span", { hasText: "海王星" })).toBeVisible({ timeout: 20_000 });
+  // From out here every planet is a point: no maps fetched.
+  expect(maps).toEqual([]);
+  await layerPanel(page).getByRole("button", { name: /^土星/ }).click();
+  const facts = layerPanel(page).locator(".planet-facts");
+  await expect(facts).toContainText("已知卫星");
+  await expect(facts).toContainText("274 颗");
+  await expect(facts.locator(".planet-moons li", { hasText: "土卫六" })).toContainText("位置为近似");
+  await expect.poll(() => maps.sort().join(","), { timeout: 20_000 }).toBe("saturn,saturn-ring");
+  await expect(page.locator(".solar-labels span", { hasText: "土卫六" })).toBeVisible({ timeout: 20_000 });
+  // Jupiter's four moons come from a real theory, not a circle.
+  await layerPanel(page).getByRole("button", { name: /^木星/ }).click();
+  await expect(facts.locator(".planet-moons li")).toHaveCount(4);
+  await expect(facts.locator(".planet-moons em")).toHaveCount(0);
+  await expect(page.locator(".solar-labels span", { hasText: "木卫一" })).toBeVisible({ timeout: 20_000 });
+  await expect.poll(() => maps.includes("jupiter"), { timeout: 20_000 }).toBe(true);
+  expect(errors).toEqual([]);
+});

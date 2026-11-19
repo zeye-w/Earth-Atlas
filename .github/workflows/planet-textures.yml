@@ -1,0 +1,37 @@
+name: Planet textures
+# Fetches the planet maps (Solar System Scope, CC BY 4.0, solarsystemscope.com/textures)
+# and recompresses them for the solar system's close views; publishes them to the
+# "planet-build" release for review; the reviewed files are then committed to public/planets/.
+on:
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths: ["scripts/planets/**", ".github/workflows/planet-textures.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: planet-textures
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet numpy opencv-python-headless
+      - name: Download
+        run: |
+          set -euo pipefail
+          mkdir -p src-maps
+          for f in 2k_mercury.jpg 2k_venus_atmosphere.jpg 2k_mars.jpg 2k_jupiter.jpg 2k_saturn.jpg 2k_saturn_ring_alpha.png 2k_uranus.jpg 2k_neptune.jpg; do
+            curl -sSfL --retry 3 -A "Mozilla/5.0" -o "src-maps/$f" "https://www.solarsystemscope.com/textures/download/$f"
+          done
+          ls -l src-maps
+      - name: Recompress
+        run: python3 scripts/planets/build-planets.py src-maps out/planets
+      - name: Publish for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view planet-build >/dev/null 2>&1 || gh release create planet-build --title 'Planet textures (build output)' --notes 'Output of the Planet textures workflow, for review before it is committed to public/planets/.' --latest=false
+          gh release upload planet-build out/planets/* --clobber

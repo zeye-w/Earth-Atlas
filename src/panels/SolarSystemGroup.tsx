@@ -73,13 +73,43 @@ export function SolarSystemGroup({ layers, setLayer, module, failed, lapse, onLa
                       <small>{t(VISIBILITY[p.visibility])}{p.visibility !== "hidden" && " · " + t("亮度 {0} 等", p.magnitude.toFixed(1))}</small>
                     </span>
                   </button>
+                  {selected === p.key && <PlanetFacts module={module!} planet={p.key} />}
                 </li>
               );
             })}
           </ul>
-          <p className="layer-note">{t("轨道和距离按真实比例；行星本身太小，在这个尺度下画成发光的点。拉远到内太阳系或外太阳系视角可以看到全貌；点一颗行星，镜头飞到它附近。位置由 astronomy-engine 计算。")}</p>
+          <p className="layer-note">{t("轨道和距离按真实比例；行星本身太小，在这个尺度下画成发光的点。拉远到内太阳系或外太阳系视角可以看到全貌；点一颗行星，镜头飞到它附近，看到带真实贴图、按真实自转的行星和它的主要卫星。位置由 astronomy-engine 计算；行星贴图来自 Solar System Scope（CC BY 4.0）。")}</p>
         </div>
       )}
     </LayerGroup>
+  );
+}
+
+const number = (n: number, digits = 0) => new Intl.NumberFormat(localeTag(), { maximumFractionDigits: digits }).format(n);
+const duration = (days: number) => Math.abs(days) < 2 ? t("{0} 小时", number(Math.abs(days) * 24, 1)) : Math.abs(days) < 730 ? t("{0} 天", number(Math.abs(days), 1)) : t("{0} 年", number(Math.abs(days) / 365.25, 1));
+
+/** The chosen planet's size, day and year, and its main moons. */
+function PlanetFacts({ module, planet }: { module: AstronomyModule; planet: SolarBody }) {
+  const info = module.SOLAR_PLANETS.find((x) => x.key === planet)!;
+  const facts = module.hasSphere(planet) ? module.PLANET_FACTS[planet] : null;
+  const moons = module.moonsOf(planet);
+  return (
+    <div className="planet-facts">
+      {facts && (
+        <dl>
+          <div><dt>{t("直径")}</dt><dd>{t("{0} 公里", number(facts.radius * 2))}</dd></div>
+          <div><dt>{t("自转")}</dt><dd>{duration(facts.dayHours / 24)}{facts.dayHours < 0 && " · " + t("逆向")}</dd></div>
+          <div><dt>{t("公转")}</dt><dd>{duration(info.period)}</dd></div>
+          <div><dt>{t("已知卫星")}</dt><dd>{t("{0} 颗", facts.moons)}</dd></div>
+        </dl>
+      )}
+      {moons.length > 0 && (
+        <ul className="planet-moons">
+          {moons.map((m) => (
+            <li key={m.key}><strong>{t(m.name)}</strong> {t("距离 {0} 公里", number(m.distance))} · {t("周期 {0}", duration(m.period))}{m.approximate && <em> · {t("位置为近似")}</em>}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
