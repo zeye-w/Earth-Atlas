@@ -1,0 +1,15 @@
+/* Near-Earth space structure (NearEarthGroup). */
+.near-earth-belts p { display:flex; align-items:baseline; gap:6px; margin:0 0 4px; font-size:10px; line-height:1.5; color:var(--text-2); }
+.near-earth-belts i { flex:none; width:9px; height:9px; border-radius:50%; transform:translateY(1px); }
+.near-earth-belts strong { color:var(--text); font-weight:600; white-space:nowrap; }
+.side-view { width:100%; margin:8px 0 2px; }
+.altitude-ruler { margin-top:12px; padding-top:10px; border-top:1px solid var(--line); }
+.altitude-ruler .pass-head span { display:inline-flex; align-items:center; gap:5px; }
+.altitude-ruler ol { list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:2px; }
+.altitude-ruler button { width:100%; display:grid; grid-template-columns:62px 1fr auto; align-items:center; gap:8px; padding:4px 6px; border:0; border-radius:7px; background:none; color:var(--text-2); font-size:10px; text-align:left; cursor:pointer; }
+.altitude-ruler button:hover, .altitude-ruler button:focus-visible { background:var(--fill-strong); color:var(--text); }
+.ruler-bar { position:relative; height:6px; border-radius:3px; background:rgba(255,255,255,.07); }
+.ruler-bar i { position:absolute; top:0; width:6px; height:6px; margin-left:-3px; border-radius:50%; }
+.ruler-bar i.range { height:6px; margin-left:0; border-radius:3px; opacity:.75; }
+.ruler-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ruler-alt { font-variant-numeric:tabular-nums; color:var(--text-3); }
