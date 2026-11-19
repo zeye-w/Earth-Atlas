@@ -83,7 +83,7 @@ figures = cv2.resize(figures, (starmap.shape[1], starmap.shape[0]), interpolatio
 p99 = float(np.percentile(starmap.max(-1), 99))
 exposure = EXPOSURE if EXPOSURE is not None else -np.log(1 - 0.3 ** 2.2) / max(p99, 1e-9)
 print("exposure", exposure)
-with open(os.path.join(out, "exposure.txt"), "w") as f: f.write(repr(exposure))
+with open(os.path.join(out, "exposure.txt"), "w") as f: f.write(str(float(exposure)))
 
 # Which way right ascension runs on the map: match against Cesium's Tycho sky box.
 def cesium_face(face, n=256):
