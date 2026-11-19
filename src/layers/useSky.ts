@@ -28,18 +28,11 @@ function preload(faces: Record<keyof typeof SIDES, string>): Promise<Record<keyo
   }))).then((entries) => Object.fromEntries(entries) as Record<keyof typeof SIDES, HTMLImageElement>);
 }
 
-/** The graphics card's largest cube map, from the globe's own WebGL context (asking again returns the same one). */
-function maxCubeMapSize(viewer: Viewer): number {
-  const canvas = viewer.canvas;
-  const gl = (canvas.getContext("webgl2") ?? canvas.getContext("webgl")) as WebGLRenderingContext | null;
-  return gl ? Number(gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE)) || 0 : 0;
-}
-
 let defaultSky: SkyBox | null = null;
 
 export function useSky(viewer: Viewer | null, layers: { realSky: boolean; constellations: boolean; sun: boolean }, quality: RenderQuality, far = false) {
   // In the far view the globe costs almost nothing, so the sky gets the sharper faces (except in eco).
-  const size = skySize(quality, far, viewer ? maxCubeMapSize(viewer) : 0, window.devicePixelRatio);
+  const size = skySize(quality, far);
   useEffect(() => {
     if (!viewer) return;
     const scene = viewer.scene;
@@ -50,8 +43,7 @@ export function useSky(viewer: Viewer | null, layers: { realSky: boolean; conste
       if (defaultSky && scene.skyBox !== defaultSky) { scene.skyBox = defaultSky; scene.requestRender(); }
       return;
     }
-    // The constellation figures come at up to 2048 px.
-    const faces = skyFaces(layers.constellations ? "lines" : "sky", layers.constellations && size > 2048 ? 2048 : size);
+    const faces = skyFaces(layers.constellations ? "lines" : "sky", size);
     const swap = () => preload(faces).then((images) => {
       if (cancelled || viewer.isDestroyed()) return;
       const previous = scene.skyBox;

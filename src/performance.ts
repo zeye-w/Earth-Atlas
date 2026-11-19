@@ -131,16 +131,15 @@ export class FrameRateMonitor {
 export const GLOBAL_VECTOR_MAX_ZOOM = 5;
 export const GLOBAL_VECTOR_TILE_NODES = (4 ** (GLOBAL_VECTOR_MAX_ZOOM + 1) - 1) / 3;
 
-export type SkySize = 1024 | 2048 | 4096;
+export type SkySize = 1024 | 2048;
 
 /**
- * Face size: 4096 px in "high" quality in the far view on a high-density
- * screen (about 20 MB, only where the graphics card takes it), 2048 in
- * "high" or any far view, 1024 otherwise.
+ * Face size: 2048 px in "high" quality or any far view (except eco), 1024
+ * otherwise. Faces built from NASA's 16K map at 4096 px were tried and look
+ * sparser, not sharper (its faint stars are single dim pixels), so 2048 from
+ * the 8K map is the finest.
  */
-export function skySize(quality: RenderQuality, far: boolean, maxCubeMap: number, devicePixelRatio = 1): SkySize {
-  // Finer than 2048 px only shows on a high-density screen.
-  if (quality === "high" && far && maxCubeMap >= 4096 && devicePixelRatio >= 1.5) return 4096;
+export function skySize(quality: RenderQuality, far: boolean): SkySize {
   return quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
 }
 
