@@ -44,6 +44,7 @@ import { useSpace } from "./layers/useSpace";
 import { cislunarCamera } from "./spaceOverlay";
 import type { Asteroid } from "./spaceData";
 import { useSky } from "./layers/useSky";
+import { useFarView } from "./hooks/useFarView";
 import { EclipseCard } from "./panels/EclipseCard";
 import { loadAstronomy, useAstronomy, useAstronomyModule } from "./layers/useAstronomy";
 import type { Eclipse, EclipseView, MeteorShower } from "./astronomy/index";
@@ -268,21 +269,23 @@ function App() {
   useSceneClock(viewer, timeline, eclipseView?.time ?? null);
   const render = useRenderQuality(viewer, (quality, fps) =>
     setToast("画面帧率较低（约 " + Math.round(fps) + " fps），已自动切换为「" + RENDER_QUALITY_LABELS[quality] + "」画质"), RECORDING || livePhotoRecording, fireworks.running);
-  useEarthView(viewer, layers, timeline);
-  useSky(viewer, layers, render.quality);
+  // Far view (src/farView.ts): ground-level detail paused and hidden, a sharper sky.
+  const farView = useFarView(viewer);
+  useEarthView(viewer, farView ? { ...layers, cities: false } : layers, timeline);
+  useSky(viewer, layers, render.quality, farView);
   const trueColor = useTrueColor(viewer, layers.trueColor, timeline);
   const clouds = useClouds(viewer, layers.clouds, options.cloudOpacity, timeline);
   // The aurora forecast only exists for "now": hidden while viewing another moment.
   const aurora = useAurora(viewer, layers.aurora && live);
   useAtmosphereShells(viewer, layers.shells, options.shellScale);
-  const quakes = useEarthquakes(viewer, layers.quakes, options.quakeRange, timeline);
-  useGeoLabels(viewer, layers.geoLabels);
+  const quakes = useEarthquakes(viewer, layers.quakes, options.quakeRange, timeline, farView);
+  useGeoLabels(viewer, layers.geoLabels && !farView);
   const plateStatus = usePlateBoundaries(viewer, layers.plates);
-  const volcanoes = useVolcanoes(viewer, layers.volcanoes);
+  const volcanoes = useVolcanoes(viewer, layers.volcanoes && !farView);
   const satellites = useSatellites(viewer, { visible: layers.satellites, paths: layers.paths, speed: options.satelliteSpeed, selectedId: selectedSatelliteId, trackedId: layers.satellites ? trackedSatelliteId : null, followCamera: !RECORDING, timeline });
   useUserLocationMarker(viewer, userLocation.location);
   useSelectedLocationMarker(viewer, selectedQuake || selectedVolcano ? null : geology.coordinates);
-  const starlink = useConstellation(viewer, layers.starlink, STARLINK, timeline);
+  const starlink = useConstellation(viewer, layers.starlink, STARLINK, timeline, true);
   const solarWind = useSolarWind(viewer, layers.solarWind, timeline);
   // Aircraft positions exist only for "now": hidden while viewing another moment.
   const flights = useFlights(viewer, layers.flights && live);
@@ -755,6 +758,7 @@ function App() {
           <div className="globe-top-left">
             <span className="map-tag"><span className="tag-dot" /> 3D DIGITAL EARTH</span>
             <SceneSubtitle timeline={timeline} dayNight={layers.dayNight} />
+            {farView && <span className="far-view-note" role="status">{t("远景模式 · 已暂停地表细节")}</span>}
           </div>
           {!tourOpen && !fireworks.running && <HighlightsCard highlights={highlights.highlights} ready={highlights.ready} onSelect={showHighlight} />}
           {tourOpen && viewer && <Suspense fallback={null}><TerminatorTour viewer={viewer} timeline={timeline} timebarOpen={timebarOpen} onClose={closeTour} /></Suspense>}

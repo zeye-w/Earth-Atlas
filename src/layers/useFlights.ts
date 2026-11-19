@@ -1,3 +1,4 @@
+import { isFarView, onFarView } from "../farView";
 import { useEffect, useMemo, useRef } from "react";
 import type { Viewer } from "cesium";
 import { FLIGHT_REFRESH_MS, fetchFlights, type Flight, type FlightSource } from "../flightData";
@@ -29,11 +30,15 @@ export function useFlights(viewer: Viewer | null, active: boolean) {
     const overlay = new FlightOverlay(viewer);
     overlayRef.current = overlay;
     const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") overlay.advance(now());
+      if (document.visibilityState === "visible" && !isFarView()) overlay.advance(now());
     }, ADVANCE_MS);
+    // Far view: aircraft are invisible specks; stop moving them and catch up on return.
+    overlay.setVisible(!isFarView());
+    const offFar = onFarView((far) => { overlay.setVisible(!far); if (!far) overlay.advance(now()); });
     // Recording mode moves the clock frame by frame: follow at once.
     const offClock = onClockChange(() => overlay.advance(now()));
     return () => {
+      offFar();
       offClock();
       window.clearInterval(timer);
       overlay.dispose();

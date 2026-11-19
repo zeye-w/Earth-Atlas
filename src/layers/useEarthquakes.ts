@@ -12,7 +12,7 @@ export type QuakeStatus = { state: "idle" | "loading" | "ready" | "error"; count
 const sceneTime = (state: TimeState) => (state.live ? now() : state.time);
 
 /** USGS real-time earthquakes, refreshed while visible, replayable along the timeline. */
-export function useEarthquakes(viewer: Viewer | null, visible: boolean, range: QuakeRange, timeline: TimeController) {
+export function useEarthquakes(viewer: Viewer | null, visible: boolean, range: QuakeRange, timeline: TimeController, far = false) {
   const overlayRef = useRef<EarthquakeOverlay | null>(null);
   const poll = usePolledData((signal) => fetchQuakes(range, signal), { enabled: visible, intervalMs: QUAKE_REFRESH_MS, key: range });
   const byId = useMemo(() => new Map((poll.data ?? []).map((quake) => [quake.id, quake])), [poll.data]);
@@ -27,9 +27,10 @@ export function useEarthquakes(viewer: Viewer | null, visible: boolean, range: Q
     };
   }, [viewer]);
 
+  // Hidden (still polled) in the far view.
   useEffect(() => {
-    overlayRef.current?.setVisible(visible);
-  }, [viewer, visible]);
+    overlayRef.current?.setVisible(visible && !far);
+  }, [viewer, visible, far]);
 
   useEffect(() => {
     if (!viewer) return;

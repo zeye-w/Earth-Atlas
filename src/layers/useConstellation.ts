@@ -1,3 +1,4 @@
+import { isFarView, onFarView } from "../farView";
 import { useEffect, useRef, useState } from "react";
 import type { Viewer } from "cesium";
 import { CONSTELLATION_ID_PREFIX, ConstellationOverlay } from "../constellationOverlay";
@@ -26,7 +27,7 @@ const LIVE_UPDATE_MS = 500;
  * CelesTrak, SGP4 in a worker, one point per satellite. Live positions update
  * twice a second; away from live they follow the timeline.
  */
-export function useConstellation(viewer: Viewer | null, visible: boolean, constellation: Constellation, timeline: TimeController) {
+export function useConstellation(viewer: Viewer | null, visible: boolean, constellation: Constellation, timeline: TimeController, pauseWhenFar = false) {
   const [status, setStatus] = useState<ConstellationStatus>({ state: "idle" });
   const overlayRef = useRef<ConstellationOverlay | null>(null);
 
@@ -80,10 +81,18 @@ export function useConstellation(viewer: Viewer | null, visible: boolean, conste
         if (active) setStatus({ state: "error" });
       };
       worker.postMessage({ type: "init", records });
+      // Low-orbit constellations are invisible from a far view: no propagation, nothing drawn.
+      const paused = () => pauseWhenFar && isFarView();
       liveTimer = window.setInterval(() => {
-        if (timeline.getState().live && document.visibilityState === "visible") request(now());
+        if (timeline.getState().live && document.visibilityState === "visible" && !paused()) request(now());
       }, LIVE_UPDATE_MS);
-      unsubscribe = timeline.subscribe((state) => request(state.live ? now() : state.time));
+      const offTime = timeline.subscribe((state) => { if (!paused()) request(state.live ? now() : state.time); });
+      overlay.setVisible(!paused());
+      const offFar = onFarView(() => {
+        overlay?.setVisible(!paused());
+        if (!paused()) { const state = timeline.getState(); request(state.live ? now() : state.time); }
+      });
+      unsubscribe = () => { offTime(); offFar(); };
     }).catch((error: unknown) => {
       console.warn(constellation.title + " elements unavailable; nothing drawn.", error);
       if (active) setStatus({ state: "error" });
@@ -98,7 +107,7 @@ export function useConstellation(viewer: Viewer | null, visible: boolean, conste
       overlay?.dispose();
       overlayRef.current = null;
     };
-  }, [viewer, visible, constellation, timeline]);
+  }, [viewer, visible, constellation, timeline, pauseWhenFar]);
 
   const describe = (index: number) => overlayRef.current?.describe(index) ?? null;
   const setAlpha = (alpha: number) => overlayRef.current?.setAlpha(alpha);

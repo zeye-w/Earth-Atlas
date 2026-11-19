@@ -1,3 +1,4 @@
+import { isFarView, onFarView } from "../farView";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Cartesian3, type Viewer } from "cesium";
 // satellite.js and the overlay are imported on demand when the layer is enabled.
@@ -49,6 +50,7 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
       overlay.setModelTarget(followCamera?latest.current.trackedId:null);
       overlay.setSpeed(latest.current.speed);
       followTimeline(overlay, timeline);
+      overlay.setFar(isFarView());
       setCatalog(satellites.map(({ choice, epoch }) => ({ choice, epochLabel: orbits.formatEpoch(epoch) })));
       setRecords(satellites);
       setStatus(overlay.count > 0 ? "ready" : "error");
@@ -59,8 +61,10 @@ export function useSatellites(viewer: Viewer | null, options: { visible: boolean
       setCatalog([]);
       setRecords([]);
     });
+    const offFar = onFarView((far) => overlayRef.current?.setFar(far));
     return () => {
       active = false;
+      offFar();
       overlayRef.current?.dispose();
       overlayRef.current = null;
     };

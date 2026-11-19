@@ -64,6 +64,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .globe-panel > :not(.globe-mount) { z-index:2; }
 
 .globe-top-left { position:absolute; top:94px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; gap:6px; width:max-content; max-width:calc(100% - 760px); text-align:center; pointer-events:none; }
+.far-view-note { margin-top:4px; padding:3px 9px; border-radius:999px; font-size:10px; letter-spacing:.04em; color:var(--text-2); background:rgba(255,255,255,.06); border:1px solid var(--line); }
 .map-tag { font-size:10px; font-weight:600; letter-spacing:.24em; color:var(--text); }
 .tag-dot { display:inline-block; width:5px; height:5px; margin-right:8px; border-radius:50%; background:#fff; box-shadow:0 0 8px rgba(255,255,255,.8); vertical-align:middle; }
 .map-subtitle { font-size:9px; letter-spacing:.2em; color:var(--text-3); }
