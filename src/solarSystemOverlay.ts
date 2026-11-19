@@ -1,5 +1,5 @@
 import {
-  ArcType, Cartesian2, Cartesian3, Color, ColorMaterialProperty, ConstantPositionProperty, ConstantProperty, Entity, Matrix3, NearFarScalar,
+  ArcType, Cartesian2, Cartesian3, Color, ColorMaterialProperty, ConstantPositionProperty, ConstantProperty, Entity, Matrix3, Matrix4, NearFarScalar,
   PolylineDashMaterialProperty, SceneTransforms, Transforms, type Viewer,
 } from "cesium";
 import { AU_KM, BELT_RINGS, eclipticRing, ECLIPTIC_NORTH, helio, orbit, SOLAR_PLANETS, sunFromEarth, type SolarBodyKey, type Vec3 } from "./astronomy/solarSystem.ts";
@@ -87,6 +87,10 @@ export class SolarSystemOverlay {
   private beltLabels: { entity: Entity; helio: Vec3 }[] = [];
   private orbitsFrom = Number.NaN;
   private selected: SolarBodyKey | null = null;
+  /** What the camera turns around (the Sun or a planet), as the camera's own transform; null: the Earth, as usual. */
+  private pivotKey: "sun" | SolarBodyKey | null = null;
+  private pivotMatrix: Matrix4 | null = null;
+  private restoreCamera: () => void;
 
   constructor(private viewer: Viewer) {
     this.labels = new HtmlLabels(viewer);
@@ -108,6 +112,49 @@ export class SolarSystemOverlay {
       const mid = eclipticRing((belt.from + belt.to) / 2, 8)[2];
       this.beltLabels.push({ entity: named(add({}), t(belt.name), belt.color), helio: mid });
     }
+    // Any other flight (reset, search, a place) is in Earth coordinates: give the camera back to the Earth first.
+    const camera = viewer.camera;
+    const flyTo = camera.flyTo, setView = camera.setView;
+    camera.flyTo = (options) => { if (!options.endTransform) this.setPivot(null); return flyTo.call(camera, options); };
+    camera.setView = (options) => { if (!options?.endTransform) this.setPivot(null); return setView.call(camera, options); };
+    this.restoreCamera = () => { camera.flyTo = flyTo; camera.setView = setView; };
+  }
+
+  /** The point rotation and zoom turn around: the Sun, a planet, or (null) the Earth again. */
+  setPivot(key: "sun" | SolarBodyKey | null): void {
+    const camera = this.viewer.camera;
+    const ours = this.pivotMatrix !== null && Matrix4.equals(camera.transform, this.pivotMatrix);
+    this.pivotKey = key;
+    if (key === null) {
+      if (ours) camera.lookAtTransform(Matrix4.IDENTITY);
+      this.pivotMatrix = null;
+      return;
+    }
+    const origin = this.positionOf(key);
+    if (!origin) return;
+    this.pivotMatrix = Matrix4.fromTranslation(origin);
+    // Keeps the camera where it is; only the centre of rotation moves.
+    camera.lookAtTransform(this.pivotMatrix);
+    this.viewer.scene.requestRender();
+  }
+
+  private positionOf(key: "sun" | SolarBodyKey): Cartesian3 | undefined {
+    const entity = key === "sun" ? this.sun : this.planets.get(key);
+    return entity?.position?.getValue(this.viewer.clock.currentTime);
+  }
+
+  /** After the bodies move, the camera moves with its pivot (keeping its offset and direction). */
+  private followPivot(): void {
+    if (!this.pivotKey || !this.pivotMatrix) return;
+    const camera = this.viewer.camera;
+    // Something else took the camera (a satellite, a show): leave it alone.
+    if (!Matrix4.equals(camera.transform, this.pivotMatrix)) { this.pivotKey = null; this.pivotMatrix = null; return; }
+    const origin = this.positionOf(this.pivotKey);
+    if (!origin) return;
+    const local = Cartesian3.clone(camera.position);
+    this.pivotMatrix = Matrix4.fromTranslation(origin);
+    camera.lookAtTransform(this.pivotMatrix);
+    Cartesian3.clone(local, camera.position);
   }
 
   /** The probes (heliocentric = Earth-centred + the Earth's position). */
@@ -159,6 +206,7 @@ export class SolarSystemOverlay {
     for (const p of this.probes) p.entity.position = new ConstantPositionProperty(fixed(p.at(time)));
     const julianNow = this.viewer.clock.currentTime;
     for (const [entity, index] of this.labelOf) this.labels.set(index, entity.position?.getValue(julianNow) ?? null);
+    this.followPivot();
     this.viewer.scene.requestRender();
   }
 
@@ -166,6 +214,8 @@ export class SolarSystemOverlay {
 
   dispose(): void {
     if (this.viewer.isDestroyed()) return;
+    this.setPivot(null);
+    this.restoreCamera();
     const all = [this.sun, ...this.planets.values(), ...[...this.orbits.values()].map((o) => o.entity), ...this.belts.map((b) => b.entity), ...this.beltLabels.map((b) => b.entity), ...this.probes.map((p) => p.entity)];
     for (const e of all) this.viewer.entities.remove(e);
     this.labels.dispose();
