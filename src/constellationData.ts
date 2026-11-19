@@ -11,6 +11,8 @@ export interface Constellation {
 }
 
 export const STARLINK: Constellation = { id: "starlink", group: "starlink", title: "Starlink" };
+/** CelesTrak's active geosynchronous satellites, the ring over the equator. */
+export const GEOSYNC: Constellation = { id: "geo", group: "geo", title: "Geosynchronous" };
 /** CelesTrak updates GP data about every two hours; do not refetch sooner. */
 export const CONSTELLATION_CACHE_MS = 2 * 60 * 60 * 1000;
 export const CONSTELLATION_MAX_ELEMENT_AGE_DAYS = 10;

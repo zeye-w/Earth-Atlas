@@ -36,6 +36,10 @@ import { HighlightsCard } from "./panels/HighlightsCard";
 import { AstronomyGroup } from "./panels/AstronomyGroup";
 import { SkyGroup } from "./panels/SkyGroup";
 import { DeepSpaceGroup } from "./panels/DeepSpaceGroup";
+import { NearEarthGroup } from "./panels/NearEarthGroup";
+import { useNearEarth } from "./layers/useNearEarth";
+import { altitudeCamera, sideViewCamera } from "./nearEarthOverlay";
+import type { RulerItem } from "./nearEarth";
 import { useSpace } from "./layers/useSpace";
 import { cislunarCamera } from "./spaceOverlay";
 import type { Asteroid } from "./spaceData";
@@ -61,7 +65,7 @@ import { FLIGHT_ID_PREFIX } from "./flightOverlay";
 import { describeFlight } from "./flightData";
 import { subsolarPoint } from "./solar";
 import { EARTH_RADIUS_KM } from "./solarWindData";
-import { STARLINK } from "./constellationData";
+import { GEOSYNC, STARLINK } from "./constellationData";
 import { CONSTELLATION_ID_PREFIX } from "./constellationOverlay";
 import { usePlateBoundaries, useVolcanoes } from "./layers/useTectonics";
 import { useSatellites } from "./layers/useSatellites";
@@ -308,8 +312,11 @@ function App() {
   // kilometres: allow zooming out that far while those layers are on.
   useEffect(() => {
     if (!viewer) return;
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.asteroids || layers.probes ? 6_000_000_000 : layers.solarWind ? 600_000_000 : 65_000_000;
-  }, [viewer, layers.solarWind, layers.asteroids, layers.probes]);
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = layers.asteroids || layers.probes || layers.lagrange ? 6_000_000_000
+      : layers.solarWind || layers.orbitBands || layers.radiationBelts || layers.geoSats ? 600_000_000 : 65_000_000;
+  }, [viewer, layers.solarWind, layers.asteroids, layers.probes, layers.lagrange, layers.orbitBands, layers.radiationBelts, layers.geoSats]);
+  useNearEarth(viewer, { orbitBands: layers.orbitBands, radiationBelts: layers.radiationBelts, lagrange: layers.lagrange }, timeline);
+  const geoSats = useConstellation(viewer, layers.geoSats, GEOSYNC, timeline);
   const space = useSpace(viewer, { asteroids: layers.asteroids, probes: layers.probes }, selectedAsteroid, timeline);
   useEffect(() => { if (!layers.asteroids) setSelectedAsteroid(null); }, [layers.asteroids]);
   const trackedSatellite = satellites.catalog.find(({ choice }) => choice.id === trackedSatelliteId)?.choice ?? null;
@@ -604,6 +611,29 @@ function App() {
     viewCislunar();
   };
 
+  // The belts and orbits in profile: from the side, about 18 Earth radii out.
+  const viewSide = () => {
+    if (!viewer) return;
+    takeCamera();
+    setTrackedSatelliteId(null);
+    if (isNarrow()) setControlsOpen(false);
+    const view = sideViewCamera(18);
+    viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.2 });
+  };
+  const showRulerItem = (item: RulerItem) => {
+    if (!viewer) return;
+    if (item.group === "belt") setLayer("radiationBelts", true);
+    else if (item.group === "moon") setLayer("lagrange", true);
+    else if (item.group === "far") setLayer("probes", true);
+    else setLayer("orbitBands", true);
+    takeCamera();
+    setTrackedSatelliteId(null);
+    if (isNarrow()) setControlsOpen(false);
+    if (item.group === "far") { viewCislunar(); return; }
+    const view = altitudeCamera(item.toKm ?? item.altitudeKm);
+    viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.2 });
+  };
+
   const viewMagnetosphere = () => {
     takeCamera();
     if (!viewer) return;
@@ -693,6 +723,7 @@ function App() {
           </TabPane>
           <TabPane tab="space" current={panelTab}>
           <SkyGroup layers={layers} setLayer={setPanelLayer} reveal={skyReveal} />
+          <NearEarthGroup layers={layers} setLayer={setPanelLayer} geoStatus={geoSats.status} onSideView={viewSide} onRulerItem={showRulerItem} />
           <DeepSpaceGroup layers={layers} setLayer={setPanelLayer} space={space} selected={selectedAsteroid} onSelectAsteroid={selectAsteroid} onViewCislunar={viewCislunar} reveal={spaceReveal} />
           <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
             records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
