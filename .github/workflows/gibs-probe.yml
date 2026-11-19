@@ -1,0 +1,25 @@
+name: GIBS probe
+# Temporary: which daily true-colour layers have data for recent days.
+on:
+  push:
+    branches: [claude/exciting-hypatia-1rt14s]
+    paths: [".github/workflows/gibs-probe.yml"]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: |
+          for layer in VIIRS_NOAA20_CorrectedReflectance_TrueColor VIIRS_NOAA21_CorrectedReflectance_TrueColor VIIRS_SNPP_CorrectedReflectance_TrueColor MODIS_Terra_CorrectedReflectance_TrueColor MODIS_Aqua_CorrectedReflectance_TrueColor; do
+            echo "== $layer"
+            for d in 0 1 2 3 4 5 6 8 10; do
+              day=$(date -u -d "-$d day" +%Y-%m-%d); line="$day"
+              for tile in 3/3/6 3/2/1 3/4/2 2/1/3; do
+                n=$(curl -sS -o /dev/null -w "%{size_download}" "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/$layer/default/$day/GoogleMapsCompatible_Level9/$tile.jpg")
+                line="$line  $tile:$n"
+              done
+              echo "$line"
+            done
+          done
