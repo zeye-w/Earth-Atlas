@@ -103,6 +103,9 @@ export class SolarSystemOverlay {
   private removePreRender: () => void;
   private closeView = false;
   private minimumZoom: number;
+  private constrainedAxis: Cartesian3 | undefined;
+  /** J2000 → Earth-fixed at the scene clock (the frame everything here is drawn in). */
+  private toFixed: Matrix3 = Matrix3.IDENTITY;
 
   constructor(private viewer: Viewer) {
     this.labels = new HtmlLabels(viewer);
@@ -130,6 +133,7 @@ export class SolarSystemOverlay {
       this.moons.push({ moon, entity, label: this.labels.add(t(moon.name), "#ddd6c8"), position: null });
     }
     this.minimumZoom = viewer.scene.screenSpaceCameraController.minimumZoomDistance;
+    this.constrainedAxis = viewer.camera.constrainedAxis && Cartesian3.clone(viewer.camera.constrainedAxis);
     this.removePreRender = viewer.scene.preRender.addEventListener(() => this.updateNear());
     // Any other flight (reset, search, a place) is in Earth coordinates: give the camera back to the Earth first.
     const camera = viewer.camera;
@@ -147,19 +151,28 @@ export class SolarSystemOverlay {
     const controller = this.viewer.scene.screenSpaceCameraController;
     if (key === null) {
       if (ours) camera.lookAtTransform(Matrix4.IDENTITY);
+      if (this.pivotMatrix) {
+        camera.constrainedAxis = this.constrainedAxis && Cartesian3.clone(this.constrainedAxis);
+        controller.minimumZoomDistance = this.minimumZoom;
+      }
       this.pivotMatrix = null;
-      controller.minimumZoomDistance = this.minimumZoom;
       return;
     }
-    // Around a body the zoom limit is measured from it, less the Earth's radius (Cesium
-    // measures height over the Earth's ellipsoid): keep the camera outside the body.
-    const radius = (key === "sun" ? SUN_RADIUS_KM * 1.6 : hasSphere(key) ? PLANET_FACTS[key].radius * 1.6 : 0) * KM;
-    controller.minimumZoomDistance = Math.max(this.minimumZoom, radius - 6_371_000);
     const origin = this.positionOf(key);
     if (!origin) return;
-    this.pivotMatrix = Matrix4.fromTranslation(origin);
-    // Keeps the camera where it is; only the centre of rotation moves.
+    // Around a body the zoom limit is measured from it, less the Earth's radius (Cesium
+    // measures height over the Earth's ellipsoid): keep the camera outside the body,
+    // and not so close to the centre that Cesium's rotation (scaled by that height) stalls.
+    const EARTH = 6_371_000;
+    const radius = (key === "sun" ? SUN_RADIUS_KM * 1.6 : hasSphere(key) ? PLANET_FACTS[key].radius * 1.6 : 0) * KM;
+    controller.minimumZoomDistance = Math.max(this.minimumZoom, radius - EARTH, EARTH * 0.5);
+    // The pivot's frame is the stars' (J2000), not the Earth's: it does not turn with
+    // the Earth, and rotation goes round the ecliptic's pole, so the planets' plane
+    // stays level instead of wobbling round the Earth's axis.
+    this.pivotMatrix = Matrix4.fromRotationTranslation(this.toFixed, origin);
+    // Keeps the camera where it is; only the centre and frame of rotation change.
     camera.lookAtTransform(this.pivotMatrix);
+    camera.constrainedAxis = new Cartesian3(...ECLIPTIC_NORTH);
     this.viewer.scene.requestRender();
   }
 
@@ -215,13 +228,23 @@ export class SolarSystemOverlay {
     if (!this.pivotKey || !this.pivotMatrix) return;
     const camera = this.viewer.camera;
     // Something else took the camera (a satellite, a show): leave it alone.
-    if (!Matrix4.equals(camera.transform, this.pivotMatrix)) { this.pivotKey = null; this.pivotMatrix = null; return; }
+    if (!Matrix4.equals(camera.transform, this.pivotMatrix)) {
+      this.pivotKey = null;
+      this.pivotMatrix = null;
+      camera.constrainedAxis = this.constrainedAxis && Cartesian3.clone(this.constrainedAxis);
+      this.viewer.scene.screenSpaceCameraController.minimumZoomDistance = this.minimumZoom;
+      return;
+    }
     const origin = this.positionOf(this.pivotKey);
     if (!origin) return;
-    const local = Cartesian3.clone(camera.position);
-    this.pivotMatrix = Matrix4.fromTranslation(origin);
+    // Keep the camera's place and orientation in the pivot's (star-fixed) frame.
+    const position = Cartesian3.clone(camera.position), direction = Cartesian3.clone(camera.direction), up = Cartesian3.clone(camera.up);
+    this.pivotMatrix = Matrix4.fromRotationTranslation(this.toFixed, origin);
     camera.lookAtTransform(this.pivotMatrix);
-    Cartesian3.clone(local, camera.position);
+    Cartesian3.clone(position, camera.position);
+    Cartesian3.clone(direction, camera.direction);
+    Cartesian3.clone(up, camera.up);
+    Cartesian3.cross(direction, up, camera.right);
   }
 
   /** The probes (heliocentric = Earth-centred + the Earth's position). */
@@ -255,6 +278,7 @@ export class SolarSystemOverlay {
     if (this.viewer.isDestroyed()) return;
     const julian = this.viewer.clock.currentTime;
     const m = Transforms.computeIcrfToFixedMatrix(julian) ?? Transforms.computeTemeToPseudoFixedMatrix(julian);
+    this.toFixed = Matrix3.clone(m);
     const sun = sunFromEarth(time);
     const fixed = (v: Vec3) => Matrix3.multiplyByVector(m, new Cartesian3(v[0] * KM, v[1] * KM, v[2] * KM), new Cartesian3());
     // Heliocentric → Earth-centred → fixed.
