@@ -24,10 +24,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: actions/cache/restore@v4
+        with:
+          path: .cache/site-health
+          key: site-health-starlink-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: site-health-starlink-v1-
       - name: Check the site, its Worker and its feeds
         id: health
         continue-on-error: true
         run: node --experimental-strip-types scripts/check-site-health.mjs report.md
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .cache/site-health
+          key: site-health-starlink-v1-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Open, update or close the site-health issue
         env:
           GH_TOKEN: ${{ github.token }}

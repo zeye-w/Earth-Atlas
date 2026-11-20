@@ -1,3 +1,4 @@
+import { checkStarlink } from "./starlink-health.mjs";
 /**
  * Production health check: the deployed site, its Worker endpoints and the
  * public feeds the browser calls directly, each parsed with the app's own
@@ -11,7 +12,7 @@
  * Exit code 1 when a check still fails after one retry. Writes a Markdown
  * report (first argument) for the issue body.
  */
-import { writeFileSync } from "node:fs";
+import { writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { parseLaunchSnapshot } from "../src/launchData.ts";
 import { parseHazardSnapshot } from "../src/hazardData.ts";
 import { decodeFlights } from "../src/flightData.ts";
@@ -21,7 +22,7 @@ import { KP_NOW_URL, parseKpNow } from "../src/geomagnetic.ts";
 import { OVATION_URL, parseOvation } from "../src/auroraData.ts";
 import { MAG_URL, WIND_URL, parseSolarWind } from "../src/solarWindData.ts";
 import { CLOUD_METADATA_URL, latestCloudObservation } from "../src/cloudData.ts";
-import { STARLINK, constellationUrl, parseOmmCsv } from "../src/constellationData.ts";
+import { STARLINK, constellationUrl } from "../src/constellationData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { parseGeologicalUnits } from "../src/geology.ts";
 import { POLAR_CAP_EDGE, polarCapProbeUrl } from "../src/polarCapData.ts";
@@ -128,11 +129,11 @@ const CHECKS = [
     return fresh(latest.getTime(), 6 * HOUR, "latest frame");
   }],
   ["Feed", "CelesTrak Starlink", async () => {
-    const response = await get(constellationUrl(STARLINK));
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    const records = parseOmmCsv(await response.text());
-    if (records.length < 1000) throw new Error("only " + records.length + " satellites");
-    return records.length + " satellites";
+    return checkStarlink({
+      read: () => JSON.parse(readFileSync('.cache/site-health/starlink.json', 'utf8')),
+      write: value => { mkdirSync('.cache/site-health', { recursive: true }); writeFileSync('.cache/site-health/starlink.json', JSON.stringify(value)); },
+      request: () => get(constellationUrl(STARLINK)),
+    });
   }],
   ["Feed", "NASA GIBS true colour", async () => {
     // Three tiles across the globe: a gap in one day's mosaic (an empty 1.6 KB
@@ -177,8 +178,9 @@ async function run([area, name, check]) {
 }
 
 let results = await Promise.all(CHECKS.map(run));
-// Retry failures once after a pause: one dropped request is not an outage.
-const failedFirst = results.filter((r) => !r.ok);
+// Retry transient feeds once. CelesTrak explicitly limits repeated downloads;
+// its failures must wait for the next eligible scheduled attempt.
+const failedFirst = results.filter((r) => !r.ok && r.name !== "CelesTrak Starlink");
 if (failedFirst.length) {
   await new Promise((resolve) => setTimeout(resolve, 60_000));
   const retried = await Promise.all(CHECKS.filter(([, name]) => failedFirst.some((r) => r.name === name)).map(run));
@@ -189,7 +191,7 @@ const failed = results.filter((r) => !r.ok);
 for (const r of results) console.log(`${r.ok ? "PASS" : "FAIL"}  ${r.area.padEnd(6)} ${r.name.padEnd(26)} ${r.detail} (${r.ms} ms)`);
 if (report) {
   const lines = [
-    failed.length ? `**${failed.length} of ${results.length} checks failing** (after one retry), checked ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC against ${SITE}.` : `All ${results.length} checks pass.`,
+    failed.length ? `**${failed.length} of ${results.length} checks failing** (transient feeds retried once; CelesTrak downloads limited to 2-hour intervals), checked ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC against ${SITE}.` : `All ${results.length} checks pass.`,
     "",
     "| | Area | Check | Detail |",
     "|---|---|---|---|",
