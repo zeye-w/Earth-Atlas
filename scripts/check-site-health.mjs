@@ -25,7 +25,7 @@ import { CLOUD_METADATA_URL, latestCloudObservation } from "../src/cloudData.ts"
 import { STARLINK, constellationUrl } from "../src/constellationData.ts";
 import { TRUE_COLOR_LAYER, trueColorDate, trueColorUrl } from "../src/trueColorData.ts";
 import { parseGeologicalUnits } from "../src/geology.ts";
-import { POLAR_CAP_EDGE, polarCapProbeUrl } from "../src/polarCapData.ts";
+import { POLAR_CAP_LEVEL_ZERO_TILES, POLAR_CAP_MATRIX_OFFSET, POLAR_CAP_MAX_MATRIX, polarCapTileUrl } from "../src/polarCapData.ts";
 import { FLARES_URL, XRAYS_URL, flareClass, parseFlares, parseXrays } from "../src/solarActivity.ts";
 import { parseSpaceSnapshot } from "../src/spaceData.ts";
 
@@ -149,12 +149,18 @@ const CHECKS = [
   }],
   ["Feed", "NASA GIBS polar caps", async () => {
     // The browser draws these into WebGL, so the answer must allow cross-origin use.
-    const response = await get(polarCapProbeUrl(-90, POLAR_CAP_EDGE, 0, 90));
-    const type = response.headers.get("content-type") ?? "", cors = response.headers.get("access-control-allow-origin");
-    const bytes = (await response.arrayBuffer()).byteLength;
-    if (!response.ok || !type.startsWith("image/") || bytes < 2000) throw new Error(`HTTP ${response.status}, ${type || "no type"}, ${bytes} bytes`);
-    if (cors !== "*" && cors !== SITE) throw new Error("no CORS header (" + (cors ?? "none") + ")");
-    return `${type}, ${Math.round(bytes / 1024)} KB, CORS ${cors}`;
+    // One tile at the deepest level the app asks for, at each pole (top and bottom row).
+    const rows = POLAR_CAP_LEVEL_ZERO_TILES.y * 2 ** (POLAR_CAP_MAX_MATRIX - POLAR_CAP_MATRIX_OFFSET);
+    const tiles = await Promise.all([[0, 7], [rows - 1, 30]].map(async ([row, col]) => {
+      const response = await get(polarCapTileUrl(POLAR_CAP_MAX_MATRIX, row, col));
+      const type = response.headers.get("content-type") ?? "", cors = response.headers.get("access-control-allow-origin");
+      const bytes = (await response.arrayBuffer()).byteLength;
+      const where = row === 0 ? "north" : "south";
+      if (!response.ok || !type.startsWith("image/") || bytes < 2000) throw new Error(`${where}: HTTP ${response.status}, ${type || "no type"}, ${bytes} bytes`);
+      if (cors !== "*" && cors !== SITE) throw new Error(`${where}: no CORS header (${cors ?? "none"})`);
+      return { bytes, cors };
+    }));
+    return `WMTS tiles, north ${Math.round(tiles[0].bytes / 1024)} KB, south ${Math.round(tiles[1].bytes / 1024)} KB, CORS ${tiles[0].cors}`;
   }],
   ["Feed", "NOAA X-ray flares", async () => {
     const [flares, xray] = [parseFlares(await json(FLARES_URL)), parseXrays(await json(XRAYS_URL))];
