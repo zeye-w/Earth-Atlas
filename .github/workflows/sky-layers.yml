@@ -51,8 +51,15 @@ jobs:
         run: |
           set -euo pipefail
           # Down to V 8 (the build keeps what it draws as points); positions J1991.25, proper motions in mas/yr.
-          curl -sSfL --retry 3 -o hip.tsv 'https://vizier.cds.unistra.fr/viz-bin/asu-tsv?-source=I/239/hip_main&-out=HIP&-out=RAICRS&-out=DEICRS&-out=Vmag&-out=B-V&-out=pmRA&-out=pmDE&Vmag=%3C8&-out.max=unlimited'
-          grep -vc '^#' hip.tsv
+          # VizieR and its mirrors answer the same query; take the first that does.
+          q='viz-bin/asu-tsv?-source=I/239/hip_main&-out=HIP&-out=RAICRS&-out=DEICRS&-out=Vmag&-out=B-V&-out=pmRA&-out=pmDE&Vmag=%3C8&-out.max=unlimited'
+          for host in vizier.cds.unistra.fr vizier.cfa.harvard.edu vizier.nao.ac.jp vizier.iucaa.in vizier.china-vo.org; do
+            if curl -sSfL --connect-timeout 20 --max-time 300 -o hip.tsv "https://$host/$q" && [ "$(grep -vc '^#' hip.tsv)" -gt 20000 ]; then
+              echo "catalogue from $host: $(grep -vc '^#' hip.tsv) lines"; break
+            fi
+            echo "no answer from $host"; rm -f hip.tsv
+          done
+          test -s hip.tsv
       - name: Build
         env:
           STAR_LIMIT: ${{ inputs.star_limit || '7.0' }}
