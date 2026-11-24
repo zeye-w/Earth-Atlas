@@ -4,8 +4,12 @@ public domain), built from the map's two layers rather than the combined one:
 
   * milkyway_2020_16k.exr - the Milky Way and Gaia's faint stars, without the
     bright Hipparcos/Tycho stars: a diffuse light that resamples cleanly;
-  * hiptyc_2020_16k.exr - the bright stars only, scaled so each star carries
-    the same light (flux) as in the 8K layer the 2048 px faces come from.
+  * hiptyc_2020_16k.exr - the bright stars only.
+
+Both are calibrated to the 8K combined map the 2048 px faces come from: the
+16K files store a quarter of the 8K value per pixel (light per pixel, not
+brightness), and the combined map weights the two layers, which is fitted
+on the 8K files.
 
   python3 scripts/sky/build-sky-hd.py <starmap_8k.exr> <milkyway_8k.exr> <hiptyc_8k.exr> \
       <milkyway_16k.exr> <hiptyc_16k.exr> <cesium sky box dir> <out dir> [star gain multiplier] [current faces dir]
@@ -92,6 +96,14 @@ milky8, hip8 = read_exr(milky8_path), read_exr(hip8_path)
 diff = np.abs(starmap8 - (milky8 + hip8)).sum() / max(np.abs(starmap8).sum(), 1e-9)
 report["layers_sum_rel_error_8k"] = float(diff)
 report["hip_share_of_light_8k"] = float(hip8.sum() / max(starmap8.sum(), 1e-9))
+# It is not: NASA weights the layers. Fit starmap = a * milkyway + b * stars
+# (least squares over all pixels and channels) to keep the combined map's balance.
+A = np.stack([milky8.ravel(), hip8.ravel()], 1).astype(np.float64)
+y = starmap8.ravel().astype(np.float64)
+(w_milky, w_hip), *_ = np.linalg.lstsq(A, y, rcond=None)
+fit_err = float(np.abs(y - A @ np.array([w_milky, w_hip])).sum() / max(np.abs(y).sum(), 1e-9))
+del A, y
+report.update(layer_weight_milky=float(w_milky), layer_weight_stars=float(w_hip), layers_fit_rel_error_8k=fit_err)
 hip8_sum = hip8.sum(axis=(0, 1), dtype=np.float64)
 milky8_sum = milky8.sum(axis=(0, 1), dtype=np.float64)
 del starmap8, milky8, hip8
@@ -100,9 +112,9 @@ del starmap8, milky8, hip8
 # Equirectangular pixels at 16K cover a quarter of the solid angle of 8K ones
 # (row by row), so equal light means sum16 = 4 * sum8.
 milky = read_exr(milky16_path)
-milky_gain = float((4 * milky8_sum.sum()) / max(float(milky.sum(dtype=np.float64)), 1e-9))
+milky_gain = float((4 * milky8_sum.sum()) / max(float(milky.sum(dtype=np.float64)), 1e-9)) * float(w_milky)
 hip = read_exr(hip16_path)
-star_gain = float((4 * hip8_sum.sum()) / max(float(hip.sum(dtype=np.float64)), 1e-9)) * STAR_GAIN_MULT
+star_gain = float((4 * hip8_sum.sum()) / max(float(hip.sum(dtype=np.float64)), 1e-9)) * float(w_hip) * STAR_GAIN_MULT
 report.update(milky_gain_16k=milky_gain, star_gain_16k=star_gain, star_gain_multiplier=STAR_GAIN_MULT)
 # Brightest-star peak per pixel at each resolution, for the record.
 report["hip_peak_99_99_16k"] = float(np.percentile(hip.max(-1), 99.99))
