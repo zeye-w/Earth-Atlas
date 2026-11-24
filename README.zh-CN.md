@@ -25,7 +25,7 @@
 - **实时航班**：来自 OpenSky Network 志愿者 ADS-B 接收网络的航空器快照，约每 15 分钟更新一次；飞机按高度和航向绘制，两次快照之间会短时间推算位置。
 - **今日看点**：顶部栏中的卡片根据实时数据挑选值得关注的事件，例如强台风、即将发射的火箭、大地震、地磁暴和火山活动；安静时则展示晨昏线和国际空间站。点击即可打开对应图层。
 - **天文观测**：月球位置、可见半球、月相与月相变化；未来三年的日食和月食路径、阴影移动及指定地点的日面遮挡比例；十场主要流星雨的极大期、流量、月光影响和当前可见区域；还可查看所在地或指定地点的“今晚天空”，包括天黑时间、月升月落、肉眼可见行星、活跃流星雨和下一次可见日食。计算由浏览器中的 astronomy-engine 完成。
-- **真实星空与太阳活动**：NASA Deep Star Maps 2020 提供恒星和银河的真实星空背景，可选显示星座线；NASA SDO 提供太阳五种波段的最新影像，NOAA GOES 提供 X 射线活动和耀斑信息。
+- **真实星空与太阳活动**：NASA Deep Star Maps 2020 提供银河与暗星的真实星空背景，可选显示星座线；依巴谷星表中 7 等以内的约 1.5 万颗亮星以光点实时绘制，任何分辨率下都清晰锐利；NASA SDO 提供太阳五种波段的最新影像，NOAA GOES 提供 X 射线活动和耀斑信息。
 - **近地空间结构**：展示低轨、中轨、地球同步轨道和墓地轨道等轨道带，以及范艾伦辐射带、南大西洋异常、地月 L1–L5 拉格朗日点、磁层侧视图和从国际空间站到韦布望远镜的高度标尺。
 - **近地小行星与深空探测器**：展示未来 60 天内接近地球的小行星及其轨迹，并显示韦布、SOHO、帕克太阳探测器、Europa Clipper、JUICE、Psyche、Lucy、Juno、新视野号和旅行者号等探测器的位置、距离与单程光行时。可切换到约 650 万公里尺度的地月空间视图。
 - **自然灾害**：NASA EONET 的野火、冰山、沙尘、洪水和火山等自然事件；GDACS 热带气旋预警、实测路径、预测路径、不确定性范围和风圈，并可沿时间轴回放。
@@ -89,7 +89,7 @@
 
 - **月球、日食与月食**：展示月下点、月相、可见半球、日食中心线与食分范围、月球阴影移动，以及月食时可见区域。
 - **流星雨与今晚天空**：展示十场主要流星雨、极大期和暗夜可见范围；按地点计算月升月落、肉眼可见行星、活跃流星雨及下一次可见日食。
-- **真实星空与太阳**：以 NASA Deep Star Maps 2020 作为星空背景，可选星座线；显示 NASA SDO 多波段太阳影像和 NOAA GOES X 射线活动、耀斑。
+- **真实星空与太阳**：以 NASA Deep Star Maps 2020 作为星空背景，依巴谷亮星以光点绘制，可选星座线；显示 NASA SDO 多波段太阳影像和 NOAA GOES X 射线活动、耀斑。
 - **近地空间结构**：展示轨道带、地球同步卫星、范艾伦辐射带、南大西洋异常、地月 L1–L5 拉格朗日点和高度标尺。
 - **小行星与深空探测器**：显示未来 60 天内接近地球的小行星轨迹，以及 11 艘深空探测器的位置、距离和单程光行时；可进入地月空间尺度的视图。
 
@@ -129,7 +129,8 @@
 | 火山 | 史密森尼学会 GVP：*Volcanoes of the World* | 内置，由工作流刷新 |
 | 板块边界 | Bird (2003) PB2002，Hugo Ahlenius / Nordpil 转换的 GeoJSON（ODC-BY） | 内置 |
 | 月球、日食、行星 | 浏览器端 [astronomy-engine](https://github.com/cosinekitty/astronomy)（MIT）计算；日食结果与 NASA 星历目录误差在约一分钟内 | 按需计算 |
-| 星空背景 | NASA SVS：[Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851/)（公共领域），由 [Sky textures](.github/workflows/sky-texture.yml) 工作流生成天空盒贴图 | 内置 |
+| 星空背景 | NASA SVS：[Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851/)（公共领域），由 [Sky layers](.github/workflows/sky-layers.yml) 工作流用其银河层与恒星层生成天空盒贴图 | 内置 |
+| 亮星 | ESA 依巴谷星表（1997），经 CDS [VizieR I/239](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=I/239) 获取，7 等以内的恒星以光点绘制 | 内置 |
 | 太阳活动 | NASA SDO 最新影像（AIA 171/193/304 Å、HMI）；NOAA SWPC GOES X 射线耀斑 | 影像约每 15 分钟，耀斑每 5 分钟 |
 | 近地小行星与探测器 | NASA JPL：SBDB 近距离掠过 API 和 Horizons 星历，由 [Update near-Earth space data](.github/workflows/space-data.yml) 获取，经 `/api/space` 提供 | 每日 |
 | 流星雨 | International Meteor Organization：主要视觉流星雨工作列表 | 内置 |

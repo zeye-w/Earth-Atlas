@@ -22,7 +22,8 @@ Writes
 The combined map is 0.5 x Milky Way + 1.0 x stars (fitted on the 8K files);
 the 16K files hold a quarter of the 8K value per pixel. Each face is drawn in
 linear light at twice its size and area-averaged, so no star's light is lost,
-then tone-mapped with the 2048 px faces' exposure (build-sky.py).
+then tone-mapped with an exposure that puts the Milky Way's bright regions
+at about 30% grey (the 99th percentile of the 8K combined map).
 
 The bright stars are taken out of the star layer where the catalogue puts
 them: the connected patch of light around each one, within a radius that
@@ -127,7 +128,7 @@ report.update(exposure=float(exposure), weight_milky=float(w_milky), weight_star
               weights_fit_rel_error=float(np.abs(y - A @ np.array([w_milky, w_stars])).sum() / np.abs(y).sum()))
 del A, y, star8
 
-# --- Orientation against Cesium's sky box (as build-sky.py) ---------------------
+# --- Orientation: match the faces against Cesium's own (Tycho) sky box ------------
 def cesium_face(face, n=256):
     img = cv2.imread(os.path.join(cesium_dir, "tycho2t3_80_" + face + ".jpg"), cv2.IMREAD_GRAYSCALE)
     return cv2.resize(img, (n, n), interpolation=cv2.INTER_AREA).astype(np.float32)
