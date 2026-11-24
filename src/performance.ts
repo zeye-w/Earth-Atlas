@@ -131,15 +131,37 @@ export class FrameRateMonitor {
 export const GLOBAL_VECTOR_MAX_ZOOM = 5;
 export const GLOBAL_VECTOR_TILE_NODES = (4 ** (GLOBAL_VECTOR_MAX_ZOOM + 1) - 1) / 3;
 
-export type SkySize = 1024 | 2048;
+export type SkySize = 1024 | 2048 | 4096;
+
+/** Sky pixels a degree at the middle of a 2048 px face (it covers 90°: 1024 px per unit of tan). */
+const SKY_2048_PX_PER_DEG = 1024 * Math.PI / 180;
+
+/**
+ * Screen pixels a degree at the middle of the view, for a drawing buffer
+ * `bufferWidth` px wide and Cesium's horizontal field of view (60° by default).
+ */
+export function screenPxPerDegree(bufferWidth: number, fovDeg = 60): number {
+  return bufferWidth / 2 / Math.tan((fovDeg * Math.PI) / 360) * Math.PI / 180;
+}
+
+export interface SkyScreen {
+  /** The graphics card's largest cube map face (0 when unknown). */
+  maxCubeMap: number;
+  /** The drawing buffer's width in device pixels. */
+  bufferWidth: number;
+}
 
 /**
  * Face size: 2048 px in "high" quality or any far view (except eco), 1024
- * otherwise. Faces built from NASA's 16K map at 4096 px were tried and look
- * sparser, not sharper (its faint stars are single dim pixels), so 2048 from
- * the 8K map is the finest.
+ * otherwise; 4096 px (about 22 MB, built from NASA's 16K Milky Way and
+ * bright-star layers by scripts/sky/build-sky-hd.py) in the far view, except
+ * in eco, where the card takes it and the screen shows more than a third
+ * more pixels a degree than a 2048 px face holds (a 2048 px face is then
+ * stretched). The far view is where the sky fills the screen and the scene is
+ * drawn at the screen's own resolution (renderSettings).
  */
-export function skySize(quality: RenderQuality, far: boolean): SkySize {
+export function skySize(quality: RenderQuality, far: boolean, screen: SkyScreen = { maxCubeMap: 0, bufferWidth: 0 }): SkySize {
+  if (far && quality !== "eco" && screen.maxCubeMap >= 4096 && screenPxPerDegree(screen.bufferWidth) > SKY_2048_PX_PER_DEG * 1.35) return 4096;
   return quality === "high" || (far && quality !== "eco") ? 2048 : 1024;
 }
 

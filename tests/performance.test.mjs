@@ -91,6 +91,20 @@ test("sky faces: 2048 px in high quality or far out, except in eco", async () =>
   assert.equal(skySize("eco", true), 1024);
 });
 
+test("sky faces: 4096 px far out where the card takes it and the screen would stretch 2048 px faces", async () => {
+  const { skySize, screenPxPerDegree } = await import("../src/performance.ts");
+  // A 2048 px face holds about 17.9 px a degree at its middle.
+  assert.ok(Math.abs(screenPxPerDegree(2560) - 38.7) < 0.2);
+  const card = (bufferWidth, maxCubeMap = 16384) => ({ maxCubeMap, bufferWidth });
+  assert.equal(skySize("balanced", true, card(2560)), 4096);   // 2048 css px at 125%
+  assert.equal(skySize("high", true, card(1920)), 4096);       // 1080p
+  assert.equal(skySize("eco", true, card(2560)), 1024);
+  assert.equal(skySize("high", false, card(2560)), 2048);      // near the globe the sky is mostly hidden
+  assert.equal(skySize("balanced", true, card(2560, 2048)), 2048);
+  assert.equal(skySize("balanced", true, card(1280)), 2048);   // a small window: 2048 px is enough
+  assert.equal(skySize("balanced", true), 2048);
+});
+
 test("the far view draws at the screen's own resolution, except in eco", () => {
   assert.equal(renderSettings("balanced", 2, false, false, true).resolutionScale, 2);
   assert.equal(renderSettings("balanced", 3, false, false, true).resolutionScale, 2);

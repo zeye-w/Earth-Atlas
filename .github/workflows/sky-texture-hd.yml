@@ -1,0 +1,61 @@
+name: Sky textures (4096 px)
+# Builds the 4096 px sky box faces (scripts/sky/build-sky-hd.py) from NASA SVS
+# Deep Star Maps 2020's separate layers (Milky Way, bright stars) and publishes
+# the faces, previews against the current 2048 px faces and a report to the
+# "sky-build-hd" release for review; the reviewed faces are then committed to
+# public/sky/.
+on:
+  push:
+    branches: [feat/sky-4096]
+    paths: ["scripts/sky/build-sky-hd.py", ".github/workflows/sky-texture-hd.yml"]
+  workflow_dispatch:
+    inputs:
+      star_gain:
+        description: "Multiplier on the bright stars' calibrated light (1 = as in the 8K map)"
+        default: "1"
+permissions:
+  contents: write
+concurrency:
+  group: sky-texture-hd
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: pip install --quiet numpy opencv-python-headless OpenEXR
+      - name: Complete svs.gsfc.nasa.gov's certificate chain (it omits the intermediate)
+        run: |
+          set -euo pipefail
+          echo | openssl s_client -connect svs.gsfc.nasa.gov:443 -servername svs.gsfc.nasa.gov 2>/dev/null | openssl x509 > leaf.pem
+          aia=$(openssl x509 -in leaf.pem -noout -ext authorityInfoAccess | sed -n 's/.*CA Issuers - URI:\(.*\)/\1/p' | head -1)
+          curl -sSfL "$aia" -o inter.der
+          (openssl x509 -inform DER -in inter.der 2>/dev/null || openssl x509 -in inter.der) > inter.pem
+          cat /etc/ssl/certs/ca-certificates.crt inter.pem > bundle.pem
+      - name: Download the 8K maps (exposure, calibration) and the 16K layers
+        run: |
+          set -euo pipefail
+          mkdir -p maps
+          base=https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851
+          for f in starmap_2020_8k milkyway_2020_8k hiptyc_2020_8k milkyway_2020_16k hiptyc_2020_16k; do
+            curl -sSfL --retry 3 --cacert bundle.pem -o maps/$f.exr $base/$f.exr
+          done
+          ls -l maps
+      - name: Build the 4096 px faces and previews
+        run: |
+          python3 scripts/sky/build-sky-hd.py maps/starmap_2020_8k.exr maps/milkyway_2020_8k.exr maps/hiptyc_2020_8k.exr \
+            maps/milkyway_2020_16k.exr maps/hiptyc_2020_16k.exr \
+            node_modules/@cesium/engine/Source/Assets/Textures/SkyBox out/sky "${{ inputs.star_gain || '1' }}" public/sky
+          ls -l out/sky
+      - name: Publish for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view sky-build-hd >/dev/null 2>&1 || gh release create sky-build-hd --title 'Sky textures 4096 px (build output)' --notes 'Output of the Sky textures (4096 px) workflow, for review before it is committed to public/sky/.' --latest=false
+          gh release upload sky-build-hd out/sky/* --clobber

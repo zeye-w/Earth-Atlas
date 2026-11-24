@@ -41,3 +41,27 @@ test("the live Sun shows the SDO image, the X-ray level and the week's big flare
   await expect(section.locator(".sdo img")).toHaveAttribute("src", /latest_1024_HMIIC\.jpg/);
   expect(errors).toEqual([]);
 });
+
+test.describe("on a large screen", () => {
+  // 2048 × 983 css px at 125%: 2560 device px across, about 39 px a degree.
+  test.use({ viewport: { width: 2048, height: 983 }, deviceScaleFactor: 1.25 });
+
+  test("the far view loads the 4096 px faces, and the constellation figures at 2048 px", async ({ page }) => {
+    // A desktop's cores, so the app starts at "balanced" (a headless runner with few cores starts in eco).
+    await page.addInitScript(() => Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 8 }));
+    const faces: string[] = [];
+    page.on("request", (request) => { const m = /\/sky\/(sky|lines)-(1024|2048|4096)-(px|mx|py|my|pz|mz)\.jpg$/.exec(request.url()); if (m) faces.push(`${m[1]}-${m[2]}`); });
+    await page.goto(sceneUrl(116, 30, 150_000_000, {}));
+    await waitForGlobe(page);
+    await expect(page.locator(".far-view-note")).toBeVisible();
+    await expect.poll(() => faces.filter((f) => f === "sky-4096").length, { timeout: 30_000 }).toBe(6);
+    if (process.env.SKY_SCREENSHOT) {
+      await page.waitForTimeout(4_000);
+      await page.screenshot({ path: process.env.SKY_SCREENSHOT });
+    }
+    await openSky(page);
+    await layerPanel(page).getByRole("checkbox", { name: "星座连线" }).check({ force: true });
+    await expect.poll(() => faces.filter((f) => f === "lines-2048").length, { timeout: 20_000 }).toBe(6);
+    expect(faces.some((f) => f === "lines-4096")).toBe(false);
+  });
+});
