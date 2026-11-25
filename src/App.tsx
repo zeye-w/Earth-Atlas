@@ -166,7 +166,9 @@ function App() {
   const [panelTab, setPanelTab] = useState<LayerTab>(savedTab);
   const choosePanelTab = (tab: LayerTab) => { setPanelTab(tab); saveTab(tab); };
   useEffect(() => { if (hazardReveal !== null) setPanelTab("earth"); }, [hazardReveal]);
-  useEffect(() => { if (launchReveal !== null || astronomyReveal !== null || skyReveal !== null || spaceReveal !== null) setPanelTab("space"); }, [launchReveal, astronomyReveal, skyReveal, spaceReveal]);
+  useEffect(() => { if (astronomyReveal !== null || skyReveal !== null || spaceReveal !== null) setPanelTab("space"); }, [astronomyReveal, skyReveal, spaceReveal]);
+  // Rocket launches sit under "Interactive", with the virtual launches and the fireworks.
+  useEffect(() => { if (launchReveal !== null) setPanelTab("play"); }, [launchReveal]);
   useEffect(() => { if (!trackedSatelliteId) setFormulasOpen(false); }, [trackedSatelliteId]);
   const userLocation = useUserLocation();
   const [recordUi, setRecordUi] = useState<RecordUi>("full");
@@ -769,13 +771,6 @@ function App() {
             onSelectPlanet={(key) => { setSelectedPlanet(key); void viewSolarSystem(key); }} />
           <NearEarthGroup layers={layers} setLayer={setPanelLayer} geoStatus={geoSats.status} onSideView={viewSide} onRulerItem={showRulerItem} />
           <DeepSpaceGroup layers={layers} setLayer={setPanelLayer} space={space} selected={selectedAsteroid} onSelectAsteroid={selectAsteroid} onViewCislunar={viewCislunar} reveal={spaceReveal} />
-          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
-            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
-            trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
-            location={userLocation.state} onLocate={userLocation.locate} />
-          <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)} showRunning={fireworks.running}
-            onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch, true); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch}
-            onWatchSite={watchSite} showSite={rocketSite?.label ?? ""} onReplay={() => { if (rocketSite) launchRocket(rocketSite); }} />
           <AstronomyGroup layers={layers} setLayer={setPanelLayer} module={astronomy.module} failed={astronomy.failed} timeline={timeline}
             selectedEclipse={eclipseView?.eclipse.id ?? null} onSelectEclipse={(eclipse) => void selectEclipse(eclipse)}
             shower={shower?.code ?? null} onSelectShower={(s) => setShowerCode(s.code)}
@@ -784,6 +779,10 @@ function App() {
           </TabPane>
           <TabPane tab="human" current={panelTab}>
           <FlightsGroup layers={layers} setLayer={setPanelLayer} flights={flights.state} live={live} />
+          <SatellitesGroup {...groupProps} status={satellites.status} catalog={satellites.catalog} selectedId={selectedSatelliteId} timeline={timeline}
+            records={satellites.records} selectedPoint={geology.coordinates} onSelectPass={showPass} starlink={starlink.status}
+            trackedId={trackedSatelliteId} onTrack={(id) => { setSelectedSatelliteId(id); setTrackedSatelliteId(id); }} onStopTracking={() => setTrackedSatelliteId(null)}
+            location={userLocation.state} onLocate={userLocation.locate} />
           <InternetGroup layers={layers} setLayer={setPanelLayer} internet={internet.state} live={live} onCableYear={internet.setCableYear} />
           </TabPane>
           <TabPane tab="play" current={panelTab}>
@@ -791,6 +790,9 @@ function App() {
             onChooseSite={(site) => { setFireworksSite(site); setFireworksPicking(false); }} onChooseStyle={setFireworksStyle}
             onTogglePick={() => { setFireworksPicking((active) => !active); if (!fireworksPicking && isNarrow()) setControlsOpen(false); }}
             onLaunch={launchFireworks} onStop={fireworks.stop} />
+          <LaunchesGroup layers={layers} setLayer={setPanelLayer} launches={launches} selectedId={selectedLaunch?.id ?? null} reveal={launchReveal} ready={Boolean(viewer)} showRunning={fireworks.running}
+            onStopShow={fireworks.stop} onSelect={selectLaunch} onFlyTo={(launch) => { flyToLaunch(launch, true); if (isNarrow()) setControlsOpen(false); }} onWatch={watchLaunch}
+            onWatchSite={watchSite} showSite={rocketSite?.label ?? ""} onReplay={() => { if (rocketSite) launchRocket(rocketSite); }} />
           </TabPane>
         </LayerPanel>
 
