@@ -2,7 +2,7 @@ import {
   ArcType, Cartesian2, Cartesian3, Color, ColorMaterialProperty, ConstantPositionProperty, ConstantProperty, Entity, Matrix3, Matrix4, NearFarScalar,
   PerspectiveFrustum, PolylineDashMaterialProperty, SceneTransforms, Transforms, type Viewer,
 } from "cesium";
-import { closeViewDistanceKm, hasSphere, MOONS, moonPositions, PLANET_FACTS, planetFrame, SUN_RADIUS_KM, type MoonInfo, type SphereKey } from "./astronomy/planetBodies.ts";
+import { closeViewDistanceKm, hasSphere, MOONS, moonFrame, moonPositions, moonViewDistanceKm, PLANET_FACTS, planetFrame, SUN_RADIUS_KM, type MoonInfo, type SphereKey } from "./astronomy/planetBodies.ts";
 import { PlanetSpheres } from "./planetSpheres";
 import { AU_KM, BELT_RINGS, eclipticRing, ECLIPTIC_NORTH, fromEarth, helio, length, orbit, SOLAR_PLANETS, sunFromEarth, type SolarBodyKey, type Vec3 } from "./astronomy/solarSystem.ts";
 import { probeAt, probeInfo, type SpaceSnapshot } from "./spaceData";
@@ -16,6 +16,9 @@ import { t } from "./i18n";
  * scene's clock, so it lines up with the star background.
  */
 
+
+/** What the camera can turn around: the Sun, a planet, or a moon (by its key). */
+export type PivotKey = "sun" | SolarBodyKey | string;
 const KM = 1000;
 /** Labels and points only from about a million kilometres out: near the Earth they are clutter. */
 const FADE = new NearFarScalar(5.0e8, 0, 2.0e9, 1);
@@ -93,7 +96,7 @@ export class SolarSystemOverlay {
   private orbitsFrom = Number.NaN;
   private selected: SolarBodyKey | null = null;
   /** What the camera turns around (the Sun or a planet), as the camera's own transform; null: the Earth, as usual. */
-  private pivotKey: "sun" | SolarBodyKey | null = null;
+  private pivotKey: PivotKey | null = null;
   private pivotMatrix: Matrix4 | null = null;
   private restoreCamera: () => void;
   private spheres: PlanetSpheres;
@@ -144,7 +147,7 @@ export class SolarSystemOverlay {
   }
 
   /** The point rotation and zoom turn around: the Sun, a planet, or (null) the Earth again. */
-  setPivot(key: "sun" | SolarBodyKey | null): void {
+  setPivot(key: PivotKey | null): void {
     const camera = this.viewer.camera;
     const ours = this.pivotMatrix !== null && Matrix4.equals(camera.transform, this.pivotMatrix);
     this.pivotKey = key;
@@ -164,7 +167,8 @@ export class SolarSystemOverlay {
     // measures height over the Earth's ellipsoid): keep the camera outside the body,
     // and not so close to the centre that Cesium's rotation (scaled by that height) stalls.
     const EARTH = 6_371_000;
-    const radius = (key === "sun" ? SUN_RADIUS_KM * 1.6 : hasSphere(key) ? PLANET_FACTS[key].radius * 1.6 : 0) * KM;
+    const moon = MOONS.find((m) => m.key === key);
+    const radius = (key === "sun" ? SUN_RADIUS_KM * 1.6 : moon ? moon.radius * 1.6 : hasSphere(key as SolarBodyKey) ? PLANET_FACTS[key as SphereKey].radius * 1.6 : 0) * KM;
     controller.minimumZoomDistance = Math.max(this.minimumZoom, radius - EARTH, EARTH * 0.5);
     // The pivot's frame is the stars' (J2000), not the Earth's: it does not turn with
     // the Earth, and rotation goes round the ecliptic's pole, so the planets' plane
@@ -176,8 +180,10 @@ export class SolarSystemOverlay {
     this.viewer.scene.requestRender();
   }
 
-  private positionOf(key: "sun" | SolarBodyKey): Cartesian3 | undefined {
-    const entity = key === "sun" ? this.sun : this.planets.get(key);
+  private positionOf(key: PivotKey): Cartesian3 | undefined {
+    const moon = this.moons.find((x) => x.moon.key === key);
+    if (moon) return moon.position ?? undefined;
+    const entity = key === "sun" ? this.sun : this.planets.get(key as SolarBodyKey);
     return entity?.position?.getValue(this.viewer.clock.currentTime);
   }
 
@@ -211,6 +217,20 @@ export class SolarSystemOverlay {
         item.entity.show = state.moons;
         this.labels.set(item.label, state.moons ? item.position : null);
       }
+    }
+    // Moons with a map: their sphere once more than a pixel across, and in place of their point once it is a disc.
+    for (const item of this.moons) {
+      if (!item.moon.texture || !item.position) continue;
+      const d = Math.max(1, Cartesian3.distance(camera.positionWC, item.position));
+      const discPx = (item.moon.radius * KM / d) * pxPerRadian;
+      const planetNear = this.near.get(item.moon.planet)?.moons ?? false;
+      this.spheres.setVisible(item.moon.key, planetNear && discPx > 0.6);
+      const disc = planetNear && discPx > 4;
+      if ((item.entity.point!.show?.getValue(this.viewer.clock.currentTime) ?? true) === disc) {
+        item.entity.point!.show = new ConstantProperty(!disc);
+        changed = true;
+      }
+      this.labels.setOffset(item.label, disc ? discPx : 0);
     }
     // In a close view the orbits and belts would cut across the disc: hide them.
     const close = [...this.near.values()].some((n) => n.disc);
@@ -301,11 +321,16 @@ export class SolarSystemOverlay {
       const center = place(h);
       const frame = planetFrame(key, time);
       const toSun = Cartesian3.normalize(fixed([-h[0], -h[1], -h[2]]), new Cartesian3());
-      this.spheres.setPose(key, center, m, frame.body, frame.equator, toSun);
+      this.spheres.setPose(key, PLANET_FACTS[key], center, m, frame.body, frame.equator, toSun);
       for (const { moon, position } of moonPositions(key, time)) {
         const item = this.moons.find((x) => x.moon.key === moon.key)!;
         item.position = Cartesian3.add(center, fixed(position), new Cartesian3());
         item.entity.position = new ConstantPositionProperty(item.position);
+        // Moons with a map: a sphere keeping one face to the planet, lit like it.
+        if (moon.texture) {
+          const body = moonFrame(moon, time);
+          this.spheres.setPose(moon.key, { radius: moon.radius, polarRadius: moon.radius, texture: moon.texture }, item.position, m, body, body, toSun);
+        }
       }
     }
     const julianNow = this.viewer.clock.currentTime;
@@ -357,10 +382,36 @@ export function solarSystemCamera(viewer: Viewer, au: number, time: number, shif
 }
 
 /**
+ * A close look at one of the moons drawn as spheres: from its day side, a
+ * little to one side, close enough for the disc to fill much of the view.
+ */
+export function moonCamera(viewer: Viewer, key: string, time: number, shift = 0): { destination: Cartesian3; direction: Cartesian3; up: Cartesian3 } | null {
+  const moon = MOONS.find((m) => m.key === key);
+  if (!moon) return null;
+  const julian = viewer.clock.currentTime;
+  const m = Transforms.computeIcrfToFixedMatrix(julian) ?? Transforms.computeTemeToPseudoFixedMatrix(julian);
+  const toFixed = (v: Vec3) => Matrix3.multiplyByVector(m, new Cartesian3(v[0], v[1], v[2]), new Cartesian3());
+  const planetHelio = helio(moon.planet, time);
+  const rel = moonPositions(moon.planet, time).find((x) => x.moon.key === key)!.position;
+  const fromEarthKm = fromEarth(moon.planet, time);
+  const center = Cartesian3.multiplyByScalar(toFixed([fromEarthKm[0] + rel[0], fromEarthKm[1] + rel[1], fromEarthKm[2] + rel[2]]), KM, new Cartesian3());
+  const d = moonViewDistanceKm(moon) * KM;
+  const north = toFixed(ECLIPTIC_NORTH);
+  const toSun = Cartesian3.normalize(toFixed([-(planetHelio[0] + rel[0]), -(planetHelio[1] + rel[1]), -(planetHelio[2] + rel[2])]), new Cartesian3());
+  const side = Cartesian3.normalize(Cartesian3.cross(north, toSun, new Cartesian3()), new Cartesian3());
+  const offset = Cartesian3.normalize(Cartesian3.add(Cartesian3.add(Cartesian3.multiplyByScalar(toSun, 0.85, new Cartesian3()), Cartesian3.multiplyByScalar(north, 0.3, new Cartesian3()), new Cartesian3()), Cartesian3.multiplyByScalar(side, 0.5, new Cartesian3()), new Cartesian3()), new Cartesian3());
+  const destination = Cartesian3.add(center, Cartesian3.multiplyByScalar(offset, d, new Cartesian3()), new Cartesian3());
+  const direction = Cartesian3.normalize(Cartesian3.subtract(center, destination, new Cartesian3()), new Cartesian3());
+  const right = Cartesian3.normalize(Cartesian3.cross(direction, north, new Cartesian3()), new Cartesian3());
+  const up = Cartesian3.normalize(Cartesian3.cross(right, direction, new Cartesian3()), new Cartesian3());
+  if (shift) Cartesian3.add(destination, Cartesian3.multiplyByScalar(right, -shift * d, new Cartesian3()), destination);
+  return { destination, direction, up };
+}
+
+/**
  * A close look at one planet: from its day side, a little above the ecliptic
  * and to one side (so the disc has a terminator), at a distance that shows
- * the whole disc (and Saturn's ring). Pluto, which has no disc here, is seen
- * from farther out.
+ * the whole disc (and the rings).
  */
 export function planetCamera(viewer: Viewer, key: SolarBodyKey, time: number, shift = 0): { destination: Cartesian3; direction: Cartesian3; up: Cartesian3 } {
   const julian = viewer.clock.currentTime;

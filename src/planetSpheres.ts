@@ -2,10 +2,13 @@ import {
   BoundingSphere, Cartesian3, ComponentDatatype, Geometry, GeometryAttribute, GeometryAttributes, GeometryInstance, Material, MaterialAppearance,
   Matrix3, Matrix4, Primitive, PrimitiveType, type Viewer,
 } from "cesium";
-import { PLANET_FACTS, type Mat3, type SphereKey } from "./astronomy/planetBodies.ts";
+import type { Mat3 } from "./astronomy/planetBodies.ts";
+
+/** What a sphere needs: size (km), map, and a ring system if any. */
+export interface BodySpec { radius: number; polarRadius: number; texture: string; ring?: { inner: number; outer: number; texture: string } }
 
 /**
- * Textured planets for the close views. A sphere is only built (and its map
+ * Textured planets and moons for the close views. A sphere is only built (and its map
  * only fetched) the first time the camera comes close enough for it to be
  * more than a pixel across; it is lit by the Sun from its own position, not
  * by the scene's light (which is set for the Earth).
@@ -85,16 +88,18 @@ czm_material czm_getMaterial(czm_materialInput m) {
 
 interface Sphere { planet: Primitive; ring?: Primitive; material: Material; ringMaterial?: Material }
 
+/** Spheres by key (a planet's key, or a moon's). */
 export class PlanetSpheres {
-  private spheres = new Map<SphereKey, Sphere>();
+  private spheres = new Map<string, Sphere>();
+  private specs = new Map<string, BodySpec>();
 
   constructor(private viewer: Viewer) {}
 
   /** Built on first need. */
-  private ensure(key: SphereKey): Sphere {
+  private ensure(key: string): Sphere {
     let s = this.spheres.get(key);
     if (s) return s;
-    const facts = PLANET_FACTS[key];
+    const facts = this.specs.get(key)!;
     const material = new Material({ fabric: { uniforms: { image: `/planets/${facts.texture}.jpg`, sun: new Cartesian3(1, 0, 0) }, source: PLANET_SHADER }, translucent: false });
     const planet = this.viewer.scene.primitives.add(new Primitive({
       geometryInstances: new GeometryInstance({ geometry: sphereGeometry(facts.radius * KM, facts.polarRadius * KM) }),
@@ -104,7 +109,7 @@ export class PlanetSpheres {
     let ring: Primitive | undefined;
     let ringMaterial: Material | undefined;
     if (facts.ring) {
-      ringMaterial = new Material({ fabric: { uniforms: { image: "/planets/saturn-ring.png", sun: new Cartesian3(1, 0, 0) }, source: RING_SHADER }, translucent: true });
+      ringMaterial = new Material({ fabric: { uniforms: { image: `/planets/${facts.ring.texture}.png`, sun: new Cartesian3(1, 0, 0) }, source: RING_SHADER }, translucent: true });
       ring = this.viewer.scene.primitives.add(new Primitive({
         geometryInstances: new GeometryInstance({ geometry: ringGeometry(facts.ring.inner * KM, facts.ring.outer * KM) }),
         appearance: new MaterialAppearance({ material: ringMaterial, flat: true, translucent: true, closed: false, materialSupport: MaterialAppearance.MaterialSupport.TEXTURED }),
@@ -118,24 +123,26 @@ export class PlanetSpheres {
     return s;
   }
 
-  private poses = new Map<SphereKey, { center: Cartesian3; body: Matrix4; equator: Matrix4; toSun: Cartesian3 }>();
-  private shown = new Set<SphereKey>();
+  private poses = new Map<string, { center: Cartesian3; body: Matrix4; equator: Matrix4; toSun: Cartesian3 }>();
+  private shown = new Set<string>();
 
   /**
-   * Where a planet is and how it is turned: `center` (fixed frame, m),
+   * Where a planet (or moon) is and how it is turned: `spec` (its size and
+   * map), `center` (fixed frame, m),
    * `toFixed` (J2000 → fixed), its body and equator frames (J2000), and the
    * direction to the Sun (fixed).
    */
-  setPose(key: SphereKey, center: Cartesian3, toFixed: Matrix3, body: Mat3, equator: Mat3, toSun: Cartesian3): void {
+  setPose(key: string, spec: BodySpec, center: Cartesian3, toFixed: Matrix3, body: Mat3, equator: Mat3, toSun: Cartesian3): void {
+    if (!this.specs.has(key)) this.specs.set(key, spec);
     const m = (frame: Mat3) => Matrix4.fromRotationTranslation(Matrix3.multiply(toFixed, Matrix3.fromRowMajorArray(frame), new Matrix3()), center);
     this.poses.set(key, { center, body: m(body), equator: m(equator), toSun });
     if (this.shown.has(key)) this.apply(key);
   }
 
-  center(key: SphereKey): Cartesian3 | undefined { return this.poses.get(key)?.center; }
+  center(key: string): Cartesian3 | undefined { return this.poses.get(key)?.center; }
 
   /** Shows or hides a planet's sphere (built, and its map fetched, the first time it is shown). */
-  setVisible(key: SphereKey, visible: boolean): void {
+  setVisible(key: string, visible: boolean): void {
     if (visible === this.shown.has(key)) return;
     if (visible) { this.shown.add(key); this.apply(key); return; }
     this.shown.delete(key);
@@ -143,7 +150,7 @@ export class PlanetSpheres {
     if (s) { s.planet.show = false; if (s.ring) s.ring.show = false; }
   }
 
-  private apply(key: SphereKey): void {
+  private apply(key: string): void {
     const pose = this.poses.get(key);
     if (!pose) return;
     const s = this.ensure(key);
@@ -158,5 +165,6 @@ export class PlanetSpheres {
     const primitives = this.viewer.scene.primitives;
     for (const s of this.spheres.values()) { primitives.remove(s.planet); if (s.ring) primitives.remove(s.ring); }
     this.spheres.clear();
+    this.specs.clear();
   }
 }

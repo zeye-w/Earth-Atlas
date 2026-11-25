@@ -129,6 +129,7 @@
 | 火山 | 史密森尼学会 GVP：*Volcanoes of the World* | 内置，由工作流刷新 |
 | 板块边界 | Bird (2003) PB2002，Hugo Ahlenius / Nordpil 转换的 GeoJSON（ODC-BY） | 内置 |
 | 月球、日食、行星 | 浏览器端 [astronomy-engine](https://github.com/cosinekitty/astronomy)（MIT）计算；日食结果与 NASA 星历目录误差在约一分钟内 | 按需计算 |
+| 冥王星与卫星地图 | USGS 天体地质中心整理的 NASA 新视野号、伽利略号、旅行者号与卡西尼号全球拼图（公共领域）；冥王星颜色取自 NASA/JHUAPL/SwRI（PIA11707），木卫一颜色取自 JPL（D. Seal）；由 [Moon and Pluto textures](.github/workflows/moon-textures.yml) 工作流生成 | 内置 |
 | 星空背景 | NASA SVS：[Deep Star Maps 2020](https://svs.gsfc.nasa.gov/4851/)（公共领域），由 [Sky layers](.github/workflows/sky-layers.yml) 工作流用其银河层与恒星层生成天空盒贴图 | 内置 |
 | 亮星 | ESA 依巴谷星表（1997），经 CDS [VizieR I/239](https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=I/239) 获取，7 等以内的恒星以光点绘制 | 内置 |
 | 太阳活动 | NASA SDO 最新影像（AIA 171/193/304 Å、HMI）；NOAA SWPC GOES X 射线耀斑 | 影像约每 15 分钟，耀斑每 5 分钟 |

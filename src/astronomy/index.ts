@@ -5,5 +5,5 @@ export * from "./meteors.ts";
 export * from "./tonight.ts";
 export { AstronomyOverlay, type EclipseView } from "../astronomyOverlay.ts";
 export * from "./solarSystem.ts";
-export { SolarSystemOverlay, solarSystemCamera, planetCamera } from "../solarSystemOverlay.ts";
+export { SolarSystemOverlay, solarSystemCamera, planetCamera, moonCamera } from "../solarSystemOverlay.ts";
 export * from "./planetBodies.ts";

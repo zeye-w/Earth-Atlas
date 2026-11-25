@@ -677,6 +677,20 @@ function App() {
       complete: () => solarSystem.setPivot(scale === "inner" || scale === "outer" ? "sun" : scale) });
   };
 
+  // Close to one of the moons drawn as spheres; rotation and zoom then turn around it.
+  const viewMoon = async (key: string) => {
+    if (!viewer) return;
+    const module = astronomy.module ?? await loadAstronomy();
+    takeCamera();
+    setTrackedSatelliteId(null);
+    if (isNarrow()) setControlsOpen(false);
+    const time = solarLapse?.time ?? (timeline.getState().live ? now() : timeline.getState().time);
+    const view = module.moonCamera(viewer, key, time, controlsOpen && !isNarrow() ? 0.24 : 0);
+    if (!view) return;
+    viewer.camera.flyTo({ destination: view.destination, orientation: { direction: view.direction, up: view.up }, duration: 2.6,
+      complete: () => solarSystem.setPivot(key) });
+  };
+
   const viewMagnetosphere = () => {
     takeCamera();
     if (!viewer) return;
@@ -768,7 +782,7 @@ function App() {
           <SkyGroup layers={layers} setLayer={setPanelLayer} reveal={skyReveal} />
           <SolarSystemGroup layers={layers} setLayer={setPanelLayer} module={astronomy.module} failed={astronomy.failed} lapse={solarLapse} onLapse={setSolarLapse}
             onView={(scale) => void viewSolarSystem(scale)} selected={selectedPlanet}
-            onSelectPlanet={(key) => { setSelectedPlanet(key); void viewSolarSystem(key); }} />
+            onSelectPlanet={(key) => { setSelectedPlanet(key); void viewSolarSystem(key); }} onViewMoon={(key) => void viewMoon(key)} />
           <NearEarthGroup layers={layers} setLayer={setPanelLayer} geoStatus={geoSats.status} onSideView={viewSide} onRulerItem={showRulerItem} />
           <DeepSpaceGroup layers={layers} setLayer={setPanelLayer} space={space} selected={selectedAsteroid} onSelectAsteroid={selectAsteroid} onViewCislunar={viewCislunar} reveal={spaceReveal} />
           <AstronomyGroup layers={layers} setLayer={setPanelLayer} module={astronomy.module} failed={astronomy.failed} timeline={timeline}

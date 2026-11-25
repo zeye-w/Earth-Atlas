@@ -25,11 +25,13 @@ interface Props {
   onView: (scale: "inner" | "outer") => void;
   selected: SolarBody | null;
   onSelectPlanet: (key: SolarBody) => void;
+  /** Fly close to a moon that has a map. */
+  onViewMoon: (key: string) => void;
   reveal?: unknown;
 }
 
 /** The planets and their orbits around the globe, with a fast-forward clock. */
-export function SolarSystemGroup({ layers, setLayer, module, failed, lapse, onLapse, onView, selected, onSelectPlanet, reveal }: Props) {
+export function SolarSystemGroup({ layers, setLayer, module, failed, lapse, onLapse, onView, selected, onSelectPlanet, onViewMoon, reveal }: Props) {
   const locale = useLocale();
   const at = lapse?.time ?? now();
   // Ten-minute steps are plenty for the list.
@@ -73,12 +75,12 @@ export function SolarSystemGroup({ layers, setLayer, module, failed, lapse, onLa
                       <small>{t(VISIBILITY[p.visibility])}{p.visibility !== "hidden" && " · " + t("亮度 {0} 等", p.magnitude.toFixed(1))}</small>
                     </span>
                   </button>
-                  {selected === p.key && <PlanetFacts module={module!} planet={p.key} />}
+                  {selected === p.key && <PlanetFacts module={module!} planet={p.key} onViewMoon={onViewMoon} />}
                 </li>
               );
             })}
           </ul>
-          <p className="layer-note">{t("轨道和距离按真实比例；行星本身太小，在这个尺度下画成发光的点。拉远到内太阳系或外太阳系视角可以看到全貌；点一颗行星，镜头飞到它附近，看到带真实贴图、按真实自转的行星和它的主要卫星。位置由 astronomy-engine 计算；行星贴图来自 Solar System Scope（CC BY 4.0）。")}</p>
+          <p className="layer-note">{t("轨道和距离按真实比例；行星本身太小，在这个尺度下画成发光的点。拉远到内太阳系或外太阳系视角可以看到全貌；点一颗行星，镜头飞到它附近，看到带真实贴图、按真实自转的行星和它的主要卫星；大卫星和冥王星、冥卫一可以单独飞过去近看。位置由 astronomy-engine 计算；行星贴图来自 Solar System Scope（CC BY 4.0）；冥王星、卫星地图来自 USGS 天体地质中心整理的 NASA 新视野号、伽利略号、旅行者号与卡西尼号数据，冥王星和木卫一的颜色取自 NASA/JHUAPL/SwRI 与 JPL（D. Seal）的彩色图，木卫二、木卫三、木卫四和冥卫一为灰度图加整体色调，土卫六画成它的橙色大气，未观测区域按周围亮度填充。")}</p>
         </div>
       )}
     </LayerGroup>
@@ -89,7 +91,7 @@ const number = (n: number, digits = 0) => new Intl.NumberFormat(localeTag(), { m
 const duration = (days: number) => Math.abs(days) < 2 ? t("{0} 小时", number(Math.abs(days) * 24, 1)) : Math.abs(days) < 730 ? t("{0} 天", number(Math.abs(days), 1)) : t("{0} 年", number(Math.abs(days) / 365.25, 1));
 
 /** The chosen planet's size, day and year, and its main moons. */
-function PlanetFacts({ module, planet }: { module: AstronomyModule; planet: SolarBody }) {
+function PlanetFacts({ module, planet, onViewMoon }: { module: AstronomyModule; planet: SolarBody; onViewMoon: (key: string) => void }) {
   const info = module.SOLAR_PLANETS.find((x) => x.key === planet)!;
   const facts = module.hasSphere(planet) ? module.PLANET_FACTS[planet] : null;
   const moons = module.moonsOf(planet);
@@ -106,7 +108,10 @@ function PlanetFacts({ module, planet }: { module: AstronomyModule; planet: Sola
       {moons.length > 0 && (
         <ul className="planet-moons">
           {moons.map((m) => (
-            <li key={m.key}><strong>{t(m.name)}</strong> {t("距离 {0} 公里", number(m.distance))} · {t("周期 {0}", duration(m.period))}{m.approximate && <em> · {t("位置为近似")}</em>}</li>
+            <li key={m.key}>
+              <span><strong>{t(m.name)}</strong> {t("直径 {0} 公里", number(m.radius * 2))} · {t("距离 {0} 公里", number(m.distance))} · {t("周期 {0}", duration(m.period))}{m.approximate && <em> · {t("位置为近似")}</em>}</span>
+              {m.texture && <button type="button" className="moon-fly" onClick={() => onViewMoon(m.key)}>{t("飞过去")}</button>}
+            </li>
           ))}
         </ul>
       )}
