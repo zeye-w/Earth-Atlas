@@ -20,12 +20,16 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: List the USGS mosaics
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin > /dev/null && gdalinfo --version
+      - run: pip install --quiet numpy opencv-python-headless
+      - name: Download, reproject, colour
         run: |
-          set -euo pipefail
-          curl -sSfL --retry 3 https://planetarymaps.usgs.gov/mosaic/ -o index.html
-          grep -oE 'href="[^"]+\.(tif|TIF|jpg|png|cub)"' index.html | sed 's/href="//;s/"$//' | grep -iE 'pluto|charon|io_|europa|ganymede|callisto|titan|triton' | sort -u > candidates.txt
-          while read -r f; do
-            size=$(curl -sSIL "https://planetarymaps.usgs.gov/mosaic/$f" | grep -i '^content-length' | tail -1 | tr -dc '0-9')
-            printf '%12s  %s\n' "${size:-?}" "$f"
-          done < candidates.txt | tee sizes.txt
+          mkdir -p dl
+          python3 scripts/planets/build-moons.py dl out/planets
+          ls -l out/planets
+      - name: Publish for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view moon-build >/dev/null 2>&1 || gh release create moon-build --title 'Moon and Pluto textures (build output)' --notes 'Output of the Moon and Pluto textures workflow, for review before it is committed to public/planets/.' --latest=false
+          gh release upload moon-build out/planets/* --clobber
