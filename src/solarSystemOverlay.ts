@@ -98,6 +98,11 @@ export class SolarSystemOverlay {
   /** What the camera turns around (the Sun or a planet), as the camera's own transform; null: the Earth, as usual. */
   private pivotKey: PivotKey | null = null;
   private pivotMatrix: Matrix4 | null = null;
+  /** The pivot body's radius, m: our zoom stops a little outside it. */
+  private pivotRadius = 0;
+  /** Cesium's own zoom setting, restored when the pivot goes. */
+  private cesiumZoom = true;
+  private removeZoom: () => void = () => {};
   private restoreCamera: () => void;
   private spheres: PlanetSpheres;
   private moons: { moon: MoonInfo; entity: Entity; label: number; position: Cartesian3 | null }[] = [];
@@ -144,6 +149,63 @@ export class SolarSystemOverlay {
     camera.flyTo = (options) => { if (!options.endTransform) this.setPivot(null); return flyTo.call(camera, options); };
     camera.setView = (options) => { if (!options?.endTransform) this.setPivot(null); return setView.call(camera, options); };
     this.restoreCamera = () => { camera.flyTo = flyTo; camera.setView = setView; };
+    this.removeZoom = this.installZoom();
+  }
+
+  /**
+   * Zoom toward the pivot body. Cesium's zoom moves along the view direction
+   * (or the ray under the cursor) by steps sized by the height over the
+   * Earth: near a planet shown right of the side panel that went off to one
+   * side, by steps fit for the Earth's distance. Around a body, the wheel and
+   * a two-finger pinch instead scale the camera's distance to the body's
+   * centre, keeping its direction, so the body stays where it is on screen.
+   */
+  private installZoom(): () => void {
+    const canvas = this.viewer.scene.canvas;
+    const onWheel = (event: WheelEvent) => {
+      if (!this.pivotActive()) return;
+      event.preventDefault();
+      const pixels = event.deltaY * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? 800 : 1);
+      this.zoomBy(Math.exp(Math.max(-400, Math.min(400, pixels)) * 0.0015));
+    };
+    const touches = new Map<number, { x: number; y: number }>();
+    let spread = 0;
+    const span = () => { const [a, b] = [...touches.values()]; return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0; };
+    const onDown = (event: PointerEvent) => { if (event.pointerType === "touch") { touches.set(event.pointerId, { x: event.clientX, y: event.clientY }); spread = span(); } };
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || !touches.has(event.pointerId)) return;
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (touches.size !== 2 || !this.pivotActive()) return;
+      const now = span();
+      if (spread > 0 && now > 0) this.zoomBy(spread / now);
+      spread = now;
+    };
+    const onUp = (event: PointerEvent) => { touches.delete(event.pointerId); spread = span(); };
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("pointerdown", onDown);
+    canvas.addEventListener("pointermove", onMove);
+    for (const type of ["pointerup", "pointercancel", "pointerleave"] as const) canvas.addEventListener(type, onUp);
+    return () => {
+      canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("pointerdown", onDown);
+      canvas.removeEventListener("pointermove", onMove);
+      for (const type of ["pointerup", "pointercancel", "pointerleave"] as const) canvas.removeEventListener(type, onUp);
+    };
+  }
+
+  private pivotActive(): boolean {
+    return this.pivotMatrix !== null && Matrix4.equals(this.viewer.camera.transform, this.pivotMatrix);
+  }
+
+  /** Scales the camera's distance to the pivot body's centre by `factor` (in the pivot's frame, the body is the origin). */
+  zoomBy(factor: number): void {
+    if (!this.pivotActive()) return;
+    const camera = this.viewer.camera;
+    const d = Cartesian3.magnitude(camera.position);
+    if (!(d > 0)) return;
+    const target = Math.min(Math.max(d * factor, this.pivotRadius * 1.15), 2e14);
+    Cartesian3.multiplyByScalar(camera.position, target / d, camera.position);
+    this.viewer.scene.requestRender();
   }
 
   /** The point rotation and zoom turn around: the Sun, a planet, or (null) the Earth again. */
@@ -157,6 +219,7 @@ export class SolarSystemOverlay {
       if (this.pivotMatrix) {
         camera.constrainedAxis = this.constrainedAxis && Cartesian3.clone(this.constrainedAxis);
         controller.minimumZoomDistance = this.minimumZoom;
+        controller.enableZoom = this.cesiumZoom;
       }
       this.pivotMatrix = null;
       return;
@@ -170,6 +233,10 @@ export class SolarSystemOverlay {
     const moon = MOONS.find((m) => m.key === key);
     const radius = (key === "sun" ? SUN_RADIUS_KM * 1.6 : moon ? moon.radius * 1.6 : hasSphere(key as SolarBodyKey) ? PLANET_FACTS[key as SphereKey].radius * 1.6 : 0) * KM;
     controller.minimumZoomDistance = Math.max(this.minimumZoom, radius - EARTH, EARTH * 0.5);
+    this.pivotRadius = radius / 1.6;
+    // Our zoom (zoomBy) replaces Cesium's while the camera turns around a body.
+    if (!this.pivotMatrix) this.cesiumZoom = controller.enableZoom;
+    controller.enableZoom = false;
     // The pivot's frame is the stars' (J2000), not the Earth's: it does not turn with
     // the Earth, and rotation goes round the ecliptic's pole, so the planets' plane
     // stays level instead of wobbling round the Earth's axis.
@@ -253,6 +320,7 @@ export class SolarSystemOverlay {
       this.pivotMatrix = null;
       camera.constrainedAxis = this.constrainedAxis && Cartesian3.clone(this.constrainedAxis);
       this.viewer.scene.screenSpaceCameraController.minimumZoomDistance = this.minimumZoom;
+      this.viewer.scene.screenSpaceCameraController.enableZoom = this.cesiumZoom;
       return;
     }
     const origin = this.positionOf(this.pivotKey);
@@ -346,6 +414,7 @@ export class SolarSystemOverlay {
   dispose(): void {
     if (this.viewer.isDestroyed()) return;
     this.setPivot(null);
+    this.removeZoom();
     this.restoreCamera();
     this.removePreRender();
     this.spheres.dispose();
