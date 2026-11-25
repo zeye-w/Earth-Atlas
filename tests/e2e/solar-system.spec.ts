@@ -126,6 +126,15 @@ test("Pluto, Charon and the large moons are mapped spheres one can fly to; Uranu
   await layerPanel(page).getByRole("button", { name: /^木星/ }).click();
   await expect(facts.locator(".planet-moons li button", { hasText: "飞过去" })).toHaveCount(4);
   await shot("jupiter");
+  // The wheel zooms toward the planet, wherever the cursor is: it stays on screen.
+  const jupiter = page.locator(".solar-labels span", { hasText: /^木星$/ });
+  await expect(jupiter).toBeVisible({ timeout: 20_000 });
+  await page.mouse.move(700, 300);
+  for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(200); }
+  await expect(jupiter).toBeVisible({ timeout: 10_000 });
+  const box = await jupiter.boundingBox();
+  const view = page.viewportSize()!;
+  expect(box && box.x > 0 && box.x < view.width && box.y > 0 && box.y < view.height).toBe(true);
   await facts.locator(".planet-moons li", { hasText: "木卫一" }).getByRole("button", { name: "飞过去" }).click();
   await expect.poll(() => maps.includes("io"), { timeout: 30_000 }).toBe(true);
   await shot("io");
