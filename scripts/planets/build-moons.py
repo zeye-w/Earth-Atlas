@@ -173,7 +173,9 @@ for key, cfg in BODIES.items():
         if "color" in cfg:
             cpath = os.path.join(dl, key + "-color" + os.path.splitext(cfg["color"])[1])
             download([cfg["color"]], cpath)
-            c = cv2.imread(cpath, cv2.IMREAD_COLOR)[..., ::-1]
+            # Through GDAL: some colour maps are TIFFs OpenCV cannot read.
+            run("gdal_translate", "-q", "-of", "PNG", "-ot", "Byte", "-b", "1", "-b", "2", "-b", "3", "-outsize", "2048", "0", cpath, cpath + ".png")
+            c = cv2.imread(cpath + ".png", cv2.IMREAD_COLOR)[..., ::-1]
             if c.shape[1] != 2 * c.shape[0]:
                 entry["color_size_note"] = f"colour map is {c.shape[1]}x{c.shape[0]}, not 2:1; resized"
             aligned, entry["color_alignment"] = align_color(c, gray)
