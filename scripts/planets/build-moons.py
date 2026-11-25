@@ -33,7 +33,7 @@ W, H = 2048, 1024
 MOSAIC = "https://planetarymaps.usgs.gov/mosaic/"
 
 BODIES = {
-    "io": {"urls": [MOSAIC + "Io_GalileoSSI-Voyager_Global_Mosaic_1km.tif"], "color": "https://maps.jpl.nasa.gov/tmaps/pix/jup1vss2.jpg",
+    "io": {"urls": [MOSAIC + "Io_GalileoSSI-Voyager_Global_Mosaic_1km.tif"], "color": ["https://maps.jpl.nasa.gov/tmaps/pix/jup1vss2.tif", "https://maps.jpl.nasa.gov/tmaps/pix/jup1vss2.jpg"],
            "marks": {"Pele": (104.7, -18.7), "Loki": (51.2, 13.0), "Prometheus": (-153.0, -1.5)}},
     "europa": {"urls": [MOSAIC + "Europa_Voyager_GalileoSSI_global_mosaic_500m.tif"], "tint": (0.96, 0.90, 0.80),
                "marks": {"Pwyll": (88.6, -25.2)}},
@@ -46,7 +46,7 @@ BODIES = {
     "triton": {"urls": [MOSAIC + "Triton_Voyager2_ClrMosaic_GlobalFill_600m.tif"], "marks": {}},
     "pluto": {"urls": [MOSAIC + "Pluto_NewHorizons_Global_Mosaic_300m_Jul2017_8bit.tif",
                        MOSAIC + "Pluto_NewHorizons_Global_Mosaic_300m_Jul2017_8bit.TIF"],
-              "color": "https://photojournal.jpl.nasa.gov/tiff/PIA11707.tif",
+              "color": ["https://photojournal.jpl.nasa.gov/tiff/PIA11707.tif", "https://d2pn8kiwq2w21t.cloudfront.net/original_images/jpegPIA11707.jpg"],
               "marks": {"Sputnik Planitia": (178.0, 20.0), "Cthulhu": (100.0, -15.0)}},
     "charon": {"urls": [MOSAIC + "Charon_NewHorizons_Global_Mosaic_300m_Jul2017_8bit.tif"], "tint": (0.90, 0.87, 0.84), "marks": {}},
 }
@@ -54,7 +54,24 @@ ONLY = [b for b in os.environ.get("BODIES", "").split(",") if b]
 report = {}
 
 def run(*args):
-    return subprocess.run(args, check=True, capture_output=True, text=True).stdout
+    p = subprocess.run(args, capture_output=True, text=True)
+    if p.returncode != 0: raise RuntimeError(f"{args[0]} failed: {p.stderr.strip()[:400]}")
+    return p.stdout
+
+def load_color(urls, base):
+    """The first colour map (of `urls`) that GDAL reads as three bands, as RGB."""
+    for i, url in enumerate(urls):
+        path = f"{base}-{i}{os.path.splitext(url)[1]}"
+        try:
+            download([url], path)
+            bands = len(json.loads(run("gdalinfo", "-json", path))["bands"])
+            if bands < 3: print("colour map has", bands, "band(s):", url); continue
+            run("gdal_translate", "-q", "-of", "PNG", "-ot", "Byte", "-b", "1", "-b", "2", "-b", "3", "-outsize", "2048", "0", path, path + ".png")
+            img = cv2.imread(path + ".png", cv2.IMREAD_COLOR)
+            if img is not None: return img[..., ::-1], url
+        except (RuntimeError, SystemExit) as e:
+            print("colour map unusable:", url, e)
+    raise SystemExit(f"no usable colour map: {urls}")
 
 def download(urls, path):
     for url in urls:
@@ -171,11 +188,8 @@ for key, cfg in BODIES.items():
     if grid.ndim == 2:
         gray = grid.astype(np.float32)
         if "color" in cfg:
-            cpath = os.path.join(dl, key + "-color" + os.path.splitext(cfg["color"])[1])
-            download([cfg["color"]], cpath)
             # Through GDAL: some colour maps are TIFFs OpenCV cannot read.
-            run("gdal_translate", "-q", "-of", "PNG", "-ot", "Byte", "-b", "1", "-b", "2", "-b", "3", "-outsize", "2048", "0", cpath, cpath + ".png")
-            c = cv2.imread(cpath + ".png", cv2.IMREAD_COLOR)[..., ::-1]
+            c, entry["color_source"] = load_color(cfg["color"], os.path.join(dl, key + "-color"))
             if c.shape[1] != 2 * c.shape[0]:
                 entry["color_size_note"] = f"colour map is {c.shape[1]}x{c.shape[0]}, not 2:1; resized"
             aligned, entry["color_alignment"] = align_color(c, gray)

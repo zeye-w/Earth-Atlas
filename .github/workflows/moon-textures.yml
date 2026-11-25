@@ -9,6 +9,10 @@ on:
     branches: [feat/pluto-moons]
     paths: ["scripts/planets/build-moons.py", ".github/workflows/moon-textures.yml"]
   workflow_dispatch:
+    inputs:
+      bodies:
+        description: "Comma-separated keys to build (empty: all)"
+        default: ""
 permissions:
   contents: write
 concurrency:
@@ -25,7 +29,7 @@ jobs:
       - name: Download, reproject, colour
         run: |
           mkdir -p dl
-          python3 scripts/planets/build-moons.py dl out/planets
+          BODIES="${{ inputs.bodies }}" python3 scripts/planets/build-moons.py dl out/planets
           ls -l out/planets
       - name: Publish for review
         env:
