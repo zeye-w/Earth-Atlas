@@ -1,0 +1,31 @@
+name: Moon and Pluto textures
+# Global maps of Pluto, Charon and the large moons (USGS Astrogeology, from
+# NASA missions; public domain), reprojected to the planet maps' layout
+# (simple cylindrical, 180°W at the left, east to the right, north up) and
+# recompressed by scripts/planets/build-moons.py; published to the
+# "moon-build" release for review, then committed to public/planets/.
+on:
+  push:
+    branches: [feat/pluto-moons]
+    paths: ["scripts/planets/build-moons.py", ".github/workflows/moon-textures.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: moon-textures
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: List the USGS mosaics
+        run: |
+          set -euo pipefail
+          curl -sSfL --retry 3 https://planetarymaps.usgs.gov/mosaic/ -o index.html
+          grep -oE 'href="[^"]+\.(tif|TIF|jpg|png|cub)"' index.html | sed 's/href="//;s/"$//' | grep -iE 'pluto|charon|io_|europa|ganymede|callisto|titan|triton' | sort -u > candidates.txt
+          while read -r f; do
+            size=$(curl -sSIL "https://planetarymaps.usgs.gov/mosaic/$f" | grep -i '^content-length' | tail -1 | tr -dc '0-9')
+            printf '%12s  %s\n' "${size:-?}" "$f"
+          done < candidates.txt | tee sizes.txt
