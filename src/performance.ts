@@ -154,7 +154,7 @@ export interface SkyScreen {
 /**
  * Face size: 2048 px in "high" quality or any far view (except eco), 1024
  * otherwise; 4096 px (about 22 MB, built from NASA's 16K Milky Way and
- * bright-star layers by scripts/sky/build-sky-hd.py) in the far view, except
+ * star layers by scripts/sky/build-sky-layers.py) in the far view, except
  * in eco, where the card takes it and the screen shows more than a third
  * more pixels a degree than a 2048 px face holds (a 2048 px face is then
  * stretched). The far view is where the sky fills the screen and the scene is

@@ -1,0 +1,74 @@
+name: Sky layers (point stars)
+# Builds the sky box faces without the bright stars and the Hipparcos star
+# catalogue for the point-drawn stars (scripts/sky/build-sky-layers.py) and
+# publishes them, with a report, to the "sky-layers" release for review; the
+# reviewed files are then committed to public/sky/.
+on:
+  push:
+    branches: [feat/sky-points]
+    paths: ["scripts/sky/build-sky-layers.py", ".github/workflows/sky-layers.yml"]
+  workflow_dispatch:
+    inputs:
+      star_limit:
+        description: "Faintest V magnitude drawn as a point (fainter stars stay in the faces)"
+        default: "7.0"
+permissions:
+  contents: write
+concurrency:
+  group: sky-layers
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: pip install --quiet numpy opencv-python-headless OpenEXR
+      - name: Complete svs.gsfc.nasa.gov's certificate chain (it omits the intermediate)
+        run: |
+          set -euo pipefail
+          echo | openssl s_client -connect svs.gsfc.nasa.gov:443 -servername svs.gsfc.nasa.gov 2>/dev/null | openssl x509 > leaf.pem
+          aia=$(openssl x509 -in leaf.pem -noout -ext authorityInfoAccess | sed -n 's/.*CA Issuers - URI:\(.*\)/\1/p' | head -1)
+          curl -sSfL "$aia" -o inter.der
+          (openssl x509 -inform DER -in inter.der 2>/dev/null || openssl x509 -in inter.der) > inter.pem
+          cat /etc/ssl/certs/ca-certificates.crt inter.pem > bundle.pem
+      - name: Download the star map layers and the constellation figures
+        run: |
+          set -euo pipefail
+          mkdir -p maps
+          base=https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851
+          for f in starmap_2020_8k milkyway_2020_8k hiptyc_2020_8k milkyway_2020_16k hiptyc_2020_16k; do
+            curl -sSfL --retry 3 --cacert bundle.pem -o maps/$f.exr $base/$f.exr
+          done
+          curl -sSfL --retry 3 --cacert bundle.pem -o figures8k.tif $base/constellation_figures_8k.tif
+          ls -l maps figures8k.tif
+      - name: Download the Hipparcos catalogue (CDS VizieR I/239)
+        run: |
+          set -euo pipefail
+          # Down to V 8 (the build keeps what it draws as points); positions J1991.25, proper motions in mas/yr.
+          # VizieR and its mirrors answer the same query; take the first that does.
+          q='viz-bin/asu-tsv?-source=I/239/hip_main&-out=HIP&-out=RAICRS&-out=DEICRS&-out=Vmag&-out=B-V&-out=pmRA&-out=pmDE&Vmag=%3C8&-out.max=unlimited'
+          for host in vizier.cds.unistra.fr vizier.cfa.harvard.edu vizier.nao.ac.jp vizier.iucaa.in vizier.china-vo.org; do
+            if curl -sSfL --connect-timeout 20 --max-time 300 -o hip.tsv "https://$host/$q" && [ "$(grep -vc '^#' hip.tsv)" -gt 20000 ]; then
+              echo "catalogue from $host: $(grep -vc '^#' hip.tsv) lines"; break
+            fi
+            echo "no answer from $host"; rm -f hip.tsv
+          done
+          test -s hip.tsv
+      - name: Build
+        env:
+          STAR_LIMIT: ${{ inputs.star_limit || '7.0' }}
+        run: |
+          python3 scripts/sky/build-sky-layers.py maps hip.tsv figures8k.tif node_modules/@cesium/engine/Source/Assets/Textures/SkyBox out/sky
+          ls -l out/sky
+      - name: Publish for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view sky-layers >/dev/null 2>&1 || gh release create sky-layers --title 'Sky layers (build output)' --notes 'Output of the Sky layers workflow, for review before it is committed to public/sky/.' --latest=false
+          gh release upload sky-layers out/sky/* --clobber

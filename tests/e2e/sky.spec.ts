@@ -11,17 +11,21 @@ async function openSky(page: Page) {
 test.beforeEach(async ({ page }) => { await mockNetwork(page); });
 
 test("the real sky replaces the built-in one after start, and the constellation figures load on demand", async ({ page }) => {
+  let starCatalogue = 0;
+  page.on("request", (request) => { if (request.url().endsWith("/sky/stars.bin")) starCatalogue++; });
   const faces: string[] = [];
-  page.on("request", (request) => { const m = /\/sky\/(sky|lines)-(1024|2048)-(px|mx|py|my|pz|mz)\.jpg$/.exec(request.url()); if (m) faces.push(m[1] + "-" + m[3]); });
+  page.on("request", (request) => { const m = /\/sky\/(bg|bglines)-(1024|2048)-(px|mx|py|my|pz|mz)\.jpg$/.exec(request.url()); if (m) faces.push(m[1] + "-" + m[3]); });
   await page.goto(sceneUrl(116, 30, 40_000_000, {}));
   await waitForGlobe(page);
   // Six faces of the star map, a few seconds after the globe.
-  await expect.poll(() => faces.filter((f) => f.startsWith("sky-")).length, { timeout: 20_000 }).toBe(6);
-  expect(faces.some((f) => f.startsWith("lines-"))).toBe(false);
+  await expect.poll(() => faces.filter((f) => f.startsWith("bg-")).length, { timeout: 20_000 }).toBe(6);
+  expect(faces.some((f) => f.startsWith("bglines-"))).toBe(false);
+  // The bright stars, drawn as points over the faces.
+  expect(starCatalogue).toBe(1);
   await openSky(page);
   await expect(layerPanel(page).getByRole("checkbox", { name: "真实星空" })).toBeChecked();
   await layerPanel(page).getByRole("checkbox", { name: "星座连线" }).check({ force: true });
-  await expect.poll(() => faces.filter((f) => f.startsWith("lines-")).length, { timeout: 20_000 }).toBe(6);
+  await expect.poll(() => faces.filter((f) => f.startsWith("bglines-")).length, { timeout: 20_000 }).toBe(6);
   await expect(layerPanel(page).locator(".opened-layers")).toContainText("星座连线");
 });
 
@@ -50,18 +54,18 @@ test.describe("on a large screen", () => {
     // A desktop's cores, so the app starts at "balanced" (a headless runner with few cores starts in eco).
     await page.addInitScript(() => Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 8 }));
     const faces: string[] = [];
-    page.on("request", (request) => { const m = /\/sky\/(sky|lines)-(1024|2048|4096)-(px|mx|py|my|pz|mz)\.jpg$/.exec(request.url()); if (m) faces.push(`${m[1]}-${m[2]}`); });
+    page.on("request", (request) => { const m = /\/sky\/(bg|bglines)-(1024|2048|4096)-(px|mx|py|my|pz|mz)\.jpg$/.exec(request.url()); if (m) faces.push(`${m[1]}-${m[2]}`); });
     await page.goto(sceneUrl(116, 30, 150_000_000, {}));
     await waitForGlobe(page);
     await expect(page.locator(".far-view-note")).toBeVisible();
-    await expect.poll(() => faces.filter((f) => f === "sky-4096").length, { timeout: 30_000 }).toBe(6);
+    await expect.poll(() => faces.filter((f) => f === "bg-4096").length, { timeout: 30_000 }).toBe(6);
     if (process.env.SKY_SCREENSHOT) {
       await page.waitForTimeout(4_000);
       await page.screenshot({ path: process.env.SKY_SCREENSHOT });
     }
     await openSky(page);
     await layerPanel(page).getByRole("checkbox", { name: "星座连线" }).check({ force: true });
-    await expect.poll(() => faces.filter((f) => f === "lines-2048").length, { timeout: 20_000 }).toBe(6);
-    expect(faces.some((f) => f === "lines-4096")).toBe(false);
+    await expect.poll(() => faces.filter((f) => f === "bglines-2048").length, { timeout: 20_000 }).toBe(6);
+    expect(faces.some((f) => f === "bglines-4096")).toBe(false);
   });
 });

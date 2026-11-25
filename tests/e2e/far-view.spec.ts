@@ -5,7 +5,7 @@ test("zooming far out pauses ground detail and says so; coming back restores it"
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const faces: string[] = [];
-  page.on("request", (request) => { const m = /\/sky\/sky-(1024|2048)-px\.jpg$/.exec(request.url()); if (m) faces.push(m[1]); });
+  page.on("request", (request) => { const m = /\/sky\/bg-(1024|2048)-px\.jpg$/.exec(request.url()); if (m) faces.push(m[1]); });
   await mockNetwork(page);
   // Shared scenes may start far out (up to 600,000 km).
   await page.goto(sceneUrl(116, 30, 150_000_000, { satellites: true, starlink: true, cities: true }));
