@@ -82,7 +82,8 @@ test("flying to a planet shows its mapped disc, its moons and its facts; maps lo
   await expect(facts).toContainText("已知卫星");
   await expect(facts).toContainText("274 颗");
   await expect(facts.locator(".planet-moons li", { hasText: "土卫六" })).toContainText("位置为近似");
-  await expect.poll(() => maps.sort().join(","), { timeout: 20_000 }).toBe("saturn,saturn-ring");
+  // Saturn and its ring (Titan's map too, once Titan is more than a pixel across).
+  await expect.poll(() => ["saturn", "saturn-ring"].every((m) => maps.includes(m)), { timeout: 20_000 }).toBe(true);
   await expect(page.locator(".solar-labels span", { hasText: "土卫六" })).toBeVisible({ timeout: 20_000 });
   // Jupiter's four moons come from a real theory, not a circle.
   await layerPanel(page).getByRole("button", { name: /^木星/ }).click();
@@ -90,5 +91,47 @@ test("flying to a planet shows its mapped disc, its moons and its facts; maps lo
   await expect(facts.locator(".planet-moons em")).toHaveCount(0);
   await expect(page.locator(".solar-labels span", { hasText: "木卫一" })).toBeVisible({ timeout: 20_000 });
   await expect.poll(() => maps.includes("jupiter"), { timeout: 20_000 }).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("Pluto, Charon and the large moons are mapped spheres one can fly to; Uranus has its rings", async ({ page }) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const maps: string[] = [];
+  page.on("request", (request) => { const m = /\/planets\/([a-z-]+)\.(jpg|png)$/.exec(request.url()); if (m) maps.push(m[1]); });
+  const shot = async (name: string) => { if (process.env.PLANET_SHOTS) { await page.waitForTimeout(3_000); await page.screenshot({ path: `${process.env.PLANET_SHOTS}/${name}.png` }); } };
+  await mockNetwork(page);
+  await page.goto(sceneUrl(116, 30, 20_000_000, { solarSystem: true }));
+  await waitForGlobe(page);
+  await showLayerGroup(page, "SOLAR SYSTEM");
+  const details = layerPanel(page).locator("details", { has: page.locator("summary", { hasText: "SOLAR SYSTEM" }) });
+  if (!(await details.evaluate((el) => (el as HTMLDetailsElement).open))) await details.locator(":scope > summary").click();
+  const facts = layerPanel(page).locator(".planet-facts");
+  // Pluto: now a mapped sphere, with Charon over its prime meridian.
+  await layerPanel(page).getByRole("button", { name: /^冥王星/ }).click();
+  await expect(facts).toContainText("5 颗");
+  const charon = facts.locator(".planet-moons li", { hasText: "冥卫一" });
+  await expect(charon).toBeVisible();
+  await expect.poll(() => maps.includes("pluto"), { timeout: 30_000 }).toBe(true);
+  await shot("pluto");
+  await charon.getByRole("button", { name: "飞过去" }).click();
+  await expect.poll(() => maps.includes("charon"), { timeout: 30_000 }).toBe(true);
+  await shot("charon");
+  // Uranus: its narrow rings.
+  await layerPanel(page).getByRole("button", { name: /^天王星/ }).click();
+  await expect.poll(() => maps.includes("uranus-ring"), { timeout: 30_000 }).toBe(true);
+  await shot("uranus");
+  // Jupiter, then close to Io.
+  await layerPanel(page).getByRole("button", { name: /^木星/ }).click();
+  await expect(facts.locator(".planet-moons li button", { hasText: "飞过去" })).toHaveCount(4);
+  await shot("jupiter");
+  await facts.locator(".planet-moons li", { hasText: "木卫一" }).getByRole("button", { name: "飞过去" }).click();
+  await expect.poll(() => maps.includes("io"), { timeout: 30_000 }).toBe(true);
+  await shot("io");
+  // Mars's two small moons stay points: no button.
+  await layerPanel(page).getByRole("button", { name: /^火星/ }).click();
+  await expect(facts.locator(".planet-moons li", { hasText: "火卫一" }).getByRole("button")).toHaveCount(0);
+  await expect(page.locator(".cesium-widget-errorPanel")).toHaveCount(0);
   expect(errors).toEqual([]);
 });

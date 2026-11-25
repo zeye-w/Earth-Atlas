@@ -1,0 +1,39 @@
+name: Moon and Pluto textures
+# Global maps of Pluto, Charon and the large moons (USGS Astrogeology, from
+# NASA missions; public domain), reprojected to the planet maps' layout
+# (simple cylindrical, 180°W at the left, east to the right, north up) and
+# recompressed by scripts/planets/build-moons.py; published to the
+# "moon-build" release for review, then committed to public/planets/.
+on:
+  push:
+    branches: [feat/pluto-moons]
+    paths: ["scripts/planets/build-moons.py", ".github/workflows/moon-textures.yml"]
+  workflow_dispatch:
+    inputs:
+      bodies:
+        description: "Comma-separated keys to build (empty: all)"
+        default: ""
+permissions:
+  contents: write
+concurrency:
+  group: moon-textures
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin > /dev/null && gdalinfo --version
+      - run: pip install --quiet numpy opencv-python-headless
+      - name: Download, reproject, colour
+        run: |
+          mkdir -p dl
+          BODIES="${{ inputs.bodies }}" python3 scripts/planets/build-moons.py dl out/planets
+          ls -l out/planets
+      - name: Publish for review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view moon-build >/dev/null 2>&1 || gh release create moon-build --title 'Moon and Pluto textures (build output)' --notes 'Output of the Moon and Pluto textures workflow, for review before it is committed to public/planets/.' --latest=false
+          gh release upload moon-build out/planets/* --clobber
