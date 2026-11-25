@@ -30,10 +30,6 @@ export const LAYER_INFO: Record<LayerKey, { tab: LayerTab; label: string }> = {
   geology: { tab: "earth", label: "全球地质图" },
   naturalEvents: { tab: "earth", label: "全球自然事件" },
   storms: { tab: "earth", label: "台风路径" },
-  satellites: { tab: "space", label: "真实卫星轨道" },
-  paths: { tab: "space", label: "卫星预测轨迹" },
-  starlink: { tab: "space", label: "星链星座" },
-  launches: { tab: "space", label: "火箭发射日历" },
   moon: { tab: "space", label: "月亮" },
   eclipses: { tab: "space", label: "日食与月食" },
   meteors: { tab: "space", label: "流星雨" },
@@ -48,11 +44,15 @@ export const LAYER_INFO: Record<LayerKey, { tab: LayerTab; label: string }> = {
   lagrange: { tab: "space", label: "地月拉格朗日点" },
   solarSystem: { tab: "space", label: "太阳系" },
   flights: { tab: "human", label: "实时航班" },
+  satellites: { tab: "human", label: "真实卫星轨道" },
+  paths: { tab: "human", label: "卫星预测轨迹" },
+  starlink: { tab: "human", label: "星链星座" },
   cables: { tab: "human", label: "海底光缆" },
   ixps: { tab: "human", label: "互联网交换中心" },
   dataCenters: { tab: "human", label: "数据中心" },
   rootServers: { tab: "human", label: "DNS 根服务器" },
   dnsFlows: { tab: "human", label: "DNS 查询（实测）" },
+  launches: { tab: "play", label: "火箭发射日历" },
 };
 
 /** On in the default view; turning these on is not "opening" a layer. */

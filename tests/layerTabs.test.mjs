@@ -21,9 +21,17 @@ test("only layers turned on beyond the default view count as opened", () => {
   const layers = Object.fromEntries(Object.keys(LAYER_INFO).map((k) => [k, DEFAULT_ON.has(k)]));
   assert.deepEqual(openedLayers(layers), []);
   Object.assign(layers, { storms: true, flights: true, moon: true, paths: true });
-  assert.deepEqual(openedLayers(layers), ["storms", "paths", "moon", "flights"]);
-  assert.deepEqual(openedCounts(layers), { earth: 1, space: 2, human: 1, play: 0 });
+  assert.deepEqual(openedLayers(layers), ["storms", "moon", "flights", "paths"]);
+  assert.deepEqual(openedCounts(layers), { earth: 1, space: 1, human: 2, play: 0 });
   // Predicted paths without the satellites show nothing, so they are not listed.
   layers.satellites = false;
   assert.deepEqual(openedLayers(layers), ["storms", "moon", "flights"]);
+});
+
+test("satellites sit under Human activity, rocket launches under Interactive", () => {
+  for (const key of ["satellites", "paths", "starlink"]) assert.equal(LAYER_INFO[key].tab, "human", key);
+  assert.equal(LAYER_INFO.launches.tab, "play");
+  const layers = Object.fromEntries(Object.keys(LAYER_INFO).map((k) => [k, DEFAULT_ON.has(k)]));
+  Object.assign(layers, { starlink: true, launches: true });
+  assert.deepEqual(openedCounts(layers), { earth: 0, space: 0, human: 1, play: 1 });
 });
