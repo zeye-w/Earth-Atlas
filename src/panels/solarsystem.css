@@ -20,5 +20,8 @@
 .planet-moons strong { color:var(--text); font-weight:500; }
 .planet-moons em { font-style:normal; opacity:.75; }
 .planet-moons li { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.planet-moons li > span { flex:1 1 auto; min-width:0; }
+/* Not the planet list's full-width buttons (.space-list button). */
+.space-list .planet-moons .moon-fly { width:auto; display:inline-flex; align-items:center; white-space:nowrap; }
 .planet-moons .moon-fly { flex:none; padding:2px 8px; border:1px solid var(--line, rgba(255,255,255,.16)); border-radius:999px; background:transparent; color:var(--text); font-size:10px; cursor:pointer; }
 .planet-moons .moon-fly:hover { background:rgba(255,255,255,.08); }
