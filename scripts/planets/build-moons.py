@@ -43,7 +43,8 @@ BODIES = {
                  "marks": {"Valhalla": (-56.0, 14.7), "Asgard": (-140.0, 32.0)}},
     "titan": {"urls": [MOSAIC + "Titan_ISS_P19658_Mosaic_Global_4km.tif"], "haze": (0.86, 0.60, 0.30),
               "marks": {"Xanadu": (-100.0, -10.0), "Belet": (105.0, -7.0)}},
-    "triton": {"urls": [MOSAIC + "Triton_Voyager2_ClrMosaic_GlobalFill_600m.tif"], "marks": {}},
+    # Synthesized from orange, violet and ultraviolet filters (greenish): half its saturation.
+    "triton": {"urls": [MOSAIC + "Triton_Voyager2_ClrMosaic_GlobalFill_600m.tif"], "saturation": 0.5, "marks": {}},
     "pluto": {"urls": [MOSAIC + "Pluto_NewHorizons_Global_Mosaic_300m_Jul2017_8bit.tif",
                        MOSAIC + "Pluto_NewHorizons_Global_Mosaic_300m_Jul2017_8bit.TIF"],
               "color": ["https://photojournal.jpl.nasa.gov/tiff/PIA11707.tif", "https://d2pn8kiwq2w21t.cloudfront.net/original_images/jpegPIA11707.jpg"],
@@ -123,20 +124,28 @@ def to_grid(img, gt, p):
     return out, {"turn_px": float(turn), "width_px": int(w)}
 
 def fill_gaps(img, mask):
-    """Unimaged areas (mask true) filled with the surrounding brightness, smoothly (normalized convolution)."""
+    """
+    Unimaged areas (mask true): the mosaic's edge often has a dark seam, so
+    the mask is grown a little first. The gap then takes the surrounding
+    brightness smoothly (normalized convolution at one large scale, so no
+    streaks), fading to the body's mean colour deep inside it.
+    """
     if not mask.any(): return img
+    mask = cv2.dilate(mask.astype(np.uint8), np.ones((7, 7), np.uint8)) > 0
     f = img.astype(np.float32)
     valid = (~mask).astype(np.float32)
-    acc = f.copy() if f.ndim == 2 else f.copy()
-    for sigma in (4, 16, 64, 256):
-        num = cv2.GaussianBlur(f * (valid if f.ndim == 2 else valid[..., None]), (0, 0), sigma)
-        den = cv2.GaussianBlur(valid, (0, 0), sigma)
-        est = num / np.maximum(den if f.ndim == 2 else den[..., None], 1e-6)
-        sel = mask & (den > 1e-3)
-        acc[sel] = est[sel]
-        mask = mask & ~(den > 1e-3)
-        if not mask.any(): break
-    return acc
+    expand = (lambda a: a[..., None]) if f.ndim == 3 else (lambda a: a)
+    mean = f[~mask].mean(axis=0)
+    num = cv2.GaussianBlur(f * expand(valid), (0, 0), 40)
+    den = cv2.GaussianBlur(valid, (0, 0), 40)
+    near = num / np.maximum(expand(den), 1e-6)
+    near = np.where(expand(den) > 1e-3, near, mean)
+    depth = cv2.distanceTransform(mask.astype(np.uint8), cv2.DIST_L2, 5)
+    w = expand(np.clip(depth / 80, 0, 1))
+    filled = near * (1 - w) + mean * w
+    # A soft edge: blend over a few pixels on the data side too.
+    edge = expand(np.clip(cv2.GaussianBlur(mask.astype(np.float32), (0, 0), 3) * 1.5, 0, 1))
+    return f * (1 - edge) + filled * edge
 
 def align_color(color, gray):
     """Shift (and mirror) of a colour map that best matches the mosaic's brightness; both full globes."""
@@ -206,6 +215,9 @@ for key, cfg in BODIES.items():
             rgb = gray[..., None] * np.array(cfg.get("tint", (1, 1, 1)), np.float32)
     else:
         rgb = grid.astype(np.float32)
+    if "saturation" in cfg:
+        grey = rgb.mean(axis=2, keepdims=True)
+        rgb = grey + (rgb - grey) * cfg["saturation"]
     rgb = np.clip(rgb, 0, 255).astype(np.uint8)
     cv2.imwrite(os.path.join(out, key + ".jpg"), rgb[..., ::-1], [cv2.IMWRITE_JPEG_QUALITY, 86, cv2.IMWRITE_JPEG_PROGRESSIVE, 1])
     preview(rgb, cfg["marks"], os.path.join(out, "preview-" + key + ".jpg"))
